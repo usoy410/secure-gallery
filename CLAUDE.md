@@ -2,6 +2,8 @@
 
 Offline Android app (Kotlin) for team SUDO's NCF BSIT-3B capstone. It scans every gallery image, detects PhilSys IDs, LTO driver's licenses and payment cards, and does three things automatically: it saves a solid-fill redacted copy in the original's album, encrypts the original into a password-protected vault, and re-checks that the redaction worked. Inside the app, an eye toggle switches between the redacted and original image while the vault is unlocked. A review inbox lets users correct automatic redactions.
 
+**Research contributions (§5):** (1) layout-anchored hybrid redaction (template homography + OCR), compared with OCR-first; (2) a leak-test framework, also used to audit existing Android redaction apps; (3) a public synthetic PH ID benchmark. The vault and gallery are the supporting system, not claimed as new.
+
 **Status:** planning. No code yet. Everything is specified in `SECURE_GALLERY.md`. Read only the section you need:
 
 | Need | Section |
@@ -15,7 +17,8 @@ Offline Android app (Kotlin) for team SUDO's NCF BSIT-3B capstone. It scans ever
 | On-device recheck | §8.5 |
 | Algorithms, performance targets (4 GB RAM) | §8.6, §8.7 |
 | Tech stack, repo layout | §8.8, §8.9 |
-| Metrics, desktop validation harness, usability study | §9 |
+| Metrics, desktop validation harness, usability study | §9.1–9.4 |
+| Leak-test framework and tool audit | §9.5 |
 | Dataset and ethics | §10 |
 | Related systems / literature | §16 / §17–19 |
 | Open facts to verify | §20 |

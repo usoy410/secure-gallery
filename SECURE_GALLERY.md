@@ -34,7 +34,13 @@ Inside the app, an **eye toggle** switches between the redacted copy and the ori
 
 The project is not intended to guarantee complete privacy or to identify every kind of sensitive content. The first version supports three document classes: **PhilSys National ID, LTO driver's license, and payment card**.
 
-The central research contribution is a measured evaluation of the automatic detection and redaction workflow on a controlled synthetic dataset. It includes the effect of image-quality conditions and a two-level post-redaction validation (on the device and in an independent desktop harness). The validation is a safeguard and a measurement. It is not a proof that every form of sensitive information has been removed.
+The research contributions are three, detailed in §5:
+
+1. **Layout-anchored hybrid redaction.** Fields are covered at their known position on the card even when OCR cannot read them. This is compared against the OCR-first redaction used by existing tools.
+2. **A leak-test framework for photo redaction.** It is run on this app and on existing Android redaction apps.
+3. **A public synthetic Philippine ID benchmark and generator.**
+
+The vault, the eye toggle, and gallery scanning are the system that delivers these contributions, not contributions in themselves. Passing the validation is a safeguard and a measurement. It is not a proof that every form of sensitive information has been removed.
 
 ## 2. Proposed Title
 
@@ -44,7 +50,11 @@ Alternative, if the adviser prefers a title that foregrounds the research evalua
 
 **Evaluating Offline Detection and Redaction of Philippine ID and Payment Card Images on Android**
 
-Both titles are below the 15-word limit. Confirm the final wording with the adviser before using it in the proposal.
+Alternative that names the algorithmic contribution:
+
+**Layout-Anchored Offline Redaction of Philippine ID Images on Android with Leak-Tested Validation**
+
+All three titles are below the 15-word limit. Confirm the final wording with the adviser before using it in the proposal.
 
 ## 3. Problem and Rationale
 
@@ -52,23 +62,23 @@ Phone galleries can contain photographs of identification cards, payment cards, 
 
 Existing software provides parts of this workflow. Some tools identify potentially sensitive images, some extract text using OCR, and others let users blur or cover selected regions. However, features and supported document types vary. Public product descriptions do not always establish whether a tool supports Philippine-specific documents, performs full-gallery scanning, works entirely offline, or checks whether a redaction was correctly applied. These gaps must be treated as matters for systematic comparison and testing, not as proof that no existing tool has the capability.
 
-For a BSIT capstone, the problem is therefore framed as an applied software and computer-vision problem: how to implement an on-device workflow that detects a limited set of Philippine ID and payment-card images, proposes field-level redactions for user review, and evaluates its detection performance under controlled image conditions.
+For a BSIT capstone, the problem is therefore framed as an applied software and computer-vision problem: how to implement an on-device workflow that detects a limited set of Philippine ID and payment-card images, redacts their sensitive fields automatically even when the image is too degraded to read, and verifies that the redacted output does not leak those fields.
 
 ### 3.1 Problem Statement
 
-There is a need to evaluate whether an offline Android application can reliably identify selected Philippine identification and payment-card images and propose correctly positioned redactions for sensitive fields across different image-quality conditions, while preserving user control and minimizing the handling of personal data.
+Existing redaction tools locate sensitive fields by reading them, so a field that OCR cannot read in a blurred or glare-affected photo is left uncovered. Whether existing Android photo-redaction tools leave recoverable information behind has also not been measured. There is a need to evaluate whether an offline Android application can reliably identify selected Philippine identification and payment-card images and redact their sensitive fields across image-quality conditions, while keeping the original recoverable and minimizing the handling of personal data. There is also a need for a repeatable way to test whether any photo-redaction tool's output still leaks those fields.
 
 ### 3.2 Specific Problems
 
 1. The system may miss supported documents or incorrectly flag ordinary images and visually similar cards.
 2. OCR may fail to read selected sensitive fields in images affected by blur, glare, rotation, low resolution, perspective distortion, or partial obstruction.
-3. Automatically proposed redaction regions may be too small, misplaced, or incomplete, so the user needs a preview and editing controls before saving.
-4. A visual check or OCR re-scan alone cannot prove that all sensitive information has been removed; the system needs clearly defined, limited verification criteria.
+3. Automatic redaction regions may be too small, misplaced, or incomplete, so the user needs a way to correct them afterwards without losing the original.
+4. A visual check or OCR re-scan alone cannot prove that all sensitive information has been removed. Redactions can also leak through channels other than the visible pixels: embedded EXIF thumbnails, partially covered characters, non-opaque fills, metadata, and leftover copies. The system needs clearly defined, limited verification criteria that cover these channels.
 5. Processing time, usability, and offline operation must be evaluated on an actual Android device to determine whether the workflow is practical.
 
 ## 4. Proposed Solution
 
-Develop an Android app that scans the gallery images permitted by the user, identifies supported document images, extracts text on-device, and applies predefined rules to locate sensitive fields. It then redacts those fields automatically with opaque solid-color fills, vaults the original, and re-checks the output. Detections with medium confidence are still redacted, but they are placed at the top of the review inbox marked "needs check." In the inbox, the user can move, resize, or add regions, or mark the image "not sensitive." Each correction re-renders the redacted copy from the vaulted original.
+Develop an Android app that scans the gallery images permitted by the user and identifies supported document images. It then locates sensitive fields **by layout first**: it maps the card's known template onto the photo, then refines the boxes with on-device OCR and field rules. It then redacts those fields automatically with opaque solid-color fills, vaults the original, and re-checks the output. Detections with medium confidence are still redacted, but they are placed at the top of the review inbox marked "needs check." In the inbox, the user can move, resize, or add regions, or mark the image "not sensitive." Each correction re-renders the redacted copy from the vaulted original.
 
 The app does not upload images or OCR text. It does not store extracted text, it masks values in the interface, and it keeps only the minimum local state needed. All models are bundled in the APK. The app has no `INTERNET` permission and is tested in airplane mode after a clean install.
 
@@ -78,8 +88,8 @@ The app does not upload images or OCR text. It does not store extracted text, it
 |---|---|
 | Gallery permission and scan | Uses Android's media permission and explains it clearly. On Android 14+, if only selected photos are granted, the app scans just those. Runs a first full scan, then processes new images in the background. |
 | Document detection | Detects PhilSys ID, LTO driver's license, and payment card. |
-| OCR and field rules | Extracts text from the detected region and uses regex and layout-position rules to locate the selected fields. |
-| Automatic redaction | Applies opaque solid fills to image pixels. If the document is detected but its fields cannot be read, covers the whole document region. |
+| Layout-anchored field localization | Fits the card's corners, maps the class template's field regions onto the photo with a homography (a perspective transform), and refines them with OCR and field rules. Fields are covered even when they cannot be read. |
+| Automatic redaction | Applies opaque solid fills to image pixels. If the card's corners cannot be found and OCR also fails, covers the whole document region. |
 | Redacted copy in public gallery | Saves the flattened redacted copy in the original's album, keeping the capture date and stripping GPS and device metadata. |
 | Secure vault and eye toggle | Stores the encrypted original. Switches between the redacted copy and the original after unlock (PIN/password, biometric, recovery code). |
 | Review inbox | Lists automatic redactions, with "needs check" items first. Users can move, resize, or add regions, or mark an image "not sensitive." |
@@ -105,9 +115,12 @@ Detect supported document / card region
   +---- Low confidence ----> Mark as not detected by this pipeline
   |                          (not proof that image has no sensitive data)
   v
-Crop / normalize detected region, run on-device OCR, apply field rules
+Fit card corners, map template field regions onto the photo (layout-first)
   |
-  +---- Fields unreadable ----> Use one region covering the whole document
+  v
+Refine regions with on-device OCR + field rules (expand, never shrink)
+  |
+  +---- Corners not found AND fields unreadable ----> Cover the whole document
   v
 Encrypt original into vault, verify by decrypting it back
   |
@@ -138,57 +151,69 @@ END
 
 ## 5. Research Gap and Contribution
 
-Existing systems demonstrate sensitive-image classification, gallery privacy auditing, OCR-based field detection, and image redaction (§16, §17). This study does not assume those features are absent from every product. It investigates a narrower, measurable question: **how accurately can an offline Android pipeline automatically detect and redact selected Philippine ID and payment-card images across controlled image-quality conditions, and how reliably can it verify that the redacted output no longer reveals the selected fields?**
+Existing systems demonstrate sensitive-image classification, gallery privacy auditing, OCR-based field detection, and image redaction (§16, §17). Gallery scanning, solid-fill redaction, and encrypted vaults are therefore **not** claimed as new. The study contributes three measurable things.
 
-**Provisional contribution:** none of the reviewed systems documents this combination:
+### 5.1 Contribution 1: Layout-anchored hybrid redaction (algorithm)
 
-1. Automatic gallery-wide redaction whose redacted copy **replaces** the original in the public gallery.
-2. An encrypted original with an in-app redacted/original toggle.
-3. A whole-document fallback that covers the entire document when its fields cannot be read (blur, glare, and similar conditions), instead of leaving it unprotected. This targets the failure modes reported for PrivyMark and RollGuard.
-4. A post-redaction check at two levels: on the device after every redaction, and in a desktop harness that uses an independent OCR engine.
+**Gap:** OCR-first tools find a field by reading it. When a photo is blurred or has glare, OCR fails and the field stays exposed. This was observed in the team's PrivyMark test (§16), and RollGuard's own site warns about it.
 
-The study reports:
-- false positives and false negatives;
-- field-level detection results;
-- redaction coverage;
-- residual leakage;
-- user correction rate;
-- fallback and retry rates;
-- processing time;
-- usability.
+**Approach:** Philippine IDs have fixed layouts. The app fits the card's four corners, computes a homography to the class template, and covers the template's field regions, so a field is redacted **without needing to be read**. OCR is then used only to enlarge regions (never shrink them) and to check the result.
 
-This claim must be revised after hands-on testing of the closest systems, particularly GalleryKeeper, Skry, PrivyMark, and RollGuard.
+**Prior work:** template-based field localization already exists for *reading* ID documents, for example MIDV2020 rectified field localization and Matalov & Arlazarov (2025), single-image template generation (§18.2). Using it for *privacy redaction under degradation*, compared against OCR-first redaction, was not found in the reviewed sources.
+
+**Experiment:** OCR-first vs layout-first vs hybrid, across the image conditions in §10.1. Measured by leak rate (§9.2) against over-redacted area.
+
+### 5.2 Contribution 2: A leak-test framework for photo redaction, applied to existing tools
+
+**Gap:** redaction audits exist for PDF tools ("Story Beyond the Eye," PoPETs 2023, tested 11 tools) and for mosaiced or blurred text (Hill et al., PoPETs 2016). No audit of Android photo-redaction apps was found, and Theme 1 gap #2 (§17.2) notes that no study automatically checks the exported phone image.
+
+**Approach:** an offline suite (§9.5) that tries to recover redacted fields through specific leak channels: visible pixels, partially covered characters, non-opaque fills, embedded EXIF thumbnails, metadata (compare ALIBIS, 2026), card-number structure, and leftover copies.
+
+**Experiment:** run the suite on this app **and** on PrivyMark, Skry, GalleryKeeper, and any other comparable Android tools, using the same mock-ID set. This turns the related-systems comparison into measured evidence.
+
+### 5.3 Contribution 3: A public synthetic Philippine ID benchmark
+
+**Gap:** Theme 2 gaps #1 and #5 (§17.3): no public dataset has field-level labels for Philippine IDs.
+
+**Approach:** release the template generator and dataset: fictional data, exact field boxes, condition variants, and failed-redaction cases. No real IDs are included.
+
+### 5.4 Supporting system
+
+Automatic gallery-wide redaction that replaces the public copy, the encrypted vault with eye toggle, the review inbox, and the on-device recheck. These are the engineering through which the contributions are delivered and measured.
+
+These claims are provisional. Revise them after hands-on testing of the closest systems and a full literature search on template-based redaction and redaction auditing (§20).
 
 ## 6. Research Questions
 
 1. **What are the functional, technical, and privacy requirements** for an offline Android application that automatically detects and redacts selected Philippine ID and payment-card images and keeps the originals in a secure vault?
 2. **How effectively does the document-detection component identify and localize the supported document classes,** in terms of precision, recall, F1-score, false-positive rate, and localization performance?
 3. **How accurately does the OCR and field-rule pipeline identify selected sensitive fields,** in terms of field-level precision, recall, F1-score, and the proportion of inconclusive results?
-4. **How does image quality affect detection and field identification,** particularly under blur, glare, rotation, low resolution, perspective distortion, and partial obstruction?
+4. **How do OCR-first, layout-first, and hybrid field localization compare** in leak rate and over-redacted area under blur, glare, rotation, low resolution, perspective distortion, and partial obstruction? How often are the whole-document fallback and the recheck-and-retry triggered under each condition?
 5. **How accurately do the automatic redaction regions cover the intended sensitive fields?** This covers redaction coverage, the frequency of missed, partial, or misplaced redactions, and the rate at which users had to correct them in the review inbox.
 6. **How effectively does the post-redaction check identify deliberately incomplete or failed redactions?** This is measured using verification sensitivity, false-negative rate, false-positive rate, and inconclusive rate, both on the device and with an independent desktop OCR engine.
-7. **How often are the whole-document fallback and the recheck-and-retry triggered, and how does this vary by image condition?**
+7. **How much recoverable information do existing Android photo-redaction tools and this app leave in their output,** measured per leak channel with the leak-test framework?
 8. **What are the application's usability and operational performance levels,** in terms of task completion, time per image, processing latency, memory/resource use on a 4 GB RAM device, and user evaluation?
 
-Question 1 is a requirements/design question. Questions 2–7 are technical evaluation questions. Question 8 evaluates practical use and system quality.
+Question 1 is a requirements/design question. Question 4 is the algorithmic core (Contribution 1). Question 7 is the tool audit (Contribution 2). Questions 2, 3, 5, and 6 evaluate the pipeline. Question 8 evaluates practical use and system quality.
 
 ## 7. Objectives of the Study
 
 ### 7.1 General Objective
 
-To develop and evaluate an offline Android gallery privacy app that automatically detects and redacts selected Philippine identification and payment-card images, keeps the originals in an encrypted vault, and validates its own redactions.
+To develop and evaluate an offline Android gallery privacy app that redacts selected Philippine identification and payment-card images through layout-anchored hybrid localization, keeps the originals in an encrypted vault, and validates its output with a leak-test framework that is also applied to existing redaction tools.
 
 ### 7.2 Specific Objectives
 
 1. To identify the functional, technical, and privacy requirements for the proposed application.
-2. To prepare a labeled synthetic dataset of supported documents, negative examples, controlled image-quality variations, and paired failed-redaction test cases.
+2. To build and publicly release a synthetic Philippine ID and payment-card generator and dataset with field-level ground truth, controlled image-quality variations, negative examples, and failed-redaction cases.
 3. To implement and evaluate a document-detection component using precision, recall, F1-score, false-positive rate, and localization metrics.
 4. To implement and evaluate an on-device OCR and field-rule pipeline using field-level precision, recall, F1-score, and inconclusive rate.
-5. To assess the effects of selected image-quality conditions on document and field detection.
+5. To implement layout-anchored hybrid field localization and compare it with OCR-first and layout-only localization by leak rate and over-redacted area under each image condition.
 6. To implement automatic solid-fill redaction with a review inbox, and measure coverage, placement accuracy, and user correction rate.
 7. To implement an encrypted vault with an eye toggle, verified write-before-delete, and vault export/import.
-8. To evaluate the post-redaction check, on the device and in an independent desktop harness, using complete, partial, misplaced, and ineffective redaction cases. This includes measuring how often the fallback and retry are triggered.
-9. To assess usability and operational performance on a 4 GB RAM Android device, including task completion, processing time, and resource use.
+8. To evaluate the post-redaction check, on the device and in an independent desktop harness, using complete, partial, misplaced, and ineffective redaction cases.
+9. To build a leak-test framework covering pixel, partial-character, opacity, EXIF-thumbnail, metadata, number-structure, and leftover-copy channels, and apply it to this app and to existing Android photo-redaction tools.
+10. To assess usability and operational performance on a 4 GB RAM Android device, including task completion, processing time, and resource use.
 
 ---
 
@@ -218,10 +243,14 @@ MediaStore image (new or not yet scanned)
   ├─ decode, downsampled (640 px for the detector; long side ≤ 2048 px for OCR)
   ├─ YOLO11n (LiteRT) → class + box + confidence
   │     └─ low (< 0.35) → "not detected by this pipeline", stop
-  ├─ crop + perspective-correct the document region
-  ├─ ML Kit text recognition (bundled) → lines + boxes (in memory only)
-  ├─ field rules (regex + layout per class) → field boxes
-  │     └─ document found but fields unreadable → one box over the whole document
+  ├─ fit the card's 4 corners inside the detector box (contour / quadrilateral fit)
+  │     └─ homography to the class template → template field regions mapped onto the photo
+  ├─ ML Kit text recognition (bundled) on each mapped region → lines + boxes (in memory only)
+  ├─ field rules (regex + layout per class) → final box = union(template region, OCR box)
+  │     ├─ corners not found → OCR-first field rules only
+  │     └─ corners not found AND fields unreadable → one box over the whole document
+  │     (payment cards: bank layouts vary, so OCR-first + Luhn check, with template only
+  │      for the standard number / expiry band)
   ├─ confidence level:
   │     high   (doc ≥ 0.6 AND field rules matched) → automatic, state REDACTED
   │     medium (doc 0.35–0.6 OR some fields missing) → automatic, state NEEDS_CHECK
@@ -282,7 +311,8 @@ Both checks must pass:
 | Document localization/classification | YOLO11n, trained with Ultralytics, exported to LiteRT (INT8 or FP16) | Select using held-out precision, recall, F1/mAP, model size, and latency. Ultralytics is AGPL-3.0, so the repo is AGPL. |
 | Preprocessing | Resize, grayscale, contrast, perspective correction | Compare with a no-preprocessing baseline. Do not assume preprocessing helps. |
 | Text extraction | ML Kit Text Recognition v2, bundled Latin model | Verify offline behavior and the merged manifest. |
-| Field identification | Regex plus layout-position rules per class | Names and addresses rely on layout position more than on patterns. |
+| Corner fit + homography | OpenCV contour/quadrilateral fit inside the detector box, `getPerspectiveTransform` to the template | Template per card design variant (§15). Compare against corner-keypoint regression only if the contour fit fails often. |
+| Field localization | Layout-first template regions, unioned with OCR + regex boxes (hybrid) | Compared against OCR-first and layout-only (RQ4). Regions are only ever expanded. |
 | Redaction rendering | `Bitmap`/`Canvas` opaque solid fill, flattened JPEG | Test that covered pixels are actually replaced, not hidden by the UI. |
 | Post-redaction check | §8.5 on the device; independent OCR on the desktop (§9.2) | A limited check, not a proof of complete privacy. |
 | Augmentation | Blur, rotation, glare, compression, perspective, crop, occlusion | All versions of one base image stay in the same split. |
@@ -340,11 +370,14 @@ secure-gallery/
       AppContainer.kt
     app/src/test/         JVM tests: field rules, confidence levels, state transitions
     app/src/androidTest/  vault round trip, redaction + recheck, airplane-mode flow
+  templates/      one JSON per card design variant (normalized field regions),
+                  shared by the generator and the app (copied into app assets at build)
   ml/
-    generate/     synthetic PH ID/card generator + ground truth
-    augment/      image-quality conditions
+    generate/     synthetic PH ID/card generator + ground truth (public release)
+    augment/      image-quality conditions + layout jitter
     train/        YOLO11n training + LiteRT export
   validation/     desktop harness → metrics CSV + per-condition tables
+    leaktest/     leak-test framework (§9.5), run on this app and audited tools
   SECURE_GALLERY.md
 ```
 
@@ -360,6 +393,8 @@ secure-gallery/
 | OCR quality | Character error rate or exact field match | Whether OCR reads the known synthetic values |
 | Inconclusive results | Count and percentage | How often the system cannot decide whether a field was found |
 | Redaction coverage | IoU between redaction and ground-truth field; proportion of field area covered; over-coverage | Whether automatic redactions cover the intended field |
+| Localization strategy trade-off | Leak rate vs over-redacted area (% of non-sensitive card area covered), per strategy and condition | Whether layout-first or hybrid beats OCR-first (RQ4) |
+| Tool audit | Leak rate per channel (§9.5) per tool, with counts | How much existing tools and this app leave behind (RQ7) |
 | User correction rate | Corrections per redacted image, by type (move, resize, add, not sensitive) | How often automation needed human fixing |
 | Fallback and retry rate | Whole-document fallbacks and recheck retries, per condition | How often the safety net was needed |
 | Residual leakage (desktop) | Leak rate per field, class, and condition (§9.2) | Whether an independent engine can still read redacted fields |
@@ -383,7 +418,10 @@ A Python harness in `validation/` runs over the synthetic test set. It uses **Pa
 
 1. **Detector only:** is a supported document detected and localized?
 2. **OCR plus field rules,** without the learned detector.
-3. **Hybrid pipeline:** detector, crop/preprocessing, OCR, and field rules together.
+3. **Localization strategies (RQ4):**
+   - **OCR-first:** detector, then OCR and field rules only. This is how existing tools work.
+   - **Layout-only:** detector, then template regions only.
+   - **Hybrid:** both, unioned. This is the deployed strategy.
 4. **Redaction test:** compare automatic regions with ground truth, and run complete, partial, misplaced, and absent redaction cases through both validation levels.
 
 Two detector configurations plus the OCR/rule baseline are enough. Do not compare many models just to make the project look more complex.
@@ -393,6 +431,26 @@ Two detector configurations plus the OCR/rule baseline are enough. Do not compar
 - **Participants:** 15–20, using a prepared test phone loaded with synthetic mock IDs, never their own gallery.
 - **Tasks:** setup and PIN, scan, review a "needs check" item, fix a box, use the eye toggle, mark a photo "not sensitive," export the vault.
 - **Measures:** task completion, time on task, SUS, correction rate.
+
+### 9.5 Leak-Test Framework and Tool Audit
+
+The suite lives in `validation/leaktest/`. It runs offline on redacted outputs exported from any tool.
+
+| Channel | Test | Leak if |
+|---|---|---|
+| Visible pixels | PaddleOCR + Tesseract on each ground-truth field region | §9.2 rule: character error rate ≤ 0.3 or 4+ consecutive digits recovered |
+| Partially covered characters | OCR on a band ±15% around each box, after cropping to the uncovered parts | Clipped tops or bottoms of characters still readable by the §9.2 rule |
+| Non-opaque fills | Levels, contrast, and gamma stretch inside the box, then OCR; pixel-variance check | Text recovered, or the fill is not uniform (blur, mosaic, or semi-transparent) |
+| Mosaic / blur | Report the redaction style. Recovery attacks are cited (Hill et al. 2016), not reimplemented | Any mosaic or blur used on text is recorded as a leak risk |
+| EXIF thumbnail | Extract the embedded thumbnail and run the same OCR on it | The thumbnail shows the unredacted field |
+| Metadata | Inspect EXIF/XMP for GPS, device, and original file name | Any GPS or identifying tag left in the file |
+| Number structure | For partially hidden card numbers: count the candidates left after Luhn check + issuer prefix | ≤ 1,000 candidates left |
+| Leftover copies | After the tool's "save", check MediaStore and the system trash for the unredacted original | The original remains publicly accessible |
+
+**Audit protocol:**
+- **Tools:** this app, PrivyMark, Skry, GalleryKeeper, and other comparable Android tools, using the default settings and the same mock-ID set.
+- **Recording:** tool version, device, and date for every run.
+- **Disclosure:** report results per tool and channel with counts. If a leak is found in a third-party app, notify the developer before publication. Use synthetic IDs only, and check each app's terms first.
 
 ## 10. Dataset and Research Ethics
 
@@ -404,6 +462,8 @@ Two detector configurations plus the OCR/rule baseline are enough. Do not compar
 - **Failed-redaction cases:** complete, partial, misplaced, and ineffective redactions.
 - **Labels:** class, field type, field region, readability, intended redaction region, and residual detectability.
 - **Splits:** all versions of one base image stay in the same split. Split by template and fictional identity, not by random augmented copies.
+- **Templates:** one template per card design variant, with normalized field regions. The same template files drive the generator (ground truth) and the app (layout-first localization). For a fair RQ4 test, the test set must include layout jitter: print offset, slight misalignment, and font variation. Otherwise layout-first is graded on its own assumptions.
+- **Public release:** generator, templates, and the synthetic dataset, under an open license, with a datasheet (purpose, composition, known gaps). Fictional data only.
 - **Detector training only:** synthetic data plus the Roboflow PH ID sets (§19), after a license audit. Roboflow images never enter the test set.
 - Treat public datasets as leads. Audit license, provenance, annotation quality, duplicates, and leakage first.
 
@@ -427,7 +487,14 @@ Two detector configurations plus the OCR/rule baseline are enough. Do not compar
 - Redacted copy shown in the public gallery. Encrypted vault with eye toggle, PIN/biometric/recovery, and export/import.
 - Review inbox for correction and "not sensitive" restore.
 - On-device recheck and a desktop validation harness.
+- Layout-anchored hybrid localization and its comparison with OCR-first and layout-only.
+- Leak-test framework and an audit of selected existing Android photo-redaction tools.
+- Public release of the synthetic generator, templates, and dataset.
 - Quantitative evaluation on a synthetic dataset, plus usability and performance tests on a 4 GB RAM device.
+
+### Stretch Goal (only if the core is on schedule)
+
+- **Purpose-based safe share:** an Android share target. The user picks a purpose (for example "seller verification"), and the app hides only what that purpose doesn't need, stamps "For [purpose] only, [date]," and strips metadata. This follows RA 10173 data minimization. It is not part of the research questions.
 
 ### Out of Scope
 
@@ -437,7 +504,7 @@ Two detector configurations plus the OCR/rule baseline are enough. Do not compar
 - Cloud upload, server-side OCR, or cloud AI.
 - Videos, GIFs, social media, email, cloud drives, web.
 - A full gallery replacement (albums, editing, sharing).
-- Forensic recovery testing beyond the planned evaluation.
+- Forensic recovery beyond the §9.5 channels, for example reimplementing mosaic or blur reversal attacks.
 - Other Philippine IDs (UMID, passport, and others), non-Latin scripts, iOS.
 - Claims of legal compliance merely because the app is offline.
 - Long-term behavior-change studies.
@@ -489,11 +556,13 @@ This project is framed as an **Applied IT Solution** with a clear **Cybersecurit
 ## 14. Expected Outputs
 
 1. A working Android app that performs the agreed workflow offline.
-2. A synthetic dataset generator, dataset, and ground-truth annotations.
+2. A publicly released synthetic PH ID generator, templates, dataset, and datasheet.
 3. Held-out detection and field-level metrics for the detector configurations and the OCR/rule baseline.
-4. Redaction coverage, correction-rate, fallback/retry, and residual-leakage results from both validation levels.
-5. Runtime and usability results from the 4 GB RAM test device.
-6. System documentation, privacy/data-handling notes, test cases, and a final technical report.
+4. The localization-strategy comparison (OCR-first vs layout-only vs hybrid) by condition.
+5. Redaction coverage, correction-rate, fallback/retry, and residual-leakage results from both validation levels.
+6. The leak-test framework and an audit report of existing Android photo-redaction tools.
+7. Runtime and usability results from the 4 GB RAM test device.
+8. System documentation, privacy/data-handling notes, test cases, and a final technical report.
 
 ## 15. Risks and Mitigation
 
@@ -511,7 +580,10 @@ This project is framed as an **Applied IT Solution** with a clear **Cybersecurit
 | Offline claim inaccurate | Remove `INTERNET` from the merged manifest. Airplane-mode test after a clean install. |
 | Real personal data retained | Synthetic data only. No OCR text in storage or logs. |
 | Too slow on a 4 GB RAM phone | Downsampled decoding, one image at a time, INT8 model, background work. |
-| Workload too large | No full gallery, no on-device language models, no behavior study. |
+| Card design variants break the templates (PhilSys card vs printed ePhilID, old vs new LTO designs) | One template per variant, chosen by the detector class or a small variant classifier. Out-of-template designs fall back to OCR-first, then whole-document fill. |
+| Layout-first wins only because the test data matches the templates exactly | Layout jitter in the generator. Report results on a held-out set of real-design mock prints photographed with a phone. |
+| Audited apps change or forbid testing | Record versions and dates. Check terms. Notify developers before publishing. Use synthetic IDs only. |
+| Workload too large | No full gallery, no on-device language models, no behavior study. Purpose-based safe share is a stretch goal only. |
 
 ---
 
@@ -553,7 +625,7 @@ For each system, record:
 - Whether the proposed redaction region covered the entire target field
 - Whether manual correction was available
 - Whether the exported image was a separate copy and the original was preserved
-- Whether selected information remained detectable in the exported copy
+- Whether selected information remained detectable in the exported copy (run the §9.5 leak-test suite on the export, all channels)
 - Result: Pass / Fail / Partial / Not tested
 - Screenshot or evidence note
 
@@ -708,7 +780,11 @@ Three themes with 30 citations each, all published 2021–2026 (90 in total). So
 
 The 90 studies show that detecting sensitive regions, reading text from IDs, masking content and running models on phones each work in isolation. Taken together, they do not show a single offline Android pipeline that (a) targets Philippine IDs and payment cards, (b) is tested under controlled image-quality conditions, (c) lets the user confirm or correct each redaction, and (d) checks the exported image to see whether the chosen fields remain detectable. Your project addresses that combined, narrower problem. This is a provisional gap based on the sources in this matrix and on the RRS testing still to be done. It does not prove that no tool does all four.
 
-**How this project extends the gap:** this design goes beyond (c). Redaction is automatic and correctable rather than user-confirmed. It adds a vault that keeps originals recoverable, a whole-document fallback for unreadable images, and residual checks at two levels (on the device and with an independent desktop OCR engine).
+**How this project extends the gap:**
+- **(b), extended:** it compares layout-anchored redaction with OCR-first redaction under each image condition (Contribution 1).
+- **(d), extended:** it is checked through several leak channels, and the same test is applied to existing tools (Contribution 2).
+- **(a), extended:** it releases a Philippine benchmark (Contribution 3).
+- **(c), changed:** redaction is automatic and correctable rather than user-confirmed, and the vault keeps originals recoverable.
 
 ## 18. Additional Sources (not counted toward the 90)
 
@@ -723,6 +799,7 @@ The 90 studies show that detecting sensitive regions, reading text from IDs, mas
 |MIDV-2019|2019|Challenging mobile ID OCR|https://arxiv.org/abs/1910.04009|
 |Sporici et al., Tesseract preprocessing|2020|Preprocessing for Tesseract|https://doi.org/10.3390/sym12050715|
 |ELMAR low-quality OCR|2017|OCR on low-quality images|https://doi.org/10.23919/ELMAR.2017.8124460|
+|Hill, Zhou, Saul, Shacham, On the (In)effectiveness of Mosaicing and Blurring as Tools for Document Redaction (PoPETs)|2016|Shows mosaic/blur text redaction is recoverable; basis for the §9.5 mosaic/blur channel|https://petsymposium.org/popets/2016/popets-2016-0047.php|
 
 ### 18.2 Other Literature Leads
 
@@ -730,6 +807,10 @@ These are bibliographic leads from earlier notes that are not in the 90-citation
 
 | Title | Year | Possible use | Limitation | Source |
 |---|---|---|---|---|
+| Story Beyond the Eye: Glyph Positions Break PDF Text Redaction (PoPETs) | 2023 | Methodological model for the tool audit (Contribution 2): 11 PDF redaction tools tested, vendors notified | PDF glyph positions, not photo pixels | https://crysp.petsymposium.org/popets/2023/popets-2023-0069.php |
+| Matalov & Arlazarov, ID document template generation from a single image (Computer Optics 49(6)) | 2025 | Prior work for Contribution 1: template matching is precise, data-light, and real-time on mobile | Used for recognition, not redaction | https://computeroptics.ru/KO/Annot/KO49-6/490631.html |
+| MIDV2020 "rectified photos" for field localisation and recognition in identity documents | 2021+ | Template-based field localization benchmark | Foreign mock IDs; reading, not redaction | https://www-shadoc.irisa.fr/midv2020-rectified-photos-for-field-localisation-and-recognition-in-identity-documents/ |
+| ALIBIS: Assessing and Mitigating the Risk of Sensitive Metadata Leakage in Mobile Image Sharing (Pervasive Mob. Comput.) | 2026 | EXIF metadata leakage on Android; 82.3% of surveyed users don't remove metadata | Does not cover embedded thumbnails or redaction | https://consensus.app/papers/details/f53855b9e4025a85b985db15c60fec6e/ |
 | Redacted Text Detection Using Neural Image Segmentation Methods | 2025 | Evaluating redacted regions and remaining visibility | Detecting redaction ≠ proving nothing is recoverable | https://link.springer.com/article/10.1007/s10032-025-00513-1 |
 | System and Method for Automated Redaction of PII Using Responsible AI and Computer Vision | 2026 | Redaction workflow design | Metadata unverified | URL not recorded |
 | Automatic ID Card Data Detection and Extraction System Based on CNN and OCR | 2024 | Feasibility of detection + OCR | Read the full paper before quoting results | https://jurnal.umb.ac.id/index.php/JSAI/article/view/7269 |
@@ -796,6 +877,8 @@ These are candidate leads only. Check license, terms, provenance, class definiti
 4. The license of each Roboflow PH ID dataset.
 5. The Android 14 "selected photos" flow.
 6. Calibrate the confidence thresholds, recheck tolerances, and leak rule in a pilot run.
+7. Run a full SciSpace/Consensus search on template-based redaction and on audits of mobile or photo redaction tools. The novelty checks behind §5.1 and §5.2 used only a few searches (20 October 2026).
+8. Collect current PhilSys (card and ePhilID) and LTO card design variants for the templates, using only publicly published specimen images.
 
 ### 20.2 Before Manuscript Submission
 
