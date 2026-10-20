@@ -3,7 +3,7 @@
   "name": "Generic Payment Card (Back)",
   "document_class": "payment_card",
   "aspect_ratio": 1.5858,
-  "description": "Standard ISO/IEC 7810 ID-1 financial transaction payment card back layout showing magnetic stripe and CVV per SECURE_GALLERY.md §8.1.",
+  "description": "Standard ISO/IEC 7810 ID-1 financial transaction payment card back layout showing magnetic stripe and CVV per SECURE_GALLERY.md §8.1. Exempt from card number, cardholder name, and expiry date redactions, which are located on payment-card-front.",
   "card_dimensions_mm": {
     "width": 85.6,
     "height": 53.98

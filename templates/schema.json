@@ -24,12 +24,10 @@
       "type": "string",
       "enum": [
         "philsys",
-        "philsys_id",
         "lto",
-        "lto_driver_license",
         "payment_card"
       ],
-      "description": "Document class according to SECURE_GALLERY.md §8.1."
+      "description": "Document class according to SECURE_GALLERY.md §8.1 (canonical values only: philsys, lto, payment_card)."
     },
     "aspect_ratio": {
       "type": "number",

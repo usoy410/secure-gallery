@@ -2,10 +2,12 @@
 
 Validates that:
 - Every template conforms to templates/schema.json.
+- Schema rejects non-canonical document class aliases.
 - Templates for PhilSys, ePhilID, LTO (current & previous), and payment cards (front & back) exist.
 - All polygon vertices stay strictly within the unit square [0, 1].
-- Sensitive fields do not overlap left-visible fields.
-- Every redacted field listed in SECURE_GALLERY.md §8.1 is present for its document class.
+- Exact polygon intersection testing verifies sensitive fields do not overlap left-visible fields.
+- Every redacted field listed in SECURE_GALLERY.md §8.1 is covered per-variant (with explicit exemptions).
+- PhilSys card specifically includes a QR code field.
 - Aspect ratios are positive numbers matching physical standards.
 - templates/SOURCES.md documents all public specimen sources.
 """
@@ -26,10 +28,13 @@ import jsonschema
 import pytest
 
 from templates.validate import (
+    VARIANT_FIELD_EXEMPTIONS,
     check_no_overlap,
     check_polygon_bounds,
     check_redacted_fields_per_class,
+    check_redacted_fields_per_variant,
     load_json,
+    polygons_overlap,
     validate_against_schema,
 )
 
@@ -86,6 +91,33 @@ def test_schema_itself_is_valid(schema_data: dict[str, Any]) -> None:
     validator_cls.check_schema(schema_data)
 
 
+def test_schema_rejects_class_aliases(schema_data: dict[str, Any]) -> None:
+    """Verify that templates/schema.json rejects deprecated class aliases."""
+    base_template = {
+        "id": "test-sample",
+        "aspect_ratio": 1.5858,
+        "fields": [
+            {
+                "name": "Test Field",
+                "type": "headings",
+                "sensitive": False,
+                "polygon": [[0.0, 0.0], [1.0, 0.0], [1.0, 0.5], [0.0, 0.5]],
+            }
+        ],
+    }
+
+    # Canonical values must pass
+    for canonical in ["philsys", "lto", "payment_card"]:
+        valid_sample = {**base_template, "document_class": canonical}
+        validate_against_schema(valid_sample, schema_data)
+
+    # Aliases must fail schema validation
+    for alias in ["philsys_id", "lto_driver_license", "passport", "unknown"]:
+        invalid_sample = {**base_template, "document_class": alias}
+        with pytest.raises(jsonschema.ValidationError):
+            validate_against_schema(invalid_sample, schema_data)
+
+
 def test_required_variants_exist(loaded_templates: dict[str, dict[str, Any]]) -> None:
     """Ensure all variants required by Issue #3 acceptance criteria are present."""
     present_ids = set(loaded_templates.keys())
@@ -102,7 +134,9 @@ def test_templates_against_schema(
         try:
             validate_against_schema(data, schema_data)
         except jsonschema.ValidationError as err:
-            pytest.fail(f"Template {template_file.name} failed schema validation: {err.message}")
+            pytest.fail(
+                f"Template {template_file.name} failed schema validation: {err.message}"
+            )
 
 
 def test_polygons_inside_unit_square(
@@ -115,7 +149,9 @@ def test_polygons_inside_unit_square(
         errors = check_polygon_bounds(data)
         for err in errors:
             all_bounds_errors.append(f"{template_file.name}: {err}")
-    assert not all_bounds_errors, "Polygon boundary errors found:\n" + "\n".join(all_bounds_errors)
+    assert not all_bounds_errors, "Polygon boundary errors found:\n" + "\n".join(
+        all_bounds_errors
+    )
 
 
 def test_polygons_have_valid_points(
@@ -126,12 +162,18 @@ def test_polygons_have_valid_points(
         data = load_json(template_file)
         for field in data.get("fields", []):
             poly = field["polygon"]
-            assert len(poly) >= 3, f"{template_file.name}: field '{field['name']}' has < 3 vertices"
+            assert len(poly) >= 3, (
+                f"{template_file.name}: field '{field['name']}' has < 3 vertices"
+            )
             xs = [p[0] for p in poly]
             ys = [p[1] for p in poly]
             # Width and height must be strictly positive
-            assert max(xs) > min(xs), f"{template_file.name}: field '{field['name']}' has zero width"
-            assert max(ys) > min(ys), f"{template_file.name}: field '{field['name']}' has zero height"
+            assert max(xs) > min(xs), (
+                f"{template_file.name}: field '{field['name']}' has zero width"
+            )
+            assert max(ys) > min(ys), (
+                f"{template_file.name}: field '{field['name']}' has zero height"
+            )
 
 
 def test_sensitive_fields_do_not_overlap_left_visible(
@@ -143,7 +185,69 @@ def test_sensitive_fields_do_not_overlap_left_visible(
         data = load_json(template_file)
         errors = check_no_overlap(data)
         all_overlap_errors.extend(errors)
-    assert not all_overlap_errors, "Illegal field overlaps detected:\n" + "\n".join(all_overlap_errors)
+    assert not all_overlap_errors, "Illegal field overlaps detected:\n" + "\n".join(
+        all_overlap_errors
+    )
+
+
+def test_polygon_overlap_precision() -> None:
+    """Verify that polygons_overlap correctly tests geometric intersection and avoids false positives."""
+    # Two non-rectangular triangles whose bounding boxes overlap on [1, 2] x [1, 2],
+    # but whose geometric interiors are completely disjoint.
+    triangle_a = [[0.0, 0.0], [2.0, 0.0], [0.0, 2.0]]
+    triangle_b = [[2.0, 2.0], [2.0, 1.1], [1.1, 2.0]]
+    assert not polygons_overlap(triangle_a, triangle_b), (
+        "Disjoint triangles should not overlap"
+    )
+
+    # Transverse edge crossing
+    crossing_poly = [[0.5, -0.5], [0.5, 2.5], [1.5, 2.5], [1.5, -0.5]]
+    assert polygons_overlap(triangle_a, crossing_poly), (
+        "Intersecting polygons must report overlap"
+    )
+
+    # Strict interior containment
+    inner_box = [[0.2, 0.2], [0.5, 0.2], [0.5, 0.5], [0.2, 0.5]]
+    assert polygons_overlap(triangle_a, inner_box), (
+        "Contained polygon must report overlap"
+    )
+
+
+def test_per_variant_coverage_and_exemptions(
+    loaded_templates: dict[str, dict[str, Any]],
+) -> None:
+    """Verify that each variant covers all required §8.1 fields, respecting explicit exemptions."""
+    all_missing: list[str] = []
+    for variant_id, template in loaded_templates.items():
+        missing = check_redacted_fields_per_variant(template)
+        for field in missing:
+            all_missing.append(f"Variant '{variant_id}' missing '{field}'")
+    assert not all_missing, "Per-variant coverage failures:\n" + "\n".join(all_missing)
+
+
+def test_philsys_card_has_qr_code(loaded_templates: dict[str, dict[str, Any]]) -> None:
+    """Verify that philsys-card specifically contains a sensitive qr_code field."""
+    philsys_card = loaded_templates["philsys-card"]
+    qr_fields = [
+        f
+        for f in philsys_card.get("fields", [])
+        if f.get("type") == "qr_code" and f.get("sensitive") is True
+    ]
+    assert len(qr_fields) >= 1, (
+        "philsys-card must contain at least one sensitive 'qr_code' field"
+    )
+
+
+def test_exemptions_are_documented() -> None:
+    """Ensure all exemptions registered in VARIANT_FIELD_EXEMPTIONS contain detailed rationales."""
+    for variant_id, exemptions in VARIANT_FIELD_EXEMPTIONS.items():
+        assert REQUIRED_TEMPLATE_IDS.intersection({variant_id}), (
+            f"Unknown variant in exemptions: {variant_id}"
+        )
+        for field, rationale in exemptions.items():
+            assert isinstance(rationale, str) and len(rationale.strip()) > 15, (
+                f"Variant '{variant_id}' field '{field}' lacks a documented exemption rationale."
+            )
 
 
 def test_every_redacted_field_in_section_8_1_present_for_class(
@@ -163,10 +267,14 @@ def test_aspect_ratios_positive_and_standard(
     """Check that aspect ratios are positive numbers and near ID-1 standard (~1.5858)."""
     for variant_id, data in loaded_templates.items():
         ar = data["aspect_ratio"]
-        assert isinstance(ar, (int, float)), f"{variant_id}: aspect_ratio must be numeric"
+        assert isinstance(ar, (int, float)), (
+            f"{variant_id}: aspect_ratio must be numeric"
+        )
         assert ar > 0, f"{variant_id}: aspect_ratio must be positive"
         # Standard ID-1 card aspect ratio is 85.60 / 53.98 ~= 1.5858
-        assert 1.4 <= ar <= 1.8, f"{variant_id}: aspect_ratio {ar} deviates significantly from card standard"
+        assert 1.4 <= ar <= 1.8, (
+            f"{variant_id}: aspect_ratio {ar} deviates significantly from card standard"
+        )
 
 
 def test_sources_markdown_exists_and_documents_templates(
@@ -178,4 +286,6 @@ def test_sources_markdown_exists_and_documents_templates(
     assert len(content.strip()) > 100, "SOURCES.md is unexpectedly empty or minimal"
     assert "2026-10-20" in content, "SOURCES.md missing access date"
     for variant_id in loaded_templates:
-        assert variant_id in content, f"SOURCES.md does not document template variant '{variant_id}'"
+        assert variant_id in content, (
+            f"SOURCES.md does not document template variant '{variant_id}'"
+        )

@@ -2,7 +2,8 @@
 
 Validates template JSON files against templates/schema.json, ensures polygon coordinates
 stay within the unit square [0, 1], verifies that sensitive fields do not overlap left-visible
-fields, and checks that all §8.1 redacted fields are represented for each document class.
+fields using exact polygon intersection testing, and enforces per-variant coverage of all
+SECURE_GALLERY.md §8.1 redacted fields (accounting for explicit documented exemptions).
 """
 
 from __future__ import annotations
@@ -40,6 +41,26 @@ EXPECTED_REDACTED_FIELDS_PER_CLASS: dict[str, set[str]] = {
         "cardholder_name",
         "expiry_date",
         "cvv",
+    },
+}
+
+# Explicit documented exemptions per card template variant.
+# Maps template variant ID to a dictionary of {field_type: rationale}.
+# Why this exists:
+# Two-sided documents (such as physical payment cards) separate sensitive fields across
+# front and back surfaces. The payment-card-front template contains card number, cardholder
+# name, and expiry date, but is exempt from CVV because the CVV is printed on the back.
+# Similarly, payment-card-back contains CVV and is exempt from the front-side fields.
+# All exemptions must be explicitly listed and justified here; variants without exemptions
+# must provide 100% coverage of their document class's required redacted fields.
+VARIANT_FIELD_EXEMPTIONS: dict[str, dict[str, str]] = {
+    "payment-card-front": {
+        "cvv": "CVV/CVC is located on the reverse side of standard payment cards, covered by payment-card-back.",
+    },
+    "payment-card-back": {
+        "card_number": "Primary Account Number (PAN) is on the front side of standard payment cards, covered by payment-card-front.",
+        "cardholder_name": "Cardholder name is on the front side of standard payment cards, covered by payment-card-front.",
+        "expiry_date": "Expiration date is on the front side of standard payment cards, covered by payment-card-front.",
     },
 }
 
@@ -150,12 +171,153 @@ def boxes_overlap(
     return inter_w > epsilon and inter_h > epsilon
 
 
+def _cross_product_2d(
+    p: list[float] | tuple[float, float],
+    q: list[float] | tuple[float, float],
+    r: list[float] | tuple[float, float],
+) -> float:
+    """Compute the 2D cross product of vectors pq and pr.
+
+    Args:
+        p: Origin point [x, y].
+        q: First destination point [x, y].
+        r: Second destination point [x, y].
+
+    Returns:
+        Signed area / orientation value (>0 counter-clockwise, <0 clockwise, 0 collinear).
+    """
+    return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+
+def _segments_intersect_strict(
+    p1: list[float] | tuple[float, float],
+    p2: list[float] | tuple[float, float],
+    p3: list[float] | tuple[float, float],
+    p4: list[float] | tuple[float, float],
+    eps: float = 1e-9,
+) -> bool:
+    """Check if two open line segments (p1-p2 and p3-p4) strictly intersect in their interiors.
+
+    Collinear segments or segments touching only at endpoints return False.
+    """
+    d1 = _cross_product_2d(p3, p4, p1)
+    d2 = _cross_product_2d(p3, p4, p2)
+    d3 = _cross_product_2d(p1, p2, p3)
+    d4 = _cross_product_2d(p1, p2, p4)
+
+    return ((d1 > eps and d2 < -eps) or (d1 < -eps and d2 > eps)) and (
+        (d3 > eps and d4 < -eps) or (d3 < -eps and d4 > eps)
+    )
+
+
+def point_in_polygon_strict(
+    pt: list[float] | tuple[float, float],
+    polygon: list[list[float]],
+    eps: float = 1e-9,
+) -> bool:
+    """Check if a point lies strictly within the interior of a polygon (not on its boundary).
+
+    Uses the standard ray-casting algorithm. Points lying on an edge or vertex return False.
+
+    Args:
+        pt: The point [x, y] to test.
+        polygon: List of polygon vertices [[x1, y1], [x2, y2], ...].
+        eps: Numerical tolerance.
+
+    Returns:
+        True if the point is strictly inside the polygon interior.
+    """
+    x, y = pt[0], pt[1]
+    n = len(polygon)
+    inside = False
+
+    for i in range(n):
+        p1 = polygon[i]
+        p2 = polygon[(i + 1) % n]
+
+        # Check if point lies directly on boundary segment p1-p2
+        cross = _cross_product_2d(p1, p2, pt)
+        if abs(cross) < eps:
+            min_x, max_x = min(p1[0], p2[0]), max(p1[0], p2[0])
+            min_y, max_y = min(p1[1], p2[1]), max(p1[1], p2[1])
+            if (min_x - eps <= x <= max_x + eps) and (min_y - eps <= y <= max_y + eps):
+                return False  # On boundary, not strictly in interior
+
+        if (p1[1] > y) != (p2[1] > y):
+            x_inters = (y - p1[1]) * (p2[0] - p1[0]) / (p2[1] - p1[1]) + p1[0]
+            if x_inters > x + eps:
+                inside = not inside
+
+    return inside
+
+
+def polygons_overlap(
+    poly1: list[list[float]],
+    poly2: list[list[float]],
+    epsilon: float = 1e-7,
+) -> bool:
+    """Test whether two 2D polygons overlap with non-zero 2D intersection area.
+
+    Why this is used instead of pure bounding-box testing:
+    Bounding-box overlap checks produce false positives for non-rectangular or angled
+    polygons whose axis-aligned bounds intersect while their actual polygon shapes do
+    not touch. This function implements a complete polygon-overlap test:
+    1. Early rejection using axis-aligned bounding boxes.
+    2. Strict edge intersection detection (transverse crossings).
+    3. Interior containment: tests vertices and centroid to catch cases where one polygon
+       lies entirely inside another.
+
+    Args:
+        poly1: List of 2D vertices for the first polygon.
+        poly2: List of 2D vertices for the second polygon.
+        epsilon: Numerical tolerance.
+
+    Returns:
+        True if the two polygons share a positive 2D area, False otherwise.
+    """
+    box1 = polygon_bounding_box(poly1)
+    box2 = polygon_bounding_box(poly2)
+    if not boxes_overlap(box1, box2, epsilon=epsilon):
+        return False
+
+    n1 = len(poly1)
+    n2 = len(poly2)
+
+    # 1. Edge crossing check
+    for i in range(n1):
+        s1a = poly1[i]
+        s1b = poly1[(i + 1) % n1]
+        for j in range(n2):
+            s2a = poly2[j]
+            s2b = poly2[(j + 1) % n2]
+            if _segments_intersect_strict(s1a, s1b, s2a, s2b, eps=epsilon):
+                return True
+
+    # 2. poly1 inside poly2
+    for pt in poly1:
+        if point_in_polygon_strict(pt, poly2, eps=epsilon):
+            return True
+
+    c1 = [sum(p[0] for p in poly1) / n1, sum(p[1] for p in poly1) / n1]
+    if point_in_polygon_strict(c1, poly2, eps=epsilon):
+        return True
+
+    # 3. poly2 inside poly1
+    for pt in poly2:
+        if point_in_polygon_strict(pt, poly1, eps=epsilon):
+            return True
+
+    c2 = [sum(p[0] for p in poly2) / n2, sum(p[1] for p in poly2) / n2]
+    return point_in_polygon_strict(c2, poly1, eps=epsilon)
+
+
 def check_no_overlap(template_data: dict[str, Any]) -> list[str]:
     """Verify that sensitive fields (sensitive: True) do not overlap left-visible fields (sensitive: False).
 
     According to SECURE_GALLERY.md §8.1 and the issue acceptance criteria, fields marked
     left visible (such as headings, logos, sex, height, weight) must not be occluded by
-    the redaction regions of sensitive fields.
+    the redaction regions of sensitive fields. Uses exact polygon overlap testing to prevent
+    false positives on non-rectangular or diagonal polygon boundaries.
 
     Args:
         template_data: The card template data dictionary.
@@ -170,15 +332,62 @@ def check_no_overlap(template_data: dict[str, Any]) -> list[str]:
     visible_fields = [f for f in fields if f.get("sensitive") is False]
 
     for s_field in sensitive_fields:
-        s_box = polygon_bounding_box(s_field["polygon"])
         for v_field in visible_fields:
-            v_box = polygon_bounding_box(v_field["polygon"])
-            if boxes_overlap(s_box, v_box):
+            if polygons_overlap(s_field["polygon"], v_field["polygon"]):
                 errors.append(
                     f"Template '{template_data.get('id', 'unknown')}': Sensitive field "
                     f"'{s_field.get('name')}' overlaps left-visible field '{v_field.get('name')}'."
                 )
     return errors
+
+
+def check_redacted_fields_per_variant(
+    template: dict[str, Any],
+) -> list[str]:
+    """Check that a specific card template variant covers all required §8.1 redacted fields,
+    accounting for explicit documented exemptions in VARIANT_FIELD_EXEMPTIONS.
+
+    Why per-variant coverage with explicit exemptions is required:
+    Unioning fields across variants can mask omissions in an individual card template
+    (e.g. a physical card missing QR code simply because a paper variant provides it).
+    Per-variant verification ensures every variant provides complete coverage unless
+    an explicit documented exemption justifies the omission (e.g. CVV on payment card back).
+
+    Args:
+        template: The parsed card template dictionary.
+
+    Returns:
+        List of missing field names (empty if all expected fields are covered or exempted).
+    """
+    variant_id = template.get("id", "")
+    doc_class = template.get("document_class", "")
+
+    expected_fields = EXPECTED_REDACTED_FIELDS_PER_CLASS.get(doc_class)
+    if expected_fields is None:
+        return [f"Unknown or unsupported document class '{doc_class}'"]
+
+    # Gather sensitive field types present in this variant
+    present_types: set[str] = set()
+    for field in template.get("fields", []):
+        if field.get("sensitive") is True:
+            ftype = field.get("type", "")
+            present_types.add(ftype)
+            if ftype in FIELD_TYPE_ALIASES:
+                present_types.add(FIELD_TYPE_ALIASES[ftype])
+
+    # Lookup explicit exemptions for this variant
+    exemptions = VARIANT_FIELD_EXEMPTIONS.get(variant_id, {})
+
+    missing: list[str] = []
+    for expected in sorted(expected_fields):
+        if expected in exemptions:
+            continue
+        if expected not in present_types:
+            alias = FIELD_TYPE_ALIASES.get(expected)
+            if not (alias and alias in present_types):
+                missing.append(expected)
+
+    return missing
 
 
 def check_redacted_fields_per_class(
@@ -199,12 +408,6 @@ def check_redacted_fields_per_class(
 
     for template in templates:
         doc_class = template.get("document_class")
-        # Normalize class aliases (e.g. philsys_id -> philsys, lto_driver_license -> lto)
-        if doc_class == "philsys_id":
-            doc_class = "philsys"
-        elif doc_class == "lto_driver_license":
-            doc_class = "lto"
-
         if not doc_class:
             continue
 
@@ -226,7 +429,6 @@ def check_redacted_fields_per_class(
         missing: list[str] = []
         for expected in expected_fields:
             if expected not in present_types:
-                # Check if alias is present
                 alias = FIELD_TYPE_ALIASES.get(expected)
                 if not (alias and alias in present_types):
                     missing.append(expected)
@@ -240,6 +442,9 @@ def validate_all_templates(
     templates_dir: str | Path,
 ) -> tuple[bool, list[str]]:
     """Perform complete validation of all template files in a directory.
+
+    Validates schema conformance, coordinate bounds, non-overlap between sensitive and
+    left-visible fields, per-variant coverage with documented exemptions, and class-level coverage.
 
     Args:
         templates_dir: Path to directory containing schema.json and template JSON files.
@@ -289,6 +494,13 @@ def validate_all_templates(
         overlap_errors = check_no_overlap(data)
         for err_msg in overlap_errors:
             all_errors.append(f"{template_file.name}: {err_msg}")
+
+        # Check per-variant coverage with exemptions
+        variant_missing = check_redacted_fields_per_variant(data)
+        for missing_field in variant_missing:
+            all_errors.append(
+                f"{template_file.name} (variant '{data.get('id')}'): Missing required §8.1 redacted field '{missing_field}' without exemption."
+            )
 
     missing_fields = check_redacted_fields_per_class(loaded_templates)
     for doc_class, missing in missing_fields.items():

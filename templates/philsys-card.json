@@ -88,9 +88,21 @@
       "description": "Permanent residence address (Tirahan).",
       "polygon": [
         [0.36, 0.68],
+        [0.70, 0.68],
+        [0.70, 0.88],
+        [0.36, 0.88]
+      ]
+    },
+    {
+      "name": "PhilSys QR Code",
+      "type": "qr_code",
+      "sensitive": true,
+      "description": "Cryptographic QR code on the card for digital verification via PhilSys Check.",
+      "polygon": [
+        [0.74, 0.68],
         [0.94, 0.68],
         [0.94, 0.88],
-        [0.36, 0.88]
+        [0.74, 0.88]
       ]
     }
   ]
