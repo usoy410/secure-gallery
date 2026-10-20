@@ -1,0 +1,44 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Python packaging artifacts
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+
+# Android / Gradle caches and artifacts
+.gradle/
+*/build/
+
+# IDE / OS caches
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Data directory (synthetic generation and raw data must not be committed)
+/data/
+data/
+
+# Block image files everywhere by default (hard rule: never commit real ID or card images)
+*.jpg
+*.jpeg
+*.png
+*.heic
+
+# Whitelist allowed image locations (android test snapshots and templates)
+!android/**/src/test/**
+!templates/**
