@@ -1,0 +1,73 @@
+{
+  "id": "payment-card-front",
+  "name": "Generic Payment Card (Front)",
+  "document_class": "payment_card",
+  "aspect_ratio": 1.5858,
+  "description": "Standard ISO/IEC 7810 ID-1 financial transaction payment card (credit/debit/prepaid) front layout per SECURE_GALLERY.md §8.1 and §8.2.",
+  "card_dimensions_mm": {
+    "width": 85.6,
+    "height": 53.98
+  },
+  "fields": [
+    {
+      "name": "Issuing Bank Logo",
+      "type": "bank_logo",
+      "sensitive": false,
+      "description": "Issuing bank / financial institution branding left visible per §8.1.",
+      "polygon": [
+        [0.06, 0.06],
+        [0.42, 0.06],
+        [0.42, 0.24],
+        [0.06, 0.24]
+      ]
+    },
+    {
+      "name": "Card Network Logo",
+      "type": "card_network_logo",
+      "sensitive": false,
+      "description": "Payment network brand mark (Visa, Mastercard, JCB, etc.) in the lower-right left visible per §8.1.",
+      "polygon": [
+        [0.74, 0.74],
+        [0.94, 0.74],
+        [0.94, 0.92],
+        [0.74, 0.92]
+      ]
+    },
+    {
+      "name": "Primary Account Number (PAN)",
+      "type": "card_number",
+      "sensitive": true,
+      "description": "16-digit payment card number band across the center of the card.",
+      "polygon": [
+        [0.08, 0.50],
+        [0.92, 0.50],
+        [0.92, 0.64],
+        [0.08, 0.64]
+      ]
+    },
+    {
+      "name": "Expiration Date",
+      "type": "expiry_date",
+      "sensitive": true,
+      "description": "Card expiration date (VALID THRU MM/YY) located below the card number.",
+      "polygon": [
+        [0.38, 0.66],
+        [0.68, 0.66],
+        [0.68, 0.75],
+        [0.38, 0.75]
+      ]
+    },
+    {
+      "name": "Cardholder Name",
+      "type": "cardholder_name",
+      "sensitive": true,
+      "description": "Embossed or printed cardholder full name in the lower-left section.",
+      "polygon": [
+        [0.08, 0.78],
+        [0.68, 0.78],
+        [0.68, 0.90],
+        [0.08, 0.90]
+      ]
+    }
+  ]
+}

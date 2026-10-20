@@ -1,0 +1,109 @@
+{
+  "id": "philsys-ephilid",
+  "name": "ePhilID (Paper Printout)",
+  "document_class": "philsys",
+  "aspect_ratio": 1.5858,
+  "description": "Paper-printed digital electronic PhilSys ID (ePhilID) issued by the PSA with PhilSys Check cryptographic QR code.",
+  "card_dimensions_mm": {
+    "width": 85.6,
+    "height": 53.98
+  },
+  "fields": [
+    {
+      "name": "Headings and ePhilID Banner",
+      "type": "headings",
+      "sensitive": false,
+      "description": "Republika ng Pilipinas, Pambansang Pagkakakilanlan, and ePhilID header banner.",
+      "polygon": [
+        [0.04, 0.03],
+        [0.96, 0.03],
+        [0.96, 0.16],
+        [0.04, 0.16]
+      ]
+    },
+    {
+      "name": "Cardholder Face Photo",
+      "type": "face_photo",
+      "sensitive": true,
+      "description": "Passport-style photograph of the cardholder on the left side.",
+      "polygon": [
+        [0.05, 0.20],
+        [0.28, 0.20],
+        [0.28, 0.68],
+        [0.05, 0.68]
+      ]
+    },
+    {
+      "name": "PhilSys Card Number (PCN)",
+      "type": "pcn",
+      "sensitive": true,
+      "description": "PhilSys Card Number (PCN) printed at the top-center.",
+      "polygon": [
+        [0.30, 0.20],
+        [0.60, 0.20],
+        [0.60, 0.28],
+        [0.30, 0.28]
+      ]
+    },
+    {
+      "name": "Full Name",
+      "type": "full_name",
+      "sensitive": true,
+      "description": "Apelyido (Last Name), Mga Pangalan (Given Names), and Gitnang Apelyido (Middle Name).",
+      "polygon": [
+        [0.30, 0.30],
+        [0.60, 0.30],
+        [0.60, 0.48],
+        [0.30, 0.48]
+      ]
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_of_birth",
+      "sensitive": true,
+      "description": "Date of Birth (Araw ng Kapanganakan).",
+      "polygon": [
+        [0.30, 0.50],
+        [0.60, 0.50],
+        [0.60, 0.60],
+        [0.30, 0.60]
+      ]
+    },
+    {
+      "name": "Residential Address",
+      "type": "address",
+      "sensitive": true,
+      "description": "Complete residential address (Tirahan).",
+      "polygon": [
+        [0.05, 0.72],
+        [0.60, 0.72],
+        [0.60, 0.94],
+        [0.05, 0.94]
+      ]
+    },
+    {
+      "name": "PhilSys Check QR Code",
+      "type": "qr_code",
+      "sensitive": true,
+      "description": "Large cryptographic QR code containing signed demographic and biometric data for PhilSys Check.",
+      "polygon": [
+        [0.64, 0.20],
+        [0.96, 0.20],
+        [0.96, 0.75],
+        [0.64, 0.75]
+      ]
+    },
+    {
+      "name": "Digital Validation / Specimen Signature",
+      "type": "signature",
+      "sensitive": true,
+      "description": "Digital signature token / generation code / security verification block.",
+      "polygon": [
+        [0.64, 0.78],
+        [0.96, 0.78],
+        [0.96, 0.94],
+        [0.64, 0.94]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "id": "philsys-card",
+  "name": "PhilSys National ID (Polycarbonate Card)",
+  "document_class": "philsys",
+  "aspect_ratio": 1.5858,
+  "description": "Philippine Identification (PhilID) polycarbonate physical card issued by the Philippine Statistics Authority (PSA) under RA 11055.",
+  "card_dimensions_mm": {
+    "width": 85.6,
+    "height": 53.98
+  },
+  "fields": [
+    {
+      "name": "Headings and National Emblems",
+      "type": "headings",
+      "sensitive": false,
+      "description": "Republika ng Pilipinas header, PhilSys logo, and National Emblem banner.",
+      "polygon": [
+        [0.04, 0.03],
+        [0.96, 0.03],
+        [0.96, 0.16],
+        [0.04, 0.16]
+      ]
+    },
+    {
+      "name": "Cardholder Face Photo",
+      "type": "face_photo",
+      "sensitive": true,
+      "description": "Primary portrait photograph of the cardholder on the front-left section.",
+      "polygon": [
+        [0.05, 0.22],
+        [0.32, 0.22],
+        [0.32, 0.86],
+        [0.05, 0.86]
+      ]
+    },
+    {
+      "name": "PhilSys Card Number (PCN)",
+      "type": "pcn",
+      "sensitive": true,
+      "description": "16-digit card-specific identifier (XXXX-XXXX-XXXX-XXXX) printed above demographic data.",
+      "polygon": [
+        [0.36, 0.20],
+        [0.94, 0.20],
+        [0.94, 0.29],
+        [0.36, 0.29]
+      ]
+    },
+    {
+      "name": "Full Name",
+      "type": "full_name",
+      "sensitive": true,
+      "description": "Last Name (Apelyido), Given Names (Mga Pangalan), and Middle Name (Gitnang Apelyido).",
+      "polygon": [
+        [0.36, 0.32],
+        [0.94, 0.32],
+        [0.94, 0.52],
+        [0.36, 0.52]
+      ]
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_of_birth",
+      "sensitive": true,
+      "description": "Date of Birth (Araw ng Kapanganakan).",
+      "polygon": [
+        [0.36, 0.55],
+        [0.70, 0.55],
+        [0.70, 0.65],
+        [0.36, 0.65]
+      ]
+    },
+    {
+      "name": "Signature / Ghost Image",
+      "type": "signature",
+      "sensitive": true,
+      "description": "Secondary security marking / ghost image / signature zone.",
+      "polygon": [
+        [0.74, 0.54],
+        [0.94, 0.54],
+        [0.94, 0.66],
+        [0.74, 0.66]
+      ]
+    },
+    {
+      "name": "Residential Address",
+      "type": "address",
+      "sensitive": true,
+      "description": "Permanent residence address (Tirahan).",
+      "polygon": [
+        [0.36, 0.68],
+        [0.94, 0.68],
+        [0.94, 0.88],
+        [0.36, 0.88]
+      ]
+    }
+  ]
+}

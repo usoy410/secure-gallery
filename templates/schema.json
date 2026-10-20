@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://secure-gallery.app/schemas/card-template.json",
+  "title": "CardTemplate",
+  "description": "Schema for card design variant templates used in layout-anchored redaction (§5.1) and dataset generation (§10.1).",
+  "type": "object",
+  "required": [
+    "id",
+    "document_class",
+    "aspect_ratio",
+    "fields"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier for this template variant (e.g. philsys-card, lto-dl-current)."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the card variant."
+    },
+    "document_class": {
+      "type": "string",
+      "enum": [
+        "philsys",
+        "philsys_id",
+        "lto",
+        "lto_driver_license",
+        "payment_card"
+      ],
+      "description": "Document class according to SECURE_GALLERY.md §8.1."
+    },
+    "aspect_ratio": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Aspect ratio of the card (width / height) in physical units (e.g. ~1.5858 for standard ID-1)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the card design variant, issuing authority, and design period."
+    },
+    "card_dimensions_mm": {
+      "type": "object",
+      "description": "Physical card dimensions in millimeters if known.",
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ]
+    },
+    "fields": {
+      "type": "array",
+      "description": "List of field definitions with normalized polygon boundaries.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/field"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "field": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "polygon",
+        "sensitive"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the field."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "pcn",
+            "pcn_psn",
+            "full_name",
+            "name",
+            "date_of_birth",
+            "address",
+            "face_photo",
+            "qr_code",
+            "signature",
+            "license_number",
+            "card_number",
+            "cardholder_name",
+            "expiry_date",
+            "cvv",
+            "card_design",
+            "headings",
+            "sex",
+            "height",
+            "weight",
+            "bank_logo",
+            "card_network_logo"
+          ],
+          "description": "Field type from the SECURE_GALLERY.md §8.1 field list."
+        },
+        "polygon": {
+          "type": "array",
+          "description": "Normalized coordinates [x, y] in [0, 1] relative to the card dimensions (top-left is [0, 0]).",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "description": "A 2D point [x, y] where 0 <= x <= 1 and 0 <= y <= 1.",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
+          }
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether this field is sensitive and must be redacted (yes/true) or left visible (no/false) per §8.1."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional notes or details about the field."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
