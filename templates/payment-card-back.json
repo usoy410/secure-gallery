@@ -1,0 +1,49 @@
+{
+  "id": "payment-card-back",
+  "name": "Generic Payment Card (Back)",
+  "document_class": "payment_card",
+  "aspect_ratio": 1.5858,
+  "description": "Standard ISO/IEC 7810 ID-1 financial transaction payment card back layout showing magnetic stripe and CVV per SECURE_GALLERY.md §8.1. Exempt from card number, cardholder name, and expiry date redactions, which are located on payment-card-front.",
+  "card_dimensions_mm": {
+    "width": 85.6,
+    "height": 53.98
+  },
+  "fields": [
+    {
+      "name": "Bank Contact / Service Info",
+      "type": "bank_logo",
+      "sensitive": false,
+      "description": "Issuing bank customer support information and helpline branding left visible per §8.1.",
+      "polygon": [
+        [0.06, 0.74],
+        [0.45, 0.74],
+        [0.45, 0.92],
+        [0.06, 0.92]
+      ]
+    },
+    {
+      "name": "Card Network Brand Mark / Hologram",
+      "type": "card_network_logo",
+      "sensitive": false,
+      "description": "Payment network hologram / logo on the reverse side left visible per §8.1.",
+      "polygon": [
+        [0.75, 0.74],
+        [0.94, 0.74],
+        [0.94, 0.92],
+        [0.75, 0.92]
+      ]
+    },
+    {
+      "name": "Card Verification Value (CVV/CVC)",
+      "type": "cvv",
+      "sensitive": true,
+      "description": "3-digit or 4-digit security code (CVV/CVC) on or adjacent to the signature panel.",
+      "polygon": [
+        [0.68, 0.46],
+        [0.88, 0.46],
+        [0.88, 0.58],
+        [0.68, 0.58]
+      ]
+    }
+  ]
+}

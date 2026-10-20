@@ -1,0 +1,133 @@
+{
+  "id": "lto-dl-current",
+  "name": "LTO Driver's License (Current Pearlized White Design)",
+  "document_class": "lto",
+  "aspect_ratio": 1.5858,
+  "description": "Land Transportation Office (LTO) driver's license current design (pearlized white polycarbonate card, 2022+ rollout with revised restriction codes).",
+  "card_dimensions_mm": {
+    "width": 85.6,
+    "height": 53.98
+  },
+  "fields": [
+    {
+      "name": "Headings and Republic Header",
+      "type": "headings",
+      "sensitive": false,
+      "description": "Header with Republic of the Philippines, Department of Transportation, and Land Transportation Office Driver's License title.",
+      "polygon": [
+        [0.04, 0.03],
+        [0.96, 0.03],
+        [0.96, 0.18],
+        [0.04, 0.18]
+      ]
+    },
+    {
+      "name": "Sex",
+      "type": "sex",
+      "sensitive": false,
+      "description": "Sex / Gender classification (e.g. M/F) left visible per §8.1.",
+      "polygon": [
+        [0.66, 0.58],
+        [0.78, 0.58],
+        [0.78, 0.67],
+        [0.66, 0.67]
+      ]
+    },
+    {
+      "name": "Height",
+      "type": "height",
+      "sensitive": false,
+      "description": "Cardholder height in meters left visible per §8.1.",
+      "polygon": [
+        [0.80, 0.58],
+        [0.95, 0.58],
+        [0.95, 0.67],
+        [0.80, 0.67]
+      ]
+    },
+    {
+      "name": "Weight",
+      "type": "weight",
+      "sensitive": false,
+      "description": "Cardholder weight in kilograms left visible per §8.1.",
+      "polygon": [
+        [0.80, 0.69],
+        [0.95, 0.69],
+        [0.95, 0.78],
+        [0.80, 0.78]
+      ]
+    },
+    {
+      "name": "Driver Face Photo",
+      "type": "face_photo",
+      "sensitive": true,
+      "description": "Front-facing digital photograph of the driver on the left side.",
+      "polygon": [
+        [0.05, 0.22],
+        [0.30, 0.22],
+        [0.30, 0.74],
+        [0.05, 0.74]
+      ]
+    },
+    {
+      "name": "Cardholder Signature",
+      "type": "signature",
+      "sensitive": true,
+      "description": "Digital specimen signature of the driver directly beneath the photo.",
+      "polygon": [
+        [0.05, 0.76],
+        [0.30, 0.76],
+        [0.30, 0.94],
+        [0.05, 0.94]
+      ]
+    },
+    {
+      "name": "Driver's License Number",
+      "type": "license_number",
+      "sensitive": true,
+      "description": "License number in standard alphanumeric format (e.g., N01-12-345678).",
+      "polygon": [
+        [0.35, 0.21],
+        [0.95, 0.21],
+        [0.95, 0.31],
+        [0.35, 0.31]
+      ]
+    },
+    {
+      "name": "Cardholder Name",
+      "type": "name",
+      "sensitive": true,
+      "description": "Driver's full name (Last Name, First Name, Middle Name).",
+      "polygon": [
+        [0.35, 0.33],
+        [0.95, 0.33],
+        [0.95, 0.46],
+        [0.35, 0.46]
+      ]
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_of_birth",
+      "sensitive": true,
+      "description": "Birth date of the driver (YYYY/MM/DD).",
+      "polygon": [
+        [0.35, 0.58],
+        [0.63, 0.58],
+        [0.63, 0.67],
+        [0.35, 0.67]
+      ]
+    },
+    {
+      "name": "Residential Address",
+      "type": "address",
+      "sensitive": true,
+      "description": "Driver's residential address printed across the bottom right section.",
+      "polygon": [
+        [0.35, 0.80],
+        [0.95, 0.80],
+        [0.95, 0.94],
+        [0.35, 0.94]
+      ]
+    }
+  ]
+}
