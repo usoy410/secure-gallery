@@ -55,12 +55,24 @@ EXPECTED_REDACTED_FIELDS_PER_CLASS: dict[str, set[str]] = {
 # must provide 100% coverage of their document class's required redacted fields.
 VARIANT_FIELD_EXEMPTIONS: dict[str, dict[str, str]] = {
     "payment-card-front": {
-        "cvv": "CVV/CVC is located on the reverse side of standard payment cards, covered by payment-card-back.",
+        "cvv": (
+            "CVV/CVC is located on the reverse side of standard payment cards, "
+            "covered by payment-card-back."
+        ),
     },
     "payment-card-back": {
-        "card_number": "Primary Account Number (PAN) is on the front side of standard payment cards, covered by payment-card-front.",
-        "cardholder_name": "Cardholder name is on the front side of standard payment cards, covered by payment-card-front.",
-        "expiry_date": "Expiration date is on the front side of standard payment cards, covered by payment-card-front.",
+        "card_number": (
+            "Primary Account Number (PAN) is on the front side of standard payment cards, "
+            "covered by payment-card-front."
+        ),
+        "cardholder_name": (
+            "Cardholder name is on the front side of standard payment cards, "
+            "covered by payment-card-front."
+        ),
+        "expiry_date": (
+            "Expiration date is on the front side of standard payment cards, "
+            "covered by payment-card-front."
+        ),
     },
 }
 
@@ -81,7 +93,7 @@ def load_json(path: str | Path) -> dict[str, Any]:
     Returns:
         Parsed JSON dictionary.
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -118,7 +130,7 @@ def check_polygon_bounds(template_data: dict[str, Any]) -> list[str]:
             errors.append(f"Field '{name}': polygon must contain at least 3 vertices.")
             continue
         for pt_idx, pt in enumerate(polygon):
-            if not isinstance(pt, (list, tuple)) or len(pt) != 2:
+            if not isinstance(pt, list | tuple) or len(pt) != 2:
                 errors.append(
                     f"Field '{name}': vertex {pt_idx} must be a 2-element [x, y] list."
                 )
@@ -157,7 +169,8 @@ def boxes_overlap(
     Args:
         box1: (min_x, min_y, max_x, max_y)
         box2: (min_x, min_y, max_x, max_y)
-        epsilon: Minimum intersection width/height threshold to avoid boundary-touching false positives.
+        epsilon: Minimum intersection width/height threshold to avoid
+            boundary-touching false positives.
 
     Returns:
         True if the boxes overlap by more than epsilon in both dimensions.
@@ -312,7 +325,9 @@ def polygons_overlap(
 
 
 def check_no_overlap(template_data: dict[str, Any]) -> list[str]:
-    """Verify that sensitive fields (sensitive: True) do not overlap left-visible fields (sensitive: False).
+    """Verify that sensitive fields (sensitive: True) do not overlap left-visible fields.
+
+    Left-visible fields are those marked sensitive: False.
 
     According to SECURE_GALLERY.md §8.1 and the issue acceptance criteria, fields marked
     left visible (such as headings, logos, sex, height, weight) must not be occluded by
@@ -393,7 +408,7 @@ def check_redacted_fields_per_variant(
 def check_redacted_fields_per_class(
     templates: list[dict[str, Any]],
 ) -> dict[str, list[str]]:
-    """Check that every redacted field listed in SECURE_GALLERY.md §8.1 is present for its document class.
+    """Check that every SECURE_GALLERY.md §8.1 redacted field is present for its document class.
 
     Across the set of templates for a given class (e.g. front and back templates),
     all sensitive fields designated for redaction in §8.1 must be defined.
@@ -499,7 +514,8 @@ def validate_all_templates(
         variant_missing = check_redacted_fields_per_variant(data)
         for missing_field in variant_missing:
             all_errors.append(
-                f"{template_file.name} (variant '{data.get('id')}'): Missing required §8.1 redacted field '{missing_field}' without exemption."
+                f"{template_file.name} (variant '{data.get('id')}'): Missing required "
+                f"§8.1 redacted field '{missing_field}' without exemption."
             )
 
     missing_fields = check_redacted_fields_per_class(loaded_templates)
