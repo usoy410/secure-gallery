@@ -209,4 +209,37 @@ Every generated dataset includes:
 - `manifest.csv`: Tabular index of all images, labels, splits, document classes, variants, degradation conditions, negative types, and redaction defect labels.
 - `DATASHEET.md`: Standardized dataset documentation adhering to Gebru et al. (*Datasheets for Datasets*), recording motivation, class and condition distributions, public domain photo licenses, and known gaps.
 
+---
+
+## YOLO11n-Pose Training and LiteRT Export (`ml.train`, `ml.converter`, `ml.export`, `ml.eval`)
+
+On-device detection employs **YOLO11n-pose** at 640 px resolution (§8.2, §8.6).
+
+### Design Change from §8.6
+Instead of running a separate OpenCV contour fitting step (`findContours` / polygon approximation) inside the detector box, the detector outputs both the document class and **4 ordered card corner keypoints** (top-left, top-right, bottom-right, bottom-left). The app maps these corners directly to template coordinates via homography (`getPerspectiveTransform`), eliminating OpenCV from the Android runtime.
+
+### Pipeline Commands
+
+```bash
+# Optional: Install training and export dependencies
+pip install -e '.[train]'
+
+# 1. Convert D7 benchmark labels to Ultralytics YOLO pose format
+python -m ml.converter --input data/benchmark --output data/yolo_pose --class-mode document_class
+
+# 2. Smoke training (1 epoch on 50 images in under 10 minutes on CPU)
+python -m ml.train --smoke
+
+# 3. Full training
+python -m ml.train --data data/yolo_pose/dataset.yaml --epochs 50 --batch 8 --device cpu
+
+# 4. Export to LiteRT (INT8 and float/FP16)
+python -m ml.export --model runs/pose/train/weights/best.pt --data data/yolo_pose/dataset.yaml --output runs/export
+
+# 5. Evaluate on validation split (reports per-class P/R/F1, mAP50, and corner distance error)
+python -m ml.eval --model runs/pose/train/weights/best.pt --data data/yolo_pose/dataset.yaml --split val
+```
+
+See [ml/TRAINING.md](file:///home/usoy/orca/workspaces/secure-gallery/agent-issue-8-yolo-pose-litert/ml/TRAINING.md) for full architecture details, Ultralytics AGPL-3.0 license audit, and LiteRT quantization specifications.
+
 
