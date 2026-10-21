@@ -11,13 +11,22 @@ license = { text = "AGPL-3.0" }
 dependencies = []
 
 [project.optional-dependencies]
+generate = [
+    "Faker==40.43.0",
+    "numpy==2.2.6",
+    "Pillow==12.2.0",
+]
 dev = [
+    "secure-gallery[generate]",
     "jsonschema==4.23.0",
+    "pytesseract==0.3.13",
     "pytest==8.3.4",
     "ruff==0.8.4",
 ]
 test = [
+    "secure-gallery[generate]",
     "jsonschema==4.23.0",
+    "pytesseract==0.3.13",
     "pytest==8.3.4",
 ]
 

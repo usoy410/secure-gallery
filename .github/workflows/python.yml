@@ -38,6 +38,11 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Install tesseract (OCR check in ml/generate tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
