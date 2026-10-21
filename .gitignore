@@ -42,3 +42,7 @@ data/
 # Whitelist allowed image locations (android test snapshots and templates)
 !android/**/src/test/**
 !templates/**
+
+# Re-ignore Python caches inside the whitelisted paths above (later rules win)
+**/__pycache__/
+*.py[cod]
