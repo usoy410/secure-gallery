@@ -195,7 +195,8 @@ def render_card(
     _draw_card_background(img, template_id, doc_class, card_width, card_height)
 
     draw = ImageDraw.Draw(img)
-    is_dark_card = doc_class == "payment_card" and "back" not in template_id
+    # Both sides of the payment card share the dark navy body, so both use light text.
+    is_dark_card = doc_class == "payment_card"
     default_text_color = (255, 255, 255) if is_dark_card else (15, 15, 15)
 
     if jitter:
@@ -286,7 +287,9 @@ def render_card(
             )
         elif ftype == "cvv":
             font = get_font(size=resolve_size(24), bold=True)
-            # CVV is printed in black ink on white signature panel
+            # The CVV sits right of the signature panel, on the navy body. Give it its
+            # own white box (as real cards do) so the black digits stay readable.
+            draw.polygon([tuple(pt) for pt in pixel_polygon], fill=(250, 250, 250))
             draw.text((min_x + 8, min_y + 4), value, fill=(0, 0, 0), font=font)
         else:
             font = get_font(size=resolve_size(20), bold=False)

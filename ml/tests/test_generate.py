@@ -256,6 +256,43 @@ def test_ocr_exact_field_match_sample_of_50(templates: dict[str, dict[str, Any]]
     assert accuracy >= 95.0, f"OCR accuracy {accuracy:.1f}% is below 95% threshold"
 
 
+def _relative_luminance(rgb: tuple[int, ...]) -> float:
+    def channel(c: int) -> float:
+        c_lin = c / 255
+        return c_lin / 12.92 if c_lin <= 0.03928 else ((c_lin + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (channel(c) for c in rgb[:3])
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a: tuple[int, ...], b: tuple[int, ...]) -> float:
+    hi, lo = sorted((_relative_luminance(a), _relative_luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_payment_card_back_text_is_readable(templates: dict[str, dict[str, Any]]) -> None:
+    """Regression for #45: CVV, bank and network text on the card back were dark on navy.
+
+    Every text field on the back must reach WCAG 4.5:1 between its ink and the pixels
+    behind it, and Tesseract must read the CVV.
+    """
+    tmpl = templates["payment-card-back"]
+    for seed in range(10):
+        vals = SyntheticDataGenerator(seed=seed).generate_fields_for_template(tmpl)
+        card_img, fields = render_card(tmpl, vals, seed=seed)
+        rgb = card_img.convert("RGB")
+        for f in fields:
+            min_x, min_y, max_x, max_y = _get_bounding_box(f["polygon"])
+            crop = rgb.crop((min_x, min_y, max_x, max_y))
+            colors = sorted(crop.getcolors(crop.width * crop.height), reverse=True)
+            background = colors[0][1]
+            ink = max((c for _, c in colors), key=lambda c: _contrast(c, background))
+            assert _contrast(ink, background) >= 4.5, (seed, f["type"])
+            if f["type"] == "cvv":
+                text = pytesseract.image_to_string(crop, config="--psm 7").strip()
+                assert text == f["value"], (seed, text)
+
+
 def test_cli_generation_all_variants(tmp_path: Path) -> None:
     """Verify CLI generation with --variant all produces expected counts and JSON labels."""
     out_dir = tmp_path / "all_out"
