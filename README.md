@@ -87,3 +87,60 @@ You can launch the app directly from your phone's app drawer ("Secure Gallery") 
 ```bash
 adb shell am start -n com.sudo.securegallery/.MainActivity
 ```
+
+---
+
+## Synthetic ID & Card Benchmark Generator (`ml.generate`)
+
+Secure Gallery provides a synthetic data generator for Contribution 3 (§5.3 / §10.1) that renders realistic, fictional Philippine identity documents (PhilSys National ID, ePhilID, LTO driver's licenses) and payment cards with exact field-level ground truth.
+
+### Privacy & Ethics Controls
+- **Fictional Demographics:** All names, addresses, and dates are generated using Faker with the `fil_PH` locale.
+- **Published Test PANs Only:** Payment card numbers strictly originate from published industry test ranges (e.g., Stripe, Visa, and Mastercard test cards) and pass the ISO/IEC 7812 Luhn checksum.
+- **Procedural Avatars:** Portraits are procedural geometric cartoon avatars. Photos of real people are strictly forbidden.
+- **Specimen Watermarking:** Every generated card carries a visible diagonal `"SPECIMEN – NOT VALID"` watermark.
+- **Output Storage:** Synthetic datasets output to `data/` (gitignored). Raw or generated images are never committed to git.
+
+### Usage
+
+```bash
+# Generate 10 PhilSys physical card samples composited onto varied backgrounds
+python -m ml.generate --variant philsys-card --count 10 --seed 42 --out data/synthetic
+
+# Generate 5 samples for every supported D3 template variant
+python -m ml.generate --variant all --count 5 --seed 123 --out data/benchmark
+
+# Generate clean, uncomposited card images without background rotation
+python -m ml.generate --variant payment-card-front --count 1 --seed 42 --out data/clean --clean
+```
+
+### CLI Arguments
+- `--variant`: Template variant ID (`philsys-card`, `philsys-ephilid`, `lto-dl-current`, `lto-dl-previous`, `payment-card-front`, `payment-card-back`, or `all`).
+- `--count`: Number of images to generate per variant (default: `1`).
+- `--seed`: Deterministic integer seed for reproducible, byte-identical output (default: `42`).
+- `--out`: Output directory for `.png` image files and `.json` label ground truth (default: `data/synthetic`).
+- `--clean`: Disable background compositing to output unrotated, clean card images.
+
+### Output JSON Label Format
+Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04d}.json`:
+
+```json
+{
+  "class": "philsys",
+  "document_class": "philsys",
+  "variant": "philsys-card",
+  "image_path": "philsys-card_0000.png",
+  "image_size": [1600, 1200],
+  "card_corners": [[x0, y0], [x1, y1], [x2, y2], [x3, y3]],
+  "fields": [
+    {
+      "name": "Full Name",
+      "type": "full_name",
+      "sensitive": true,
+      "polygon": [[x0, y0], [x1, y1], [x2, y2], [x3, y3]],
+      "value": "FORD, KRISTEN, MALDONADO"
+    }
+  ]
+}
+```
+
