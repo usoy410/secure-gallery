@@ -8,8 +8,10 @@ for offline testing and hermetic benchmark generation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import math
+import os
 import random
 import urllib.error
 import urllib.request
@@ -20,68 +22,86 @@ from PIL import Image, ImageDraw, ImageFilter
 
 logger = logging.getLogger(__name__)
 
-# Curated list of verified Public Domain / CC0 1.0 images from Wikimedia Commons
+# Curated list of verified Public Domain / CC0 images from Wikimedia Commons.
+# Every entry is verified via the Wikimedia Commons API:
+# 1. LicenseShortName must be "Public domain" or "CC0"
+# 2. Contains no people or faces (objects, landscapes, textures, interiors only)
+# 3. Verified Commons sha1 and file sha256 digests
 PUBLIC_DOMAIN_PHOTOS: list[dict[str, str]] = [
     {
         "id": "photo_01",
-        "filename": "desk_workspace.jpg",
-        "url": (
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/"
-            "Desk_workspace.jpg/1280px-Desk_workspace.jpg"
-        ),
-        "license": "CC0 1.0 Universal Public Domain Dedication",
-        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-        "description": "Wooden desk with laptop, notebook, and stationery items",
-        "source": "Wikimedia Commons (Desk workspace)",
+        "filename": "fuji_apple.jpg",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Fuji_apple.jpg",
+        "file_page_url": "https://commons.wikimedia.org/wiki/File:Fuji_apple.jpg",
+        "author": "Scott Bauer, USDA ARS",
+        "license": "Public domain",
+        "license_short_name": "Public domain",
+        "license_url": "https://commons.wikimedia.org/wiki/Template:PD-USGov-USDA-ARS",
+        "description": "Two Fuji apples on branch with water droplets",
+        "retrieval_date": "2026-10-21",
+        "sha1": "330f00a1cb94503b4f73e1c2f7f1bbb3fa3a998f",
+        "sha256": "cebb78cd5e0d677d6cfb2aa904c7cc5ba4732ccb6936a645f5f22ecbe7ac53f9",
+        "source": "Wikimedia Commons (File:Fuji apple.jpg)",
     },
     {
         "id": "photo_02",
-        "filename": "coffee_cup.jpg",
-        "url": (
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/"
-            "A_small_cup_of_coffee.JPG/1280px-A_small_cup_of_coffee.JPG"
-        ),
-        "license": "CC0 1.0 Universal Public Domain Dedication",
-        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-        "description": "Small cup of coffee on saucer on wooden tabletop",
-        "source": "Wikimedia Commons (A small cup of coffee)",
+        "filename": "yellowstone_river.jpg",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Yellowstone_River_in_Hayden_Valley.jpg",
+        "file_page_url": "https://commons.wikimedia.org/wiki/File:Yellowstone_River_in_Hayden_Valley.jpg",
+        "author": "Ed Austin/Herb Jones, National Park Service",
+        "license": "Public domain",
+        "license_short_name": "Public domain",
+        "license_url": "https://commons.wikimedia.org/wiki/Template:PD-USGov-NPS",
+        "description": "Yellowstone River flowing through Hayden Valley",
+        "retrieval_date": "2026-10-21",
+        "sha1": "f9f03028f56f77177f4707119f7aa4ccac00ece0",
+        "sha256": "5ced59c75ccc4d5c6fb6a8fda3e0fb87ea73dcf62ae57f01560cbd8a71495c1d",
+        "source": "Wikimedia Commons (File:Yellowstone River in Hayden Valley.jpg)",
     },
     {
         "id": "photo_03",
-        "filename": "street_scene.jpg",
-        "url": (
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/"
-            "Seattle_street.jpg/1280px-Seattle_street.jpg"
-        ),
-        "license": "Public Domain",
+        "filename": "brick_wall_texture.jpg",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Brick_wall_texture.jpg",
+        "file_page_url": "https://commons.wikimedia.org/wiki/File:Brick_wall_texture.jpg",
+        "author": "Georges Grondin",
+        "license": "Public domain",
+        "license_short_name": "Public domain",
         "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
-        "description": "Urban street corner with buildings, traffic, and pedestrians",
-        "source": "Wikimedia Commons (Seattle street)",
+        "description": "Red brick wall texture masonry pattern",
+        "retrieval_date": "2026-10-21",
+        "sha1": "d284ab0785c2ed2e5562ec8421de022703f35a97",
+        "sha256": "25899ccf6521d09a52e5cd25fad28686adff6a83d19d11993791041a355f90e6",
+        "source": "Wikimedia Commons (File:Brick wall texture.jpg)",
     },
     {
         "id": "photo_04",
-        "filename": "landscape_nature.jpg",
-        "url": (
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/"
-            "Fuji_cherry_blossom.JPG/1280px-Fuji_cherry_blossom.JPG"
-        ),
+        "filename": "desk_met_12029.jpg",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Desk_MET_12029.jpg",
+        "file_page_url": "https://commons.wikimedia.org/wiki/File:Desk_MET_12029.jpg",
+        "author": "The Metropolitan Museum of Art",
         "license": "CC0 1.0 Universal Public Domain Dedication",
+        "license_short_name": "CC0",
         "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-        "description": "Mount Fuji scenic landscape with cherry blossoms in foreground",
-        "source": "Wikimedia Commons (Fuji cherry blossom)",
+        "description": "Wooden desk antique furniture interior object",
+        "retrieval_date": "2026-10-21",
+        "sha1": "b91dbf88e64a9aaa26ada70bc698794cd83dc59c",
+        "sha256": "86684cb26b7544efcd048ee38d5010a8ebac7a184ea9e465eae46172ddac2caf",
+        "source": "Wikimedia Commons (File:Desk MET 12029.jpg)",
     },
     {
         "id": "photo_05",
-        "filename": "bookshelves.jpg",
-        "url": (
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/"
-            "Biblioth%C3%A8que_de_l%27Assembl%C3%A9e_Nationale_%28Lunre%29.jpg/"
-            "1280px-Biblioth%C3%A8que_de_l%27Assembl%C3%A9e_Nationale_%28Lunre%29.jpg"
-        ),
-        "license": "Public Domain",
-        "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
-        "description": "Library hall interior with wooden bookshelves and books",
-        "source": "Wikimedia Commons (Bibliotheque Assemblée Nationale)",
+        "filename": "desk_and_bookcase.jpg",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/d/da/Desk_and_Bookcase_MET_DT171.jpg",
+        "file_page_url": "https://commons.wikimedia.org/wiki/File:Desk_and_Bookcase_MET_DT171.jpg",
+        "author": "The Metropolitan Museum of Art",
+        "license": "CC0 1.0 Universal Public Domain Dedication",
+        "license_short_name": "CC0",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "description": "American wooden desk and bookcase interior furniture",
+        "retrieval_date": "2026-10-21",
+        "sha1": "6f053b9987c924876753fecc2301376ff28fdd9a",
+        "sha256": "b49469792915689f2b409705391fbdd9b9b724a29903b554175614be1f14951c",
+        "source": "Wikimedia Commons (File:Desk and Bookcase MET DT171.jpg)",
     },
 ]
 
@@ -91,7 +111,7 @@ def fetch_cc0_photos(
     limit: int | None = None,
     timeout: float = 10.0,
 ) -> list[Path]:
-    """Download curated CC0 / Public Domain photos into out_dir.
+    """Download curated CC0 / Public Domain photos with hash check and atomic writes.
 
     Args:
         out_dir: Destination directory path (gitignored).
@@ -99,7 +119,7 @@ def fetch_cc0_photos(
         timeout: Network socket timeout in seconds.
 
     Returns:
-        List of Paths of downloaded or existing photo files.
+        List of Paths of verified downloaded or existing photo files.
     """
     dest = Path(out_dir)
     dest.mkdir(parents=True, exist_ok=True)
@@ -109,20 +129,74 @@ def fetch_cc0_photos(
 
     for item in items:
         file_path = dest / item["filename"]
-        if file_path.exists() and file_path.stat().st_size > 1024:
-            downloaded.append(file_path)
-            continue
+        # If file already exists, verify its hash integrity before reusing
+        if file_path.exists() and file_path.stat().st_size > 0:
+            try:
+                with open(file_path, "rb") as f:
+                    content = f.read()
+                s256 = hashlib.sha256(content).hexdigest()
+                s1 = hashlib.sha1(content).hexdigest()
+                if (not item.get("sha256") or s256 == item["sha256"]) and (
+                    not item.get("sha1") or s1 == item["sha1"]
+                ):
+                    downloaded.append(file_path)
+                    continue
+                else:
+                    logger.warning(
+                        "Existing photo %s failed hash check; re-downloading", file_path.name
+                    )
+            except OSError as exc:
+                logger.warning("Could not read existing photo %s: %s", file_path.name, exc)
 
+        temp_file = dest / f".tmp_{item['filename']}_{os.getpid()}"
         try:
             req = urllib.request.Request(
                 item["url"],
-                headers={"User-Agent": "SecureGallery-SyntheticBenchmark/1.0"},
+                headers={
+                    "User-Agent": (
+                        "SecureGallery-SyntheticBenchmark/1.0 "
+                        "(https://github.com/usoy/secure-gallery; contact@securegallery.test)"
+                    )
+                },
             )
-            with urllib.request.urlopen(req, timeout=timeout) as resp, open(file_path, "wb") as out:
-                out.write(resp.read())
+            hasher_256 = hashlib.sha256()
+            hasher_1 = hashlib.sha1()
+            with urllib.request.urlopen(req, timeout=timeout) as resp, open(temp_file, "wb") as out:
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    hasher_256.update(chunk)
+                    hasher_1.update(chunk)
+                    out.write(chunk)
+
+            # Verify downloaded hash matches curated entry
+            computed_sha256 = hasher_256.hexdigest()
+            computed_sha1 = hasher_1.hexdigest()
+            expected_sha256 = item.get("sha256")
+            expected_sha1 = item.get("sha1")
+
+            if expected_sha256 and computed_sha256 != expected_sha256:
+                raise ValueError(
+                    f"SHA256 mismatch for {item['filename']}: "
+                    f"expected {expected_sha256}, got {computed_sha256}"
+                )
+            if expected_sha1 and computed_sha1 != expected_sha1:
+                raise ValueError(
+                    f"SHA1 mismatch for {item['filename']}: "
+                    f"expected {expected_sha1}, got {computed_sha1}"
+                )
+
+            # Atomic rename into final location
+            temp_file.replace(file_path)
             downloaded.append(file_path)
-            logger.info("Downloaded public domain photo: %s", file_path.name)
-        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            logger.info("Downloaded and verified public domain photo: %s", file_path.name)
+        except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except OSError:
+                    pass
             logger.warning("Could not download photo %s: %s", item["url"], exc)
 
     return downloaded

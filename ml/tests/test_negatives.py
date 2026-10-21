@@ -58,13 +58,114 @@ def test_procedural_photo_fallback_without_network() -> None:
 
 
 def test_curated_public_domain_photo_metadata() -> None:
-    """Verify curated public domain photos list has complete license and attribution info."""
+    """Verify curated photo list has all required fields and valid licenses offline."""
+    required_fields = {
+        "id",
+        "filename",
+        "url",
+        "file_page_url",
+        "author",
+        "license",
+        "license_short_name",
+        "license_url",
+        "description",
+        "retrieval_date",
+        "sha1",
+        "sha256",
+        "source",
+    }
+    allowed_licenses = {"Public domain", "CC0"}
+
     assert len(PUBLIC_DOMAIN_PHOTOS) >= 5
     for p in PUBLIC_DOMAIN_PHOTOS:
-        assert p["url"].startswith("https://upload.wikimedia.org/")
-        assert "CC0" in p["license"] or "Public Domain" in p["license"]
-        assert len(p["description"]) > 10
-        assert len(p["source"]) > 5
+        # All required metadata fields present and non-empty
+        missing = required_fields - set(p.keys())
+        assert not missing, f"Missing fields in {p.get('id')}: {missing}"
+        for fld in required_fields:
+            assert isinstance(p[fld], str) and len(p[fld]) > 0
+
+        # License short name must strictly be Public domain or CC0
+        assert (
+            p["license_short_name"] in allowed_licenses
+        ), f"Unapproved license {p['license_short_name']} in {p['id']}"
+
+        # Valid sha1 (40 hex chars) and sha256 (64 hex chars)
+        assert len(p["sha1"]) == 40 and all(c in "0123456789abcdefABCDEF" for c in p["sha1"])
+        assert len(p["sha256"]) == 64 and all(c in "0123456789abcdefABCDEF" for c in p["sha256"])
+
+        # URL points to Wikimedia Commons
+        assert p["url"].startswith("https://upload.wikimedia.org/wikipedia/commons/")
+        assert p["file_page_url"].startswith("https://commons.wikimedia.org/wiki/File:")
+
+
+def test_unknown_and_corrupt_photos_skipped_with_warning(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Verify unknown or hash-mismatched files in photos_dir are skipped with warning."""
+    # 1. Place an unknown random image
+    unknown_img_path = tmp_path / "unknown_random_image.jpg"
+    test_img = Image.new("RGB", (200, 200), (120, 150, 180))
+    test_img.save(unknown_img_path)
+
+    # 2. Place a file with a curated filename but corrupt / wrong hash
+    corrupt_entry = PUBLIC_DOMAIN_PHOTOS[0]
+    corrupt_img_path = tmp_path / corrupt_entry["filename"]
+    corrupt_img = Image.new("RGB", (100, 100), (255, 0, 0))
+    corrupt_img.save(corrupt_img_path)
+
+    # Generate photo negative sample
+    with caplog.at_level("WARNING"):
+        img, label = generate_negative_sample("photo", seed=42, photos_dir=tmp_path)
+
+    assert isinstance(img, Image.Image)
+    # Both files must have been skipped and logged with warnings
+    assert "Skipping unknown photo in photos_dir" in caplog.text
+    assert "Skipping photo" in caplog.text and "hash mismatch" in caplog.text
+
+    # Must fall back to procedural photo and NOT be labeled with unverified CC0
+    assert label.get("is_procedural") is True
+    assert label["photo_source"] == "procedurally_generated_scene"
+
+
+def test_curated_photo_accepted_when_name_and_hash_match(tmp_path: Path) -> None:
+    """Verify that a photo matching both filename and sha256 in the curated list is accepted."""
+    import hashlib
+
+    entry = PUBLIC_DOMAIN_PHOTOS[0]
+    target_path = tmp_path / entry["filename"]
+
+    # Write dummy bytes and temporarily mock/set hash to match
+    dummy_bytes = b"VERIFIED_CURATED_IMAGE_DATA_12345"
+    with open(target_path, "wb") as f:
+        f.write(dummy_bytes)
+
+    expected_sha256 = hashlib.sha256(dummy_bytes).hexdigest()
+    expected_sha1 = hashlib.sha1(dummy_bytes).hexdigest()
+
+    # Temporarily monkeypatch the entry's hashes to match our file
+    orig_sha256 = entry["sha256"]
+    orig_sha1 = entry["sha1"]
+    entry["sha256"] = expected_sha256
+    entry["sha1"] = expected_sha1
+
+    try:
+        # Create a small valid JPEG so PIL can open it
+        valid_img = Image.new("RGB", (200, 200), (200, 200, 200))
+        valid_img.save(target_path, format="JPEG")
+        with open(target_path, "rb") as f:
+            jpeg_bytes = f.read()
+        entry["sha256"] = hashlib.sha256(jpeg_bytes).hexdigest()
+        entry["sha1"] = hashlib.sha1(jpeg_bytes).hexdigest()
+
+        img, label = generate_negative_sample("photo", seed=42, photos_dir=tmp_path)
+        assert isinstance(img, Image.Image)
+        assert label.get("is_procedural") is None or label.get("is_procedural") is False
+        assert label["photo_source"] == entry["source"]
+        assert label["photo_license"] == entry["license"]
+    finally:
+        entry["sha256"] = orig_sha256
+        entry["sha1"] = orig_sha1
 
 
 def test_individual_negative_subcomponents() -> None:

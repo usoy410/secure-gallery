@@ -13,6 +13,7 @@ All negative samples produce ground-truth JSON labels with class='negative' and 
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 import random
@@ -570,33 +571,50 @@ def generate_negative_sample(
 
     else:  # photo
         photos_path = Path(photos_dir)
-        photo_files = (
-            sorted(photos_path.glob("*.jpg")) + sorted(photos_path.glob("*.png"))
-            if photos_path.exists()
-            else []
-        )
+        curated_by_filename = {p["filename"]: p for p in PUBLIC_DOMAIN_PHOTOS}
+        valid_curated_photos: list[tuple[Path, dict[str, str]]] = []
 
-        if photo_files:
-            chosen_file = photo_files[seed % len(photo_files)]
+        if photos_path.exists():
+            candidate_files = (
+                sorted(photos_path.glob("*.jpg")) + sorted(photos_path.glob("*.png"))
+            )
+            for file_path in candidate_files:
+                meta = curated_by_filename.get(file_path.name)
+                if not meta:
+                    logger.warning(
+                        "Skipping unknown photo in photos_dir not in curated list: %s",
+                        file_path.name,
+                    )
+                    continue
+                try:
+                    with open(file_path, "rb") as f:
+                        content = f.read()
+                    s256 = hashlib.sha256(content).hexdigest()
+                    s1 = hashlib.sha1(content).hexdigest()
+                    match_sha256 = not meta.get("sha256") or s256 == meta["sha256"]
+                    match_sha1 = not meta.get("sha1") or s1 == meta["sha1"]
+                    if match_sha256 and match_sha1:
+                        valid_curated_photos.append((file_path, meta))
+                    else:
+                        logger.warning(
+                            "Skipping photo %s due to hash mismatch with curated metadata",
+                            file_path.name,
+                        )
+                except OSError as exc:
+                    logger.warning("Could not read photo file %s: %s", file_path.name, exc)
+
+        if valid_curated_photos:
+            chosen_file, match_meta = valid_curated_photos[seed % len(valid_curated_photos)]
             loaded = Image.open(chosen_file).convert("RGB")
             img = loaded.resize((CANVAS_WIDTH, CANVAS_HEIGHT), resample=Image.Resampling.BICUBIC)
-            match_meta = next(
-                (p for p in PUBLIC_DOMAIN_PHOTOS if p["filename"] == chosen_file.name),
-                None,
-            )
-            if match_meta:
-                extra_meta = {
-                    "photo_source": match_meta["source"],
-                    "photo_url": match_meta["url"],
-                    "photo_license": match_meta["license"],
-                    "photo_license_url": match_meta["license_url"],
-                }
-            else:
-                extra_meta = {
-                    "photo_source": chosen_file.name,
-                    "photo_license": "Public Domain / CC0",
-                }
+            extra_meta = {
+                "photo_source": match_meta["source"],
+                "photo_url": match_meta["url"],
+                "photo_license": match_meta["license"],
+                "photo_license_url": match_meta["license_url"],
+            }
         else:
+            # Fallback to procedural non-network generator when no curated photos are present
             img, proc_meta = generate_procedural_photo(seed, CANVAS_WIDTH, CANVAS_HEIGHT)
             extra_meta = {
                 "photo_source": proc_meta["source"],

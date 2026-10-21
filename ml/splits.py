@@ -9,7 +9,6 @@ Ensures that:
 
 from __future__ import annotations
 
-import hashlib
 import random
 from typing import Any
 
@@ -33,41 +32,6 @@ def normalize_split_ratios(ratios: dict[str, float]) -> dict[str, float]:
     if total <= 0:
         raise ValueError(f"Sum of split ratios must be positive, got {total}")
     return {k: v / total for k, v in ratios.items()}
-
-
-def assign_split_by_base_id(
-    base_image_id: str,
-    split_ratios: dict[str, float] | None = None,
-    seed: int = 42,
-) -> str:
-    """Deterministically assign a base image ID to train, val, or test.
-
-    Uses SHA-256 hash of (seed, base_image_id) to map uniformly to split intervals.
-    Every sample sharing the same base_image_id receives the identical split.
-
-    Args:
-        base_image_id: Unique string identifying the base identity / sample.
-        split_ratios: Optional ratio dictionary (defaults to 70/15/15).
-        seed: Random seed for hash salt.
-
-    Returns:
-        Split name string ('train', 'val', or 'test').
-    """
-    ratios = normalize_split_ratios(split_ratios or DEFAULT_SPLIT_RATIOS)
-    train_cutoff = ratios.get("train", 0.70)
-    val_cutoff = train_cutoff + ratios.get("val", 0.15)
-
-    hash_input = f"{seed}:{base_image_id}".encode()
-    digest = hashlib.sha256(hash_input).hexdigest()
-    # Map digest uniformly into [0.0, 1.0)
-    fraction = (int(digest[:8], 16) % 1_000_000) / 1_000_000.0
-
-    if fraction < train_cutoff:
-        return "train"
-    elif fraction < val_cutoff:
-        return "val"
-    else:
-        return "test"
 
 
 def compute_stratified_split_map(

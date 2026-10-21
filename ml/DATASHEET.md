@@ -56,11 +56,11 @@ Default proportions: 70% train, 15% val, 15% test.
 
 | ID | Filename | License | Source / Attribution |
 |---|---|---|---|
-| photo_01 | `desk_workspace.jpg` | CC0 1.0 Universal | Wikimedia Commons (Desk workspace) |
-| photo_02 | `coffee_cup.jpg` | CC0 1.0 Universal | Wikimedia Commons (A small cup of coffee) |
-| photo_03 | `street_scene.jpg` | Public Domain | Wikimedia Commons (Seattle street) |
-| photo_04 | `landscape_nature.jpg` | CC0 1.0 Universal | Wikimedia Commons (Fuji cherry blossom) |
-| photo_05 | `bookshelves.jpg` | Public Domain | Wikimedia Commons (Bibliotheque Assemblée Nationale) |
+| photo_01 | `fuji_apple.jpg` | Public domain | Scott Bauer, USDA ARS (File:Fuji apple.jpg) |
+| photo_02 | `yellowstone_river.jpg` | Public domain | Ed Austin/Herb Jones, National Park Service (File:Yellowstone River in Hayden Valley.jpg) |
+| photo_03 | `brick_wall_texture.jpg` | Public domain | Georges Grondin (File:Brick wall texture.jpg) |
+| photo_04 | `desk_met_12029.jpg` | CC0 1.0 Universal | The Metropolitan Museum of Art (File:Desk MET 12029.jpg) |
+| photo_05 | `desk_and_bookcase.jpg` | CC0 1.0 Universal | The Metropolitan Museum of Art (File:Desk and Bookcase MET DT171.jpg) |
 
 ## 3. Collection Process
 

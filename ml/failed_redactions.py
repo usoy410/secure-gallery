@@ -59,7 +59,6 @@ def apply_failed_redaction(
     label: dict[str, Any],
     redaction_type: str,
     seed: int,
-    target_field_types: set[str] | None = None,
 ) -> tuple[Image.Image, dict[str, Any]]:
     """Apply an intentional redaction pattern to an image.
 
@@ -70,7 +69,6 @@ def apply_failed_redaction(
         label: Ground truth label dictionary.
         redaction_type: One of ('complete', 'partial', 'misplaced', 'ineffective').
         seed: Deterministic integer seed.
-        target_field_types: Optional subset of field types to redact. Defaults to sensitive fields.
 
     Returns:
         Tuple of (modified_PIL_Image, updated_label_dict).
@@ -85,7 +83,7 @@ def apply_failed_redaction(
     draw = ImageDraw.Draw(result_img)
 
     fields = label.get("fields", [])
-    targets_to_use = target_field_types or SENSITIVE_FIELD_TYPES
+    targets_to_use = SENSITIVE_FIELD_TYPES
 
     candidate_fields = [
         f for f in fields if f.get("type") in targets_to_use and f.get("polygon")
@@ -123,7 +121,12 @@ def apply_failed_redaction(
             by2 = min(result_img.height, max_y + pad)
             draw.rectangle([bx1, by1, bx2, by2], fill=(0, 0, 0, 255))
             redaction_boxes.append([bx1, by1, bx2, by2])
-            covered_fractions.append(1.0)
+
+            # Measure real covered fraction to avoid hardcoding assumptions
+            inter_w = max(0, min(max_x, bx2) - max(min_x, bx1))
+            inter_h = max(0, min(max_y, by2) - max(min_y, by1))
+            field_area = max(1, fw * fh)
+            covered_fractions.append(round((inter_w * inter_h) / field_area, 3))
 
         elif redaction_type == "partial":
             # Cover between 30% and 70% of the field area
@@ -143,31 +146,100 @@ def apply_failed_redaction(
                 bx1, by1 = min_x, int(max_y - fh * frac)
                 bx2, by2 = max_x, max_y
 
+            # Clamp coordinates within canvas boundaries
+            bx1 = max(0, min(result_img.width, bx1))
+            bx2 = max(0, min(result_img.width, bx2))
+            by1 = max(0, min(result_img.height, by1))
+            by2 = max(0, min(result_img.height, by2))
+            if bx2 < bx1:
+                bx1, bx2 = bx2, bx1
+            if by2 < by1:
+                by1, by2 = by2, by1
+
             draw.rectangle([bx1, by1, bx2, by2], fill=(0, 0, 0, 255))
             redaction_boxes.append([bx1, by1, bx2, by2])
-            covered_fractions.append(round(frac, 3))
+
+            # Measure actual intersection to record the exact measured coverage, not requested frac
+            inter_w = max(0, min(max_x, bx2) - max(min_x, bx1))
+            inter_h = max(0, min(max_y, by2) - max(min_y, by1))
+            field_area = max(1, fw * fh)
+            measured_frac = (inter_w * inter_h) / field_area
+            covered_fractions.append(round(measured_frac, 3))
 
         elif redaction_type == "misplaced":
-            # Offset box matching field dimensions shifted so field remains exposed
-            offset_dir = rng.choice(["up", "down", "left", "right"])
-            shift_x, shift_y = 0, 0
-            if offset_dir == "up":
-                shift_y = -int(fh * rng.uniform(1.3, 2.2))
-            elif offset_dir == "down":
-                shift_y = int(fh * rng.uniform(1.3, 2.2))
-            elif offset_dir == "left":
-                shift_x = -int(fw * rng.uniform(0.7, 1.2))
-            else:  # right
-                shift_x = int(fw * rng.uniform(0.7, 1.2))
+            # Shift box away from field by at least fw/fh so the field remains completely exposed.
+            # Select only candidate directions that have sufficient space inside the image canvas
+            # to prevent clamping from pushing the box back over the field.
+            room_right = result_img.width - (max_x + fw)
+            room_left = min_x - fw
+            room_down = result_img.height - (max_y + fh)
+            room_up = min_y - fh
 
-            bx1 = max(0, min_x + shift_x)
-            by1 = max(0, min_y + shift_y)
-            bx2 = min(result_img.width, bx1 + fw)
-            by2 = min(result_img.height, by1 + fh)
+            candidate_dirs: list[str] = []
+            if room_right >= 0:
+                candidate_dirs.append("right")
+            if room_left >= 0:
+                candidate_dirs.append("left")
+            if room_down >= 0:
+                candidate_dirs.append("down")
+            if room_up >= 0:
+                candidate_dirs.append("up")
+
+            if candidate_dirs:
+                chosen_dir = rng.choice(candidate_dirs)
+            else:
+                # If no direction has full clearance, pick direction with largest room
+                rooms = {"right": room_right, "left": room_left, "down": room_down, "up": room_up}
+                chosen_dir = max(rooms, key=rooms.get)
+
+            if chosen_dir == "right":
+                max_shift = min(room_right, int(fw * 0.5)) if room_right > 0 else 0
+                offset = rng.randint(0, max_shift)
+                bx1 = max_x + offset
+                bx2 = bx1 + fw
+                by1 = min_y
+                by2 = min_y + fh
+            elif chosen_dir == "left":
+                max_shift = min(room_left, int(fw * 0.5)) if room_left > 0 else 0
+                offset = rng.randint(0, max_shift)
+                bx2 = min_x - offset
+                bx1 = bx2 - fw
+                by1 = min_y
+                by2 = min_y + fh
+            elif chosen_dir == "down":
+                max_shift = min(room_down, int(fh * 0.5)) if room_down > 0 else 0
+                offset = rng.randint(0, max_shift)
+                by1 = max_y + offset
+                by2 = by1 + fh
+                bx1 = min_x
+                bx2 = min_x + fw
+            else:  # up
+                max_shift = min(room_up, int(fh * 0.5)) if room_up > 0 else 0
+                offset = rng.randint(0, max_shift)
+                by2 = min_y - offset
+                by1 = by2 - fh
+                bx1 = min_x
+                bx2 = min_x + fw
+
+            # Robust edge clamping inside canvas to prevent negative or inverted dimensions
+            bx1 = max(0, min(result_img.width, bx1))
+            bx2 = max(0, min(result_img.width, bx2))
+            by1 = max(0, min(result_img.height, by1))
+            by2 = max(0, min(result_img.height, by2))
+            if bx2 < bx1:
+                bx1, bx2 = bx2, bx1
+            if by2 < by1:
+                by1, by2 = by2, by1
 
             draw.rectangle([bx1, by1, bx2, by2], fill=(0, 0, 0, 255))
             redaction_boxes.append([bx1, by1, bx2, by2])
-            covered_fractions.append(0.0)
+
+            # Compute covered_fraction directly from real intersection with target field
+            inter_w = max(0, min(max_x, bx2) - max(min_x, bx1))
+            inter_h = max(0, min(max_y, by2) - max(min_y, by1))
+            field_area = max(1, fw * fh)
+            cov_fraction = (inter_w * inter_h) / field_area
+            covered_fractions.append(round(cov_fraction, 3))
 
         else:  # ineffective
             style = rng.choice(["semi_transparent", "mild_blur"])
@@ -211,7 +283,7 @@ def apply_failed_redaction(
     elif redaction_type == "misplaced":
         expected_leak = "offset_uncovered_field"
         residual_detectability = "full"
-        leak_fraction = 1.0
+        leak_fraction = round(1.0 - avg_covered, 3)
     else:  # ineffective
         expected_leak = "transparent_or_blur_fill_legible"
         residual_detectability = "high"

@@ -129,3 +129,90 @@ def test_all_redaction_types_preserve_base_image_id(
 
     _, red_label = apply_failed_redaction(img, label_copy, redaction_type=r_type, seed=42)
     assert red_label["base_image_id"] == "test_card_base_0001"
+
+
+def test_misplaced_redaction_edge_field_repro_seed_13() -> None:
+    """Verify field near bottom edge with seed 13 does not raise ValueError."""
+    img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    label = {
+        "fields": [
+            {
+                "type": "full_name",
+                "polygon": [[100, 950], [300, 950], [300, 990], [100, 990]],
+            }
+        ]
+    }
+
+    # Seed 13 was the repro that produced by2 < by1 and crashed
+    redacted_img, red_label = apply_failed_redaction(
+        img,
+        label,
+        redaction_type="misplaced",
+        seed=13,
+    )
+    assert isinstance(redacted_img, Image.Image)
+    red_meta = red_label["redaction"]
+    assert len(red_meta["redaction_boxes"]) == 1
+
+    bx1, by1, bx2, by2 = red_meta["redaction_boxes"][0]
+    assert 0 <= bx1 <= bx2 <= 1000
+    assert 0 <= by1 <= by2 <= 1000
+    assert red_meta["covered_fraction"] == 0.0
+    assert red_meta["leak_fraction"] == 1.0
+
+
+def test_misplaced_redaction_seed_sweep_near_edge() -> None:
+    """Seed-sweep across 400 seeds ensuring no misplaced box overlaps the field."""
+    img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    label = {
+        "fields": [
+            {
+                "type": "full_name",
+                "polygon": [[100, 950], [300, 950], [300, 990], [100, 990]],
+            }
+        ]
+    }
+
+    for s in range(400):
+        _, res_label = apply_failed_redaction(img, label, "misplaced", seed=s)
+        red_meta = res_label["redaction"]
+        bx1, by1, bx2, by2 = red_meta["redaction_boxes"][0]
+
+        # Valid bounds
+        assert 0 <= bx1 <= bx2 <= 1000
+        assert 0 <= by1 <= by2 <= 1000
+
+        # No overlap with field [100, 950, 300, 990]
+        inter_w = max(0, min(300, bx2) - max(100, bx1))
+        inter_h = max(0, min(990, by2) - max(950, by1))
+        assert inter_w * inter_h == 0, f"Overlap at seed {s}: box={[bx1, by1, bx2, by2]}"
+        assert red_meta["covered_fraction"] == 0.0
+        assert red_meta["leak_fraction"] == 1.0
+
+
+def test_partial_redaction_records_measured_covered_fraction() -> None:
+    """Verify partial redaction covered_fraction matches the measured intersection area."""
+    img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    label = {
+        "fields": [
+            {
+                "type": "full_name",
+                "polygon": [[100, 100], [300, 100], [300, 150], [100, 150]],
+            }
+        ]
+    }
+
+    for s in range(20):
+        _, red_label = apply_failed_redaction(img, label, "partial", seed=s)
+        red_meta = red_label["redaction"]
+        box = red_meta["redaction_boxes"][0]
+
+        # Calculate actual geometric intersection with field [100, 100, 300, 150]
+        inter_w = max(0, min(300, box[2]) - max(100, box[0]))
+        inter_h = max(0, min(150, box[3]) - max(100, box[1]))
+        field_area = 200 * 50
+        expected = round((inter_w * inter_h) / field_area, 3)
+
+        assert red_meta["covered_fraction"] == expected
+        assert 0.30 <= red_meta["covered_fraction"] <= 0.70
+        assert red_meta["leak_fraction"] == round(1.0 - expected, 3)

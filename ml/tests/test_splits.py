@@ -13,19 +13,9 @@ from pathlib import Path
 
 from ml.dataset import build_full_dataset
 from ml.splits import (
-    assign_split_by_base_id,
     compute_stratified_split_map,
     validate_split_isolation,
 )
-
-
-def test_assign_split_by_base_id_is_deterministic() -> None:
-    """Verify hash-based split assignment is completely deterministic for a given base ID."""
-    base_id = "philsys-card_0042"
-    split1 = assign_split_by_base_id(base_id, seed=42)
-    split2 = assign_split_by_base_id(base_id, seed=42)
-    assert split1 == split2
-    assert split1 in ("train", "val", "test")
 
 
 def test_stratified_split_map_exact_counts() -> None:
