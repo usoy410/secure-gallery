@@ -8,22 +8,31 @@ version = "0.1.0"
 description = "Secure Gallery: offline layout-anchored redaction, leak testing, and synthetic benchmark"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0" }
-dependencies = []
+dependencies = [
+    "faker==33.1.0",
+    "pillow==11.1.0",
+    "qrcode==8.0",
+]
 
 [project.optional-dependencies]
 dev = [
     "jsonschema==4.23.0",
+    "pytesseract==0.3.13",
     "pytest==8.3.4",
     "ruff==0.8.4",
 ]
 test = [
     "jsonschema==4.23.0",
+    "pytesseract==0.3.13",
     "pytest==8.3.4",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ml*", "validation*"]
+
+[tool.setuptools.package-data]
+"ml" = ["assets/fonts/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "ml", "validation", "templates"]
