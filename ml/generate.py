@@ -219,6 +219,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate synthetic Philippine ID and payment card benchmark datasets."
     )
+    subparsers = parser.add_subparsers(dest="subcommand")
+
+    # Full train/val/test dataset generator subcommand
+    dataset_parser = subparsers.add_parser(
+        "dataset",
+        help="Build a complete train/val/test benchmark dataset from a YAML config file.",
+    )
+    dataset_parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to YAML configuration file.",
+    )
+    dataset_parser.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Optional destination directory overriding YAML config.",
+    )
+
+    # Variant-level options for backward compatibility
     parser.add_argument(
         "--variant",
         type=str,
@@ -263,16 +284,28 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        files = generate_dataset(
-            variant=args.variant,
-            count=args.count,
-            seed=args.seed,
-            out_dir=args.out,
-            composite=not args.clean,
-            jitter=args.jitter,
-            conditions=args.conditions,
-        )
-        print(f"Generated {len(files)} synthetic card samples under {args.out}")
+        if args.subcommand == "dataset":
+            from ml.dataset import build_full_dataset
+
+            res = build_full_dataset(
+                config_source=args.config,
+                out_dir_override=args.out,
+            )
+            print(
+                f"Generated benchmark dataset with {res['total_samples']} samples "
+                f"in {res['out_dir']} (manifest: {res['manifest_path']})"
+            )
+        else:
+            files = generate_dataset(
+                variant=args.variant,
+                count=args.count,
+                seed=args.seed,
+                out_dir=args.out,
+                composite=not args.clean,
+                jitter=args.jitter,
+                conditions=args.conditions,
+            )
+            print(f"Generated {len(files)} synthetic card samples under {args.out}")
     except Exception as e:
         print(f"Error during generation: {e}", file=sys.stderr)
         sys.exit(1)

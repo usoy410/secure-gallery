@@ -3,6 +3,7 @@
 venv/
 ENV/
 env/
+uv.lock
 
 # Python caches and bytecode
 __pycache__/

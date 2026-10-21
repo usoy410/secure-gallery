@@ -171,3 +171,42 @@ Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04
 }
 ```
 
+---
+
+## Dataset Generation with Splits, Negatives, and Failed Redactions (`ml.generate dataset`)
+
+Build complete benchmark datasets partitioned into train/val/test splits with ground truth annotations, negative samples, and failed redaction test cases:
+
+```bash
+# Build a complete train/val/test dataset from YAML configuration
+python -m ml.generate dataset --config configs/dataset.yaml
+
+# Download curated CC0 / Public Domain background photos for negative set into data/
+python -m ml.fetch_photos --out data/photos --count 5
+```
+
+### Identity-Based Splits (Zero Data Leakage)
+Splits are partitioned strictly by base identity and template seed (`train`, `val`, `test`). All condition variants (blur, glare, rotation, perspective, crop, etc.) and failed-redaction test cases derived from a base image land in the **exact same split**. Disjoint split sets are verified with assertions ensuring no base identity crosses splits.
+
+### Negative Non-ID Sample Categories
+To benchmark and minimize detector false positives (§9.3, §10.1):
+1. **`receipt`**: Synthetic supermarket/store receipts with thermal receipt typography, line items, and VAT.
+2. **`loyalty_card`**: Customer loyalty and membership cards (CR80 form factor without government ID or payment card data).
+3. **`blank_card`**: Unprinted plastic PVC cards with standard bevel and shadow.
+4. **`card_rectangle`**: Card-shaped rectangular geometries (sticky notes, coasters, business cards).
+5. **`screenshot`**: Mobile phone screenshots (chat conversation, notes, settings screen).
+6. **`photo`**: Everyday scene photos from a curated CC0 / Public Domain set or procedural fallback.
+
+### Failed Redaction Cases (Test Split Safeguard Audit)
+To evaluate on-device redaction re-check safeguards (§9.3):
+1. **`complete`**: 100% solid-fill opaque mask covering target fields (`expected_leak: none`).
+2. **`partial`**: Redaction box covering only 30%–70% of field area (`expected_leak: partial_text_exposed`).
+3. **`misplaced`**: Offset box shifted away from intended field (`expected_leak: offset_uncovered_field`).
+4. **`ineffective`**: Semi-transparent fill or blur over field (`expected_leak: transparent_or_blur_fill_legible`).
+
+### Manifest & Datasheet
+Every generated dataset includes:
+- `manifest.csv`: Tabular index of all images, labels, splits, document classes, variants, degradation conditions, negative types, and redaction defect labels.
+- `DATASHEET.md`: Standardized dataset documentation adhering to Gebru et al. (*Datasheets for Datasets*), recording motivation, class and condition distributions, public domain photo licenses, and known gaps.
+
+

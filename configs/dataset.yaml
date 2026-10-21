@@ -1,0 +1,41 @@
+# Secure Gallery Synthetic Benchmark Dataset Configuration
+# Usage: python -m ml.generate dataset --config configs/dataset.yaml
+
+dataset:
+  name: "Secure Gallery Benchmark Dataset"
+  out_dir: "data/benchmark"
+  seed: 42
+  splits:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+
+# Target ID and payment card variants
+cards:
+  variants: "all"
+  count_per_variant: 5
+  composite: true
+  jitter: true
+  conditions: "all"
+
+# Negative non-ID images to evaluate detector false-positive rate
+negatives:
+  enabled: true
+  count_per_type: 5
+  types:
+    - receipt
+    - loyalty_card
+    - blank_card
+    - card_rectangle
+    - screenshot
+    - photo
+  photos_dir: "data/photos"
+
+# Broken / failed redaction test cases built from test split images
+failed_redactions:
+  enabled: true
+  types:
+    - complete
+    - partial
+    - misplaced
+    - ineffective
