@@ -13,7 +13,6 @@ only against synthetic images with perfectly aligned fields.
 from __future__ import annotations
 
 import random
-from typing import Any
 
 
 def compute_print_offset(
@@ -113,33 +112,3 @@ def apply_field_jitter_to_polygon(
     total_dy = print_offset[1] + field_offset[1]
     return [[pt[0] + total_dx, pt[1] + total_dy] for pt in polygon]
 
-
-def apply_layout_jitter_to_fields(
-    fields: list[dict[str, Any]],
-    card_width: int,
-    card_height: int,
-    seed: int,
-) -> list[dict[str, Any]]:
-    """Apply layout jitter to ground-truth field dictionaries.
-
-    Args:
-        fields: List of field dicts containing 'polygon' and other metadata.
-        card_width: Card image width in pixels.
-        card_height: Card image height in pixels.
-        seed: Deterministic random seed.
-
-    Returns:
-        New list of field dicts with jittered polygons and offsets.
-    """
-    rng = random.Random(seed ^ 0x4C61796F)  # Unique salt for layout jitter
-    print_offset = compute_print_offset(rng, card_width, card_height)
-
-    jittered_fields: list[dict[str, Any]] = []
-    for field in fields:
-        field_offset = compute_field_offset(rng, card_width)
-        new_poly = apply_field_jitter_to_polygon(field["polygon"], print_offset, field_offset)
-        field_copy = dict(field)
-        field_copy["polygon"] = new_poly
-        jittered_fields.append(field_copy)
-
-    return jittered_fields

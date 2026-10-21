@@ -58,8 +58,7 @@ def compute_mask_iou(mask1: Image.Image, mask2: Image.Image) -> float:
     union = ImageChops.logical_or(m1, m2)
     inter_count = sum(1 for p in inter.getdata() if p > 0)
     union_count = sum(1 for p in union.getdata() if p > 0)
-    if union_count == 0:
-        return 1.0
+    assert union_count > 0, "Both masks are empty; union count must be > 0 to compute IoU"
     return inter_count / union_count
 
 
@@ -312,24 +311,14 @@ def test_perspective_polygons_match_transformed_mask_iou(sample_template: dict[s
 
 
 def test_crop_polygons_match_transformed_mask_iou(sample_template: dict[str, Any]) -> None:
-    """Verify cropped field polygons match cropped masks with IoU >= 0.95."""
+    """Verify cropped field polygons match cropped masks with IoU >= 0.95 across all fields."""
     img, label = generate_single_sample(sample_template, seed=99, composite=True)
     label["base_image_id"] = "test_sample"
+    w, h = img.width, img.height
 
     for sev in (1, 2, 3):
-        test_field = next(f for f in label["fields"] if f["type"] in ("full_name", "pcn"))
-        poly = [tuple(pt) for pt in test_field["polygon"]]
-
-        w, h = img.width, img.height
-        mask = Image.new("L", (w, h), 0)
-        draw = ImageDraw.Draw(mask)
-        draw.polygon(poly, fill=255)
-
         crop_img, crop_label = apply_crop(img, label, severity=sev, seed=30 + sev)
         cw, ch = crop_img.width, crop_img.height
-
-        trans_field = next(f for f in crop_label["fields"] if f["name"] == test_field["name"])
-        trans_poly = [tuple(pt) for pt in trans_field["polygon"]]
 
         # Re-derive crop box
         import random
@@ -345,14 +334,69 @@ def test_crop_polygons_match_transformed_mask_iou(sample_template: dict[str, Any
         x2 = min(w, max(x2, 3 * w // 4))
         y2 = min(h, max(y2, 3 * h // 4))
 
-        mask_cropped = mask.crop((x1, y1, x2, y2))
+        cropped_fields_by_name = {f["name"]: f for f in crop_label["fields"]}
 
-        poly_mask = Image.new("L", (cw, ch), 0)
-        draw2 = ImageDraw.Draw(poly_mask)
-        draw2.polygon(trans_poly, fill=255)
+        # Iterate over all fields in the ground truth
+        for test_field in label["fields"]:
+            poly = [tuple(pt) for pt in test_field["polygon"]]
+            mask = Image.new("L", (w, h), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.polygon(poly, fill=255)
 
-        iou = compute_mask_iou(mask_cropped, poly_mask)
-        assert iou >= 0.95, f"Crop severity {sev} IoU {iou:.4f} below 0.95"
+            mask_cropped = mask.crop((x1, y1, x2, y2))
+            crop_pixel_count = sum(1 for p in mask_cropped.getdata() if p > 127)
+
+            if test_field["name"] not in cropped_fields_by_name:
+                # Field had no visible area after crop and was dropped
+                assert crop_pixel_count == 0, (
+                    f"Field '{test_field['name']}' was dropped but has visible pixels in crop"
+                )
+                continue
+
+            trans_field = cropped_fields_by_name[test_field["name"]]
+            trans_poly = [tuple(pt) for pt in trans_field["polygon"]]
+
+            poly_mask = Image.new("L", (cw, ch), 0)
+            draw2 = ImageDraw.Draw(poly_mask)
+            draw2.polygon(trans_poly, fill=255)
+
+            iou = compute_mask_iou(mask_cropped, poly_mask)
+            assert iou >= 0.95, (
+                f"Crop severity {sev} field '{test_field['name']}' IoU {iou:.4f} below 0.95"
+            )
+
+
+def test_all_labelled_polygons_in_bounds_after_crop_all_templates() -> None:
+    """Verify that every labelled polygon is within image bounds after crop for all templates."""
+    templates = get_available_templates()
+    assert len(templates) > 0
+
+    for tmpl_id, tmpl in templates.items():
+        for seed in (42, 100):
+            img, label = generate_single_sample(tmpl, seed=seed, composite=True)
+            for sev in (1, 2, 3):
+                crop_img, crop_label = apply_crop(img, label, severity=sev, seed=seed)
+                cw, ch = crop_img.size
+
+                # At least one field should still be visible in partial crop
+                assert len(crop_label["fields"]) > 0, (
+                    f"Template {tmpl_id} sev {sev} has no fields left"
+                )
+
+                for field in crop_label["fields"]:
+                    poly = field["polygon"]
+                    assert len(poly) >= 3, (
+                        f"Template {tmpl_id} field '{field['name']}' has < 3 vertices: {poly}"
+                    )
+                    for x, y in poly:
+                        assert 0 <= x <= cw, (
+                            f"Template {tmpl_id} sev {sev} field '{field['name']}' vertex x={x} "
+                            f"out of [0, {cw}]"
+                        )
+                        assert 0 <= y <= ch, (
+                            f"Template {tmpl_id} sev {sev} field '{field['name']}' vertex y={y} "
+                            f"out of [0, {ch}]"
+                        )
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +452,36 @@ def test_parse_conditions_arg() -> None:
         ("crop", 3),
         ("low_resolution", 3),
     ]
+
+
+def test_parse_conditions_arg_empty_severity_and_dedupe() -> None:
+    """Verify empty severity tokens are rejected and duplicate condition pairs are deduped."""
+    with pytest.raises(ValueError, match="Empty severity"):
+        parse_conditions_arg("blur:")
+
+    with pytest.raises(ValueError, match="Empty severity"):
+        parse_conditions_arg("all:")
+
+    with pytest.raises(ValueError, match="Empty severity"):
+        parse_conditions_arg("perspective:2,blur:")
+
+    # Deduplication preserves first occurrence order
+    deduped = parse_conditions_arg("blur:1,blur:1,glare:2,blur:1")
+    assert deduped == [("blur", 1), ("glare", 2)]
+
+    # Deduplication when expanding 'all' or repeated condition names
+    deduped_all = parse_conditions_arg("all:1,blur:1")
+    assert len(deduped_all) == 8
+    assert deduped_all.count(("blur", 1)) == 1
+
+
+def test_jpeg_compression_rgba_input() -> None:
+    """Verify JPEG compression converts RGBA input to RGB without raising an error."""
+    rgba_img = Image.new("RGBA", (200, 200), (255, 100, 50, 128))
+    label: dict[str, Any] = {"fields": []}
+    out_img, out_label = apply_condition(rgba_img, label, condition="jpeg_compression", severity=1)
+    assert out_img.mode == "RGB"
+    assert out_img.size == (200, 200)
 
 
 def test_generate_dataset_with_conditions_and_jitter(tmp_path: Path) -> None:

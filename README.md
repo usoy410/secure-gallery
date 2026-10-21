@@ -141,11 +141,11 @@ Each condition supports at least 3 severity levels (`1` / `mild`, `2` / `moderat
 4. **`low_resolution`**: Low-sensor downsampling (2x, 4x, 8x) and bicubic reconstruction.
 5. **`perspective`**: 3D projective homography simulating camera viewpoint tilt (IoU ≥ 0.95 with transformed masks).
 6. **`jpeg_compression`**: Lossy JPEG quantization artifacts (quality 50, 25, 10).
-7. **`crop`**: Field-of-view cropping removing canvas margins and card edges (IoU ≥ 0.95 with cropped masks).
+7. **`crop`**: Field-of-view cropping removing canvas margins and card edges (IoU ≥ 0.95 with cropped masks). Polygons are clipped to image bounds using Sutherland-Hodgman clipping; fields with no visible area inside the crop window are omitted from the label.
 8. **`occlusion`**: Simulated holding fingers / thumbs or opaque sticky notes masking card regions.
 
 ### Output JSON Label Format
-Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04d}.json`. When conditions are applied, condition samples are named `{variant}_{idx:04d}_{condition}_s{severity}.png`:
+Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04d}.json`. When conditions are applied, condition samples are named `{variant}_{idx:04d}_{condition}_s{severity}.png`. For `crop` conditions, `fields` contains only fields with non-zero visible area inside the cropped viewport, with polygon coordinates clipped to `[0, width]` and `[0, height]`:
 
 ```json
 {

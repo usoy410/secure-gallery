@@ -90,11 +90,25 @@ def parse_conditions_arg(conditions_arg: str | None) -> list[tuple[str, int]]:
 
     tokens = [t.strip() for t in conditions_arg.split(",") if t.strip()]
     result: list[tuple[str, int]] = []
+    seen: set[tuple[str, int]] = set()
+
+    def add_pair(c: str, s: int) -> None:
+        if (c, s) not in seen:
+            seen.add((c, s))
+            result.append((c, s))
 
     for token in tokens:
         parts = token.split(":", 1)
         raw_name = parts[0].strip().lower()
-        sev_str = parts[1].strip().lower() if len(parts) > 1 else None
+        if len(parts) > 1:
+            sev_raw = parts[1].strip().lower()
+            if not sev_raw:
+                raise ValueError(
+                    f"Empty severity in condition specification '{token}'."
+                )
+            sev_str: str | None = sev_raw
+        else:
+            sev_str = None
 
         if raw_name == "all":
             if sev_str:
@@ -104,11 +118,11 @@ def parse_conditions_arg(conditions_arg: str | None) -> list[tuple[str, int]]:
                     )
                 s_val = SEVERITY_ALIASES[sev_str]
                 for c in CONDITION_NAMES:
-                    result.append((c, s_val))
+                    add_pair(c, s_val)
             else:
                 for c in CONDITION_NAMES:
                     for s in (1, 2, 3):
-                        result.append((c, s))
+                        add_pair(c, s)
             continue
 
         if raw_name not in CONDITION_ALIASES:
@@ -122,11 +136,11 @@ def parse_conditions_arg(conditions_arg: str | None) -> list[tuple[str, int]]:
                 raise ValueError(
                     f"Invalid severity '{sev_str}'. Use 1, 2, 3 or mild, moderate, severe."
                 )
-            result.append((canonical_name, SEVERITY_ALIASES[sev_str]))
+            add_pair(canonical_name, SEVERITY_ALIASES[sev_str])
         else:
             # Default to all 3 severities if unspecified
             for s in (1, 2, 3):
-                result.append((canonical_name, s))
+                add_pair(canonical_name, s)
 
     return result
 
@@ -385,6 +399,108 @@ def apply_perspective(
     return warped_img, new_label
 
 
+def clip_polygon_to_rect(
+    polygon: list[list[int]] | list[tuple[int, int]],
+    xmin: int,
+    ymin: int,
+    xmax: int,
+    ymax: int,
+) -> list[list[int]]:
+    """Clip a 2D polygon against an axis-aligned bounding box using Sutherland-Hodgman.
+
+    Why: When applying field-of-view crops, card fields near the cropped edges must be
+    clipped to the visible image bounds [0, 0, width, height]. Fields outside the crop
+    reduce to empty or degenerate polygons and are dropped from ground-truth labels.
+
+    Args:
+        polygon: List of (x, y) coordinate pairs defining the polygon.
+        xmin: Minimum x-coordinate (inclusive boundary).
+        ymin: Minimum y-coordinate (inclusive boundary).
+        xmax: Maximum x-coordinate (inclusive boundary).
+        ymax: Maximum y-coordinate (inclusive boundary).
+
+    Returns:
+        List of integer [x, y] coordinates for the clipped polygon, or empty list if disjoint.
+    """
+    def clip_edge(
+        poly: list[list[float]],
+        inside_fn: Any,
+        intersect_fn: Any,
+    ) -> list[list[float]]:
+        output: list[list[float]] = []
+        if not poly:
+            return output
+        s = poly[-1]
+        for p in poly:
+            if inside_fn(p):
+                if not inside_fn(s):
+                    output.append(intersect_fn(s, p))
+                output.append(p)
+            elif inside_fn(s):
+                output.append(intersect_fn(s, p))
+            s = p
+        return output
+
+    poly = [[float(p[0]), float(p[1])] for p in polygon]
+    # 1. Left boundary: x >= xmin
+    poly = clip_edge(
+        poly,
+        lambda p: p[0] >= xmin,
+        lambda s, p: [float(xmin), s[1] + (xmin - s[0]) * (p[1] - s[1]) / (p[0] - s[0])],
+    )
+    # 2. Right boundary: x <= xmax
+    poly = clip_edge(
+        poly,
+        lambda p: p[0] <= xmax,
+        lambda s, p: [float(xmax), s[1] + (xmax - s[0]) * (p[1] - s[1]) / (p[0] - s[0])],
+    )
+    # 3. Top boundary: y >= ymin
+    poly = clip_edge(
+        poly,
+        lambda p: p[1] >= ymin,
+        lambda s, p: [s[0] + (ymin - s[1]) * (p[0] - s[0]) / (p[1] - s[1]), float(ymin)],
+    )
+    # 4. Bottom boundary: y <= ymax
+    poly = clip_edge(
+        poly,
+        lambda p: p[1] <= ymax,
+        lambda s, p: [s[0] + (ymax - s[1]) * (p[0] - s[0]) / (p[1] - s[1]), float(ymax)],
+    )
+
+    result: list[list[int]] = []
+    for pt in poly:
+        x = max(int(xmin), min(int(xmax), int(round(pt[0]))))
+        y = max(int(ymin), min(int(ymax), int(round(pt[1]))))
+        if not result or result[-1] != [x, y]:
+            result.append([x, y])
+    if len(result) > 1 and result[0] == result[-1]:
+        result.pop()
+
+    return result
+
+
+def polygon_area(polygon: list[list[int]] | list[tuple[int, int]]) -> float:
+    """Compute the 2D planar area of a polygon using the Shoelace formula.
+
+    Why: Used to determine whether a clipped polygon retains non-zero visible area,
+    allowing fields completely clipped out of frame to be discarded from the label.
+
+    Args:
+        polygon: List of [x, y] coordinates.
+
+    Returns:
+        Area as float >= 0.0.
+    """
+    if len(polygon) < 3:
+        return 0.0
+    n = len(polygon)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += polygon[i][0] * polygon[j][1] - polygon[j][0] * polygon[i][1]
+    return 0.5 * abs(area)
+
+
 def apply_jpeg_compression(
     img: Image.Image,
     label: dict[str, Any],
@@ -399,7 +515,9 @@ def apply_jpeg_compression(
     quality = qualities.get(severity, 50)
 
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=quality)
+    # JPEG format does not support alpha channel (RGBA), so convert to RGB first
+    save_img = img.convert("RGB") if img.mode != "RGB" else img
+    save_img.save(buf, format="JPEG", quality=quality)
     buf.seek(0)
     degraded = Image.open(buf).convert("RGB")
     return degraded, label
@@ -411,9 +529,11 @@ def apply_crop(
     severity: int,
     seed: int,
 ) -> tuple[Image.Image, dict[str, Any]]:
-    """Apply cropping condition and translate all polygon coordinates.
+    """Apply cropping condition and translate/clip all polygon coordinates.
 
     Why: Partial card framing occurs when users do not capture the entire card in frame.
+    Field polygons are clipped to the crop viewport, and fields with zero visible area
+    are omitted from the label so only visible fields remain.
     """
     rng = random.Random(seed ^ 0x63726F70)
     w, h = img.size
@@ -445,8 +565,15 @@ def apply_crop(
     if "card_corners" in new_label:
         new_label["card_corners"] = [transform_pt(pt) for pt in new_label["card_corners"]]
 
+    visible_fields: list[dict[str, Any]] = []
     for field in new_label.get("fields", []):
-        field["polygon"] = [transform_pt(pt) for pt in field["polygon"]]
+        trans_poly = [transform_pt(pt) for pt in field["polygon"]]
+        clipped_poly = clip_polygon_to_rect(trans_poly, 0, 0, cw, ch)
+        if len(clipped_poly) >= 3 and polygon_area(clipped_poly) > 0:
+            field["polygon"] = clipped_poly
+            visible_fields.append(field)
+
+    new_label["fields"] = visible_fields
 
     return cropped_img, new_label
 
