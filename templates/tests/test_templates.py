@@ -6,7 +6,8 @@ Validates that:
 - Templates for PhilSys, ePhilID, LTO (current & previous), and payment cards (front & back) exist.
 - All polygon vertices stay strictly within the unit square [0, 1].
 - Exact polygon intersection testing verifies sensitive fields do not overlap left-visible fields.
-- Every redacted field listed in SECURE_GALLERY.md §8.1 is covered per-variant (with explicit exemptions).
+- Every redacted field listed in SECURE_GALLERY.md §8.1 is covered per-variant
+  (with explicit exemptions).
 - PhilSys card specifically includes a QR code field.
 - Aspect ratios are positive numbers matching physical standards.
 - templates/SOURCES.md documents all public specimen sources.
@@ -14,15 +15,8 @@ Validates that:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
-
-# Ensure repository root is on sys.path even when pytest is invoked without python -m
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = TEMPLATES_DIR.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 import jsonschema
 import pytest
@@ -191,7 +185,7 @@ def test_sensitive_fields_do_not_overlap_left_visible(
 
 
 def test_polygon_overlap_precision() -> None:
-    """Verify that polygons_overlap correctly tests geometric intersection and avoids false positives."""
+    """Verify that polygons_overlap tests geometric intersection and avoids false positives."""
     # Two non-rectangular triangles whose bounding boxes overlap on [1, 2] x [1, 2],
     # but whose geometric interiors are completely disjoint.
     triangle_a = [[0.0, 0.0], [2.0, 0.0], [0.0, 2.0]]
@@ -253,7 +247,7 @@ def test_exemptions_are_documented() -> None:
 def test_every_redacted_field_in_section_8_1_present_for_class(
     loaded_templates: dict[str, dict[str, Any]],
 ) -> None:
-    """Ensure that every redacted field listed in SECURE_GALLERY.md §8.1 is present for its class."""
+    """Ensure every redacted field listed in SECURE_GALLERY.md §8.1 is present for its class."""
     template_list = list(loaded_templates.values())
     missing_fields = check_redacted_fields_per_class(template_list)
     assert not missing_fields, (
@@ -267,7 +261,7 @@ def test_aspect_ratios_positive_and_standard(
     """Check that aspect ratios are positive numbers and near ID-1 standard (~1.5858)."""
     for variant_id, data in loaded_templates.items():
         ar = data["aspect_ratio"]
-        assert isinstance(ar, (int, float)), (
+        assert isinstance(ar, int | float), (
             f"{variant_id}: aspect_ratio must be numeric"
         )
         assert ar > 0, f"{variant_id}: aspect_ratio must be positive"
