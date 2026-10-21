@@ -49,7 +49,8 @@ jobs:
             exit 1
           fi
           echo "Inspecting merged manifest at: $MANIFEST_FILE"
-          if grep -i "android.permission.INTERNET" "$MANIFEST_FILE"; then
+          # Strip XML comments first so a comment that names the permission does not match.
+          if perl -0pe 's/<!--.*?-->//gs' "$MANIFEST_FILE" | grep -i "android.permission.INTERNET"; then
             echo "::error::Merged manifest contains forbidden android.permission.INTERNET!"
             exit 1
           fi
@@ -127,6 +128,5 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            cd android
-            ./gradlew connectedDebugAndroidTest
+          # Each script line runs in its own shell, so cd and gradlew share one line.
+          script: cd android && ./gradlew connectedDebugAndroidTest
