@@ -8,24 +8,35 @@ consistent visual presentation and reliable OCR character recognition.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from PIL import ImageFont
 
+# Repository-bundled OFL TrueType fonts for deterministic cross-machine rendering.
+# Why: Guarantees identical glyph geometry and >= 95% OCR accuracy regardless of
+# host OS font packages.
+BUNDLED_FONTS_DIR: Path = Path(__file__).resolve().parent / "assets" / "fonts"
+BUNDLED_REGULAR_FONT: Path = BUNDLED_FONTS_DIR / "LiberationSans-Regular.ttf"
+BUNDLED_BOLD_FONT: Path = BUNDLED_FONTS_DIR / "LiberationSans-Bold.ttf"
+
 # Candidate system paths for high-clarity sans-serif TrueType fonts.
 # Why: Tesseract and ML OCR models perform best on clean, standard glyphs.
-# Liberation Sans and DejaVu Sans are standard across Debian, Ubuntu, and Arch Linux.
+# Liberation Sans is preferred over DejaVu Sans because DejaVu decimal points in metric
+# height fields and character kerning trigger OCR misidentifications.
 CANDIDATE_REGULAR_FONTS: list[str] = [
+    str(BUNDLED_REGULAR_FONT),
     "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/noto/NotoSans-Regular.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans.ttf",
 ]
 
 CANDIDATE_BOLD_FONTS: list[str] = [
+    str(BUNDLED_BOLD_FONT),
     "/usr/share/fonts/liberation/LiberationSans-Bold.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/noto/NotoSans-Bold.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
 ]

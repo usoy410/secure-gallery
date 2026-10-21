@@ -23,6 +23,12 @@ from PIL import Image
 
 from ml.composite import composite_card
 from ml.data_generator import SyntheticDataGenerator
+from ml.fonts import (
+    BUNDLED_BOLD_FONT,
+    BUNDLED_REGULAR_FONT,
+    get_font,
+    resolve_font_path,
+)
 from ml.generate import (
     generate_dataset,
     generate_single_sample,
@@ -323,4 +329,27 @@ def test_cli_subprocess_byte_identical_across_pythonhashseeds(tmp_path: Path) ->
         assert p1.read_bytes() == p2.read_bytes(), (
             f"CLI output differs under different PYTHONHASHSEED for {p1.name}"
         )
+
+
+def test_bundled_font_resolution_and_determinism() -> None:
+    """Verify bundled OFL Liberation Sans font resolves and loads reliably.
+
+    Ensures font resolution is deterministic across different host environments
+    by preferring bundled fonts over arbitrary system fonts.
+    """
+    assert BUNDLED_REGULAR_FONT.is_file(), f"Missing regular font: {BUNDLED_REGULAR_FONT}"
+    assert BUNDLED_BOLD_FONT.is_file(), f"Missing bold font: {BUNDLED_BOLD_FONT}"
+
+    resolved_reg = resolve_font_path(bold=False)
+    resolved_bold = resolve_font_path(bold=True)
+
+    assert resolved_reg == str(BUNDLED_REGULAR_FONT)
+    assert resolved_bold == str(BUNDLED_BOLD_FONT)
+
+    font_reg = get_font(size=20, bold=False)
+    font_bold = get_font(size=20, bold=True)
+
+    assert font_reg is not None
+    assert font_bold is not None
+
 

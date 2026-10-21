@@ -31,6 +31,9 @@ test = [
 where = ["."]
 include = ["ml*", "validation*"]
 
+[tool.setuptools.package-data]
+"ml" = ["assets/fonts/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests", "ml", "validation", "templates"]
 python_files = ["test_*.py", "*_test.py"]
