@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,8 @@ from ml.composite import composite_card
 from ml.data_generator import SyntheticDataGenerator
 from ml.renderer import render_card
 from templates.validate import load_json
+
+logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
@@ -38,8 +42,8 @@ def get_available_templates() -> dict[str, dict[str, Any]]:
             data = load_json(path)
             if "id" in data:
                 templates[data["id"]] = data
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Skipping invalid template file %s: %s", path, exc)
     return templates
 
 
@@ -132,8 +136,9 @@ def generate_dataset(
 
     for v_id in target_variants:
         tmpl = available[v_id]
+        v_offset = zlib.crc32(v_id.encode("utf-8")) % 10000
         for idx in range(count):
-            sample_seed = seed + idx * 1000 + hash(v_id) % 10000
+            sample_seed = seed + idx * 1000 + v_offset
             img, label = generate_single_sample(tmpl, seed=sample_seed, composite=composite)
 
             base_name = f"{v_id}_{idx:04d}"

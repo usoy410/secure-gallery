@@ -211,7 +211,7 @@ def composite_card(
     else:
         background = create_screenshot_background(canvas_w, canvas_h, rng)
 
-    # Random scale in [0.65, 0.85] and rotation in [-18, 18] degrees
+    # Random scale in [0.68, 0.82] and rotation in [-18, 18] degrees
     scale = rng.uniform(0.68, 0.82)
     angle_deg = rng.uniform(-18.0, 18.0)
 

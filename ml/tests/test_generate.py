@@ -30,6 +30,7 @@ from ml.generate import (
 )
 from ml.payment_card import (
     PUBLISHED_TEST_CARD_PREFIXES,
+    PUBLISHED_TEST_PANS,
     generate_test_card_number,
     is_luhn_valid,
 )
@@ -106,6 +107,9 @@ def test_payment_card_published_test_ranges_and_luhn() -> None:
         digits_only = card_num.replace(" ", "")
 
         assert len(digits_only) == 16, f"Invalid PAN length: {digits_only}"
+        assert digits_only in PUBLISHED_TEST_PANS, (
+            f"Card number {card_num} not in published test PAN list"
+        )
         assert any(
             digits_only.startswith(prefix) for prefix in PUBLISHED_TEST_CARD_PREFIXES
         ), f"Card number {card_num} does not start with any published test prefix"
@@ -263,3 +267,60 @@ def test_cli_generation_all_variants(tmp_path: Path) -> None:
             assert "card_corners" in data
             assert "fields" in data
             assert len(data["fields"]) >= 3
+
+
+def test_cli_subprocess_byte_identical_across_pythonhashseeds(tmp_path: Path) -> None:
+    """Verify CLI produces byte-identical outputs across subprocesses with different PYTHONHASHSEED.
+
+    Ensures CLI generation is completely deterministic across independent processes
+    regardless of process-level hash salting.
+    """
+    import os
+    import subprocess
+    import sys
+
+    dir1 = tmp_path / "hashseed_0"
+    dir2 = tmp_path / "hashseed_12345"
+
+    env1 = {**os.environ, "PYTHONHASHSEED": "0"}
+    env2 = {**os.environ, "PYTHONHASHSEED": "12345"}
+
+    cmd_base = [
+        sys.executable,
+        "-m",
+        "ml.generate",
+        "--variant",
+        "all",
+        "--count",
+        "1",
+        "--seed",
+        "42",
+    ]
+
+    subprocess.run(
+        [*cmd_base, "--out", str(dir1)],
+        env=env1,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        [*cmd_base, "--out", str(dir2)],
+        env=env2,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    files1 = sorted(dir1.glob("*.png"))
+    files2 = sorted(dir2.glob("*.png"))
+
+    assert len(files1) == len(REQUIRED_VARIANTS)
+    assert len(files2) == len(REQUIRED_VARIANTS)
+
+    for p1, p2 in zip(files1, files2, strict=False):
+        assert p1.name == p2.name
+        assert p1.read_bytes() == p2.read_bytes(), (
+            f"CLI output differs under different PYTHONHASHSEED for {p1.name}"
+        )
+

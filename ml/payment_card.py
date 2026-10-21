@@ -9,19 +9,45 @@ from __future__ import annotations
 
 import random
 
-# Published industry test Primary Account Number (PAN) prefixes.
-# Why: CLAUDE.md and Issue #5 strictly forbid using real payment card numbers.
-# We restrict all generated PANs to well-known test bins published by major payment processors:
-# - Stripe Visa test range: 424242
-# - Visa documentation test range: 400000, 411111
-# - Stripe Mastercard test range: 555555
-# - Mastercard documentation test range: 510510
-PUBLISHED_TEST_CARD_PREFIXES: tuple[str, ...] = (
-    "424242",
-    "400000",
-    "411111",
-    "555555",
-    "510510",
+# Fixed list of complete published test Primary Account Numbers (PANs).
+# Why: CLAUDE.md and Issue #5 strictly forbid using real payment card numbers or
+# randomly generated digits under test BIN prefixes. All PANs must be complete test card
+# numbers published in official developer documentation by major processors and card networks:
+#
+# Sources:
+# - Stripe: https://docs.stripe.com/testing
+#   * Visa standard test card: 4242 4242 4242 4242
+#   * Visa 3D Secure authentication card: 4000 0000 0000 0002
+#   * Visa processing test card: 4000 0000 0000 3220
+#   * Visa PIN debit test card: 4000 0000 0000 0341
+#   * Mastercard standard test card: 5555 5555 5555 4444
+# - Adyen: https://docs.adyen.com/development-resources/testing/test-card-numbers
+#   * Visa test card: 4111 1111 1111 1111
+#   * JCB test card: 3530 1113 3330 0000
+# - Mastercard Developer Documentation:
+#   * Mastercard test card: 5105 1051 0510 5100
+# - PayPal / Braintree: https://developer.paypal.com/braintree/docs/guides/credit-cards/testing
+#   * Mastercard test card: 5454 5454 5454 5454
+#   * Discover test card: 6011 1111 1111 1117
+# - Discover Developer Documentation:
+#   * Discover test card: 6011 0000 0000 0004
+PUBLISHED_TEST_PANS: tuple[str, ...] = (
+    "4242424242424242",
+    "4000000000000002",
+    "4000000000003220",
+    "4000000000000341",
+    "4111111111111111",
+    "5555555555554444",
+    "5454545454545454",
+    "5105105105105100",
+    "6011111111111117",
+    "6011000000000004",
+    "3530111333300000",
+)
+
+# BIN prefixes derived from published test PANs for backwards compatibility.
+PUBLISHED_TEST_CARD_PREFIXES: tuple[str, ...] = tuple(
+    sorted({pan[:6] for pan in PUBLISHED_TEST_PANS})
 )
 
 
@@ -75,7 +101,7 @@ def is_luhn_valid(card_number: str) -> bool:
 
 
 def generate_test_card_number(rng: random.Random) -> str:
-    """Generate a 16-digit payment card number from published test ranges passing Luhn check.
+    """Select a 16-digit payment card number from published test PANs passing Luhn check.
 
     Args:
         rng: Deterministic random instance.
@@ -83,13 +109,5 @@ def generate_test_card_number(rng: random.Random) -> str:
     Returns:
         A space-separated 16-digit card number formatted as 'XXXX XXXX XXXX XXXX'.
     """
-    prefix = rng.choice(PUBLISHED_TEST_CARD_PREFIXES)
-    # Remaining random digits before check digit (prefix + middle = 15 digits total)
-    middle_len = 15 - len(prefix)
-    middle_digits = "".join(rng.choice("0123456789") for _ in range(middle_len))
-    prefix_15 = prefix + middle_digits
-    check_digit = calculate_luhn_check_digit(prefix_15)
-    full_digits = prefix_15 + str(check_digit)
-
-    # Format into standard 4-digit groups
-    return f"{full_digits[0:4]} {full_digits[4:8]} {full_digits[8:12]} {full_digits[12:16]}"
+    pan = rng.choice(PUBLISHED_TEST_PANS)
+    return f"{pan[0:4]} {pan[4:8]} {pan[8:12]} {pan[12:16]}"
