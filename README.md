@@ -113,6 +113,15 @@ python -m ml.generate --variant all --count 5 --seed 123 --out data/benchmark
 
 # Generate clean, uncomposited card images without background rotation
 python -m ml.generate --variant payment-card-front --count 1 --seed 42 --out data/clean --clean
+
+# Apply layout jitter at render time (field offset up to ±2%, font size ±5%, print offset)
+python -m ml.generate --variant philsys-card --count 5 --seed 42 --jitter --out data/jittered
+
+# Apply image-quality conditions (blur, glare, rotation, low resolution, perspective, JPEG, crop, occlusion)
+python -m ml.generate --variant philsys-card --count 2 --seed 42 --conditions "blur:1,glare:2,perspective:3" --out data/degraded
+
+# Apply all 8 conditions across all 3 severity levels with layout jitter
+python -m ml.generate --variant philsys-card --count 1 --seed 42 --jitter --conditions all --out data/rq4
 ```
 
 ### CLI Arguments
@@ -121,17 +130,34 @@ python -m ml.generate --variant payment-card-front --count 1 --seed 42 --out dat
 - `--seed`: Deterministic integer seed for reproducible, byte-identical output (default: `42`).
 - `--out`: Output directory for `.png` image files and `.json` label ground truth (default: `data/synthetic`).
 - `--clean`: Disable background compositing to output unrotated, clean card images.
+- `--jitter`: Apply layout jitter at render time (field displacement up to ±2% of card width, font size variation within ±5%, and global print offset).
+- `--conditions`: Apply named parameterized image degradation conditions. Accepts `all`, condition names (`blur,glare`), or explicit condition:severity pairs (`blur:1,perspective:2,crop:severe`).
+
+### Supported Conditions & Severity Levels (RQ4)
+Each condition supports at least 3 severity levels (`1` / `mild`, `2` / `moderate`, `3` / `severe`):
+1. **`blur`**: Gaussian defocus blur (radius 2.0, 5.0, 9.0).
+2. **`glare`**: Camera flash / specular reflection hotspot with quadratic radial falloff.
+3. **`rotation`**: In-plane rotation (6°, 15°, 32°) with canvas expansion and transformed label polygons.
+4. **`low_resolution`**: Low-sensor downsampling (2x, 4x, 8x) and bicubic reconstruction.
+5. **`perspective`**: 3D projective homography simulating camera viewpoint tilt (IoU ≥ 0.95 with transformed masks).
+6. **`jpeg_compression`**: Lossy JPEG quantization artifacts (quality 50, 25, 10).
+7. **`crop`**: Field-of-view cropping removing canvas margins and card edges (IoU ≥ 0.95 with cropped masks). Polygons are clipped to image bounds using Sutherland-Hodgman clipping; fields with no visible area inside the crop window are omitted from the label.
+8. **`occlusion`**: Simulated holding fingers / thumbs or opaque sticky notes masking card regions.
 
 ### Output JSON Label Format
-Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04d}.json`:
+Each generated image `{variant}_{idx:04d}.png` is paired with `{variant}_{idx:04d}.json`. When conditions are applied, condition samples are named `{variant}_{idx:04d}_{condition}_s{severity}.png`. For `crop` conditions, `fields` contains only fields with non-zero visible area inside the cropped viewport, with polygon coordinates clipped to `[0, width]` and `[0, height]`:
 
 ```json
 {
+  "base_image_id": "philsys-card_0000",
   "class": "philsys",
+  "condition": "blur",
   "document_class": "philsys",
-  "variant": "philsys-card",
-  "image_path": "philsys-card_0000.png",
+  "image_path": "philsys-card_0000_blur_s1.png",
   "image_size": [1600, 1200],
+  "layout_jitter": true,
+  "severity": 1,
+  "variant": "philsys-card",
   "card_corners": [[x0, y0], [x1, y1], [x2, y2], [x3, y3]],
   "fields": [
     {

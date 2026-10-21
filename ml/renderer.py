@@ -14,6 +14,12 @@ from PIL import Image, ImageDraw
 
 from ml.avatar import generate_avatar, generate_qr_code, generate_signature
 from ml.fonts import get_font
+from ml.jitter import (
+    apply_field_jitter_to_polygon,
+    compute_field_offset,
+    compute_font_size_jitter,
+    compute_print_offset,
+)
 
 # Dimensions matching ISO/IEC 7810 ID-1 standard aspect ratio (~1.5858)
 DEFAULT_CARD_WIDTH: int = 1012
@@ -166,6 +172,7 @@ def render_card(
     seed: int = 42,
     card_width: int = DEFAULT_CARD_WIDTH,
     card_height: int = DEFAULT_CARD_HEIGHT,
+    jitter: bool = False,
 ) -> tuple[Image.Image, list[dict[str, Any]]]:
     """Render a clean ID or payment card image with exact ground-truth field polygons.
 
@@ -175,6 +182,7 @@ def render_card(
         seed: Deterministic integer seed.
         card_width: Card image width in pixels.
         card_height: Card image height in pixels.
+        jitter: Whether to apply layout jitter (field offset, font size, print offset).
 
     Returns:
         Tuple of (clean_card_image, list_of_field_ground_truth_dictionaries).
@@ -190,6 +198,13 @@ def render_card(
     is_dark_card = doc_class == "payment_card" and "back" not in template_id
     default_text_color = (255, 255, 255) if is_dark_card else (15, 15, 15)
 
+    if jitter:
+        jitter_rng = random.Random(seed ^ 0x4C61796F)
+        print_offset = compute_print_offset(jitter_rng, card_width, card_height)
+    else:
+        jitter_rng = None
+        print_offset = (0, 0)
+
     field_ground_truth: list[dict[str, Any]] = []
 
     for field in template.get("fields", []):
@@ -199,15 +214,27 @@ def render_card(
         polygon_norm = field["polygon"]
 
         # Convert normalized [0, 1] polygon to exact pixel coordinates
-        pixel_polygon: list[list[int]] = [
+        base_polygon: list[list[int]] = [
             [int(round(pt[0] * card_width)), int(round(pt[1] * card_height))]
             for pt in polygon_norm
         ]
+
+        if jitter and jitter_rng is not None:
+            field_offset = compute_field_offset(jitter_rng, card_width)
+            pixel_polygon = apply_field_jitter_to_polygon(base_polygon, print_offset, field_offset)
+        else:
+            pixel_polygon = base_polygon
+
         min_x, min_y, max_x, max_y = _get_bounding_box(pixel_polygon)
         box_w = max_x - min_x
         box_h = max_y - min_y
 
         value = field_values.get(ftype, "")
+
+        def resolve_size(base_sz: int) -> int:
+            if jitter and jitter_rng is not None:
+                return compute_font_size_jitter(jitter_rng, base_sz)
+            return base_sz
 
         if ftype == "face_photo":
             avatar_img = generate_avatar(box_w, box_h, rng)
@@ -219,15 +246,15 @@ def render_card(
             qr_img = generate_qr_code(value or f"ID:{seed}", (box_w, box_h))
             img.paste(qr_img, (min_x, min_y), qr_img)
         elif ftype in ("card_number", "pcn", "pcn_psn", "license_number"):
-            font = get_font(size=25, bold=True)
+            font = get_font(size=resolve_size(25), bold=True)
             text_color = (255, 255, 255) if is_dark_card else (0, 0, 0)
             draw.text((min_x + 6, min_y + 4), value, fill=text_color, font=font)
         elif ftype in ("full_name", "name", "cardholder_name"):
-            font = get_font(size=22, bold=True)
+            font = get_font(size=resolve_size(22), bold=True)
             text_color = (255, 255, 255) if is_dark_card else (0, 0, 0)
             draw.text((min_x + 6, min_y + 4), value, fill=text_color, font=font)
         elif ftype == "address":
-            font = get_font(size=18, bold=False)
+            font = get_font(size=resolve_size(18), bold=False)
             text_color = (255, 255, 255) if is_dark_card else (10, 10, 10)
             # If address contains comma, split street and city across two lines for clean fit
             if "," in value and len(value) > 28:
@@ -246,7 +273,7 @@ def render_card(
                 spacing=4,
             )
         elif ftype == "headings":
-            font = get_font(size=18, bold=True)
+            font = get_font(size=resolve_size(18), bold=True)
             header_color = (
                 (20, 60, 130) if doc_class in ("philsys", "lto") else default_text_color
             )
@@ -258,11 +285,11 @@ def render_card(
                 spacing=3,
             )
         elif ftype == "cvv":
-            font = get_font(size=24, bold=True)
+            font = get_font(size=resolve_size(24), bold=True)
             # CVV is printed in black ink on white signature panel
             draw.text((min_x + 8, min_y + 4), value, fill=(0, 0, 0), font=font)
         else:
-            font = get_font(size=20, bold=False)
+            font = get_font(size=resolve_size(20), bold=False)
             draw.text((min_x + 6, min_y + 4), value, fill=default_text_color, font=font)
 
         field_ground_truth.append({
