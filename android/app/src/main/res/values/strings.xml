@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Secure Gallery</string>
+    <string name="inbox_title">Review inbox</string>
+    <string name="inbox_empty_title">No items to review</string>
+    <string name="inbox_empty_description">Your gallery has no pending redactions or items requiring review.</string>
+</resources>

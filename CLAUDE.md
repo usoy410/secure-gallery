@@ -25,11 +25,12 @@ Offline Android app (Kotlin) for team SUDO's NCF BSIT-3B capstone. It scans ever
 
 ## Hard rules
 
+- **Package name:** `com.sudo.securegallery`
 - **Fully offline:** no `INTERNET` permission in the merged manifest, no cloud calls, all models bundled.
 - **Never delete an original** until its vault copy has been decrypted back and hash-checked, and the redacted copy has been saved and re-checked. Deletion goes only through `createDeleteRequest`.
 - **Never persist OCR text or field values** in Room, logs, crash reports, or analytics.
 - **Never commit real ID or card images.** Test data is synthetic only.
-- Kotlin + Jetpack Compose, minSdk 30, one app module, manual DI (`AppContainer`), no Hilt.
+- Kotlin + Jetpack Compose, minSdk 30, targetSdk 35, compileSdk 36, one app module, manual DI (`AppContainer`), no Hilt.
 - AGPL-3.0, because of Ultralytics YOLO11.
 
 ## Agent skills
