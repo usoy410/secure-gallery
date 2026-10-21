@@ -90,22 +90,32 @@ def compute_stratified_split_map(
 
 
 def validate_split_isolation(records: list[dict[str, Any]]) -> dict[str, Any]:
-    """Assert and verify that no base_image_id crosses split boundaries.
+    """Assert and verify that no base_image_id or photo source crosses split boundaries.
 
     Args:
-        records: List of manifest records containing 'base_image_id' and 'split'.
+        records: List of manifest records containing 'base_image_id', 'split',
+                 and optionally 'photo_source'.
 
     Returns:
         Dictionary with validation results, counts, and leakage status.
     """
     splits_by_base: dict[str, set[str]] = {}
+    splits_by_photo: dict[str, set[str]] = {}
+
     for r in records:
         base_id = r["base_image_id"]
         split = r["split"]
         splits_by_base.setdefault(base_id, set()).add(split)
 
+        photo_source = r.get("photo_source")
+        if photo_source and photo_source != "procedurally_generated_scene":
+            splits_by_photo.setdefault(photo_source, set()).add(split)
+
     leaking_bases = {
         base_id: splits for base_id, splits in splits_by_base.items() if len(splits) > 1
+    }
+    leaking_photos = {
+        psrc: splits for psrc, splits in splits_by_photo.items() if len(splits) > 1
     }
 
     train_bases = {r["base_image_id"] for r in records if r["split"] == "train"}
@@ -116,8 +126,12 @@ def validate_split_isolation(records: list[dict[str, Any]]) -> dict[str, Any]:
     leakage_train_test = train_bases.intersection(test_bases)
     leakage_val_test = val_bases.intersection(test_bases)
 
+    combined_leaks: dict[str, set[str]] = {**leaking_bases}
+    for psrc, splits in leaking_photos.items():
+        combined_leaks[f"photo_source:{psrc}"] = splits
+
     is_clean = (
-        len(leaking_bases) == 0
+        len(combined_leaks) == 0
         and len(leakage_train_val) == 0
         and len(leakage_train_test) == 0
         and len(leakage_val_test) == 0
@@ -130,6 +144,7 @@ def validate_split_isolation(records: list[dict[str, Any]]) -> dict[str, Any]:
         "train_bases": len(train_bases),
         "val_bases": len(val_bases),
         "test_bases": len(test_bases),
-        "leaking_bases_count": len(leaking_bases),
-        "leaking_bases": leaking_bases,
+        "leaking_bases_count": len(combined_leaks),
+        "leaking_bases": combined_leaks,
+        "leaking_photos": leaking_photos,
     }

@@ -168,6 +168,40 @@ def test_curated_photo_accepted_when_name_and_hash_match(tmp_path: Path) -> None
         entry["sha1"] = orig_sha1
 
 
+def test_curated_photos_cycled_and_distinct_with_photo_index(tmp_path: Path) -> None:
+    """Verify photo negative generator selects curated photos by index across samples."""
+    import hashlib
+
+    orig_hashes = [(p["id"], p["sha256"], p["sha1"]) for p in PUBLIC_DOMAIN_PHOTOS]
+    for i, entry in enumerate(PUBLIC_DOMAIN_PHOTOS):
+        target_path = tmp_path / entry["filename"]
+        img = Image.new("RGB", (100, 100), (10 * i, 20 * i, 30 * i))
+        img.save(target_path, format="JPEG")
+        with open(target_path, "rb") as f:
+            b = f.read()
+        entry["sha256"] = hashlib.sha256(b).hexdigest()
+        entry["sha1"] = hashlib.sha1(b).hexdigest()
+
+    try:
+        chosen_sources = []
+        for idx in range(len(PUBLIC_DOMAIN_PHOTOS)):
+            # With seed differing by 1000 like in dataset generation
+            sample_seed = 42 + idx * 1000
+            _, label = generate_negative_sample(
+                "photo", seed=sample_seed, photos_dir=tmp_path, photo_index=idx
+            )
+            chosen_sources.append(label["photo_source"])
+
+        # All curated photos must be selected distinctly
+        assert len(set(chosen_sources)) == len(PUBLIC_DOMAIN_PHOTOS)
+        assert len(set(chosen_sources)) > 1
+    finally:
+        hash_map = {item[0]: (item[1], item[2]) for item in orig_hashes}
+        for entry in PUBLIC_DOMAIN_PHOTOS:
+            if entry["id"] in hash_map:
+                entry["sha256"], entry["sha1"] = hash_map[entry["id"]]
+
+
 def test_individual_negative_subcomponents() -> None:
     """Verify individual subcomponent generators render proper dimensions and visual elements."""
     receipt = generate_receipt_image(seed=42)

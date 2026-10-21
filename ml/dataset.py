@@ -30,6 +30,7 @@ from ml.generate import (
 from ml.negatives import (
     NEGATIVE_TYPES,
     generate_negative_sample,
+    get_valid_curated_photos,
 )
 from ml.splits import (
     DEFAULT_SPLIT_RATIOS,
@@ -199,6 +200,7 @@ def build_full_dataset(
                 "expected_leak": "none",
                 "width": card_img.width,
                 "height": card_img.height,
+                "photo_source": "",
             }
             manifest_records.append(rec)
 
@@ -245,6 +247,7 @@ def build_full_dataset(
                     "expected_leak": "none",
                     "width": c_img.width,
                     "height": c_img.height,
+                    "photo_source": "",
                 })
 
             # Generate Failed Redactions (only on TEST split samples)
@@ -288,6 +291,7 @@ def build_full_dataset(
                         "expected_leak": r_label.get("expected_leak", "none"),
                         "width": r_img.width,
                         "height": r_img.height,
+                        "photo_source": "",
                     })
 
     # 2. Generate Negative Samples
@@ -299,20 +303,62 @@ def build_full_dataset(
 
         for n_type in neg_types:
             n_offset = zlib.crc32(n_type.encode("utf-8")) % 10000
-            n_split_map = compute_stratified_split_map(
-                count_per_neg, split_ratios, seed=seed + n_offset
-            )
+
+            if n_type == "photo":
+                valid_photos = get_valid_curated_photos(photos_dir)
+                if valid_photos:
+                    # Key the split for photo negatives strictly on photo identity (source file)
+                    # so that one photo source never spans across splits.
+                    photo_split_map = compute_stratified_split_map(
+                        len(valid_photos), split_ratios, seed=seed + n_offset
+                    )
+                    photo_to_split: dict[str, str] = {}
+                    for p_i, (p_path, p_meta) in enumerate(valid_photos):
+                        s_name = photo_split_map[p_i]
+                        photo_to_split[p_path.name] = s_name
+                        photo_to_split[p_meta["source"]] = s_name
+                        if p_meta.get("id"):
+                            photo_to_split[p_meta["id"]] = s_name
+                else:
+                    photo_to_split = {}
+                    n_split_map = compute_stratified_split_map(
+                        count_per_neg, split_ratios, seed=seed + n_offset
+                    )
+            else:
+                valid_photos = []
+                photo_to_split = {}
+                n_split_map = compute_stratified_split_map(
+                    count_per_neg, split_ratios, seed=seed + n_offset
+                )
 
             for idx in range(count_per_neg):
                 n_seed = seed + idx * 1000 + n_offset
                 base_name = f"neg_{n_type}_{idx:04d}"
-                assigned_split = n_split_map.get(idx, "train")
 
-                n_img, n_label = generate_negative_sample(
-                    negative_type=n_type,
-                    seed=n_seed,
-                    photos_dir=photos_dir,
-                )
+                if n_type == "photo":
+                    # Pass photo_index=idx so all curated photos are cycled through and used
+                    n_img, n_label = generate_negative_sample(
+                        negative_type=n_type,
+                        seed=n_seed,
+                        photos_dir=photos_dir,
+                        photo_index=idx,
+                    )
+                    if valid_photos:
+                        photo_key = n_label.get("photo_filename") or n_label.get("photo_source")
+                        assigned_split = photo_to_split.get(
+                            photo_key,
+                            photo_to_split.get(n_label.get("photo_source", ""), "train"),
+                        )
+                    else:
+                        assigned_split = n_split_map.get(idx, "train")
+                else:
+                    assigned_split = n_split_map.get(idx, "train")
+                    n_img, n_label = generate_negative_sample(
+                        negative_type=n_type,
+                        seed=n_seed,
+                        photos_dir=photos_dir,
+                    )
+
                 n_label["base_image_id"] = base_name
                 n_label["split"] = assigned_split
                 n_label["is_failed_redaction"] = False
@@ -344,6 +390,7 @@ def build_full_dataset(
                     "expected_leak": "none",
                     "width": n_img.width,
                     "height": n_img.height,
+                    "photo_source": n_label.get("photo_source", ""),
                 })
 
     # 3. Write manifest.csv
@@ -365,6 +412,7 @@ def build_full_dataset(
         "expected_leak",
         "width",
         "height",
+        "photo_source",
     ]
     with open(manifest_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=csv_fields)

@@ -89,10 +89,17 @@ def build_datasheet_markdown(
         f"| `{nt}` | {cnt} |" for nt, cnt in sorted(neg_counts.items())
     ) if neg_counts else "| _None_ | 0 |"
 
-    # Table for failed redaction breakdown
+    # Table for failed redaction breakdown with 3rd column description / expected leak
+    redaction_descriptions: dict[str, str] = {
+        "complete": "Solid coverage (leak: none)",
+        "partial": "Box truncated, partial field exposed (leak: partial_text_exposed)",
+        "misplaced": "Box offset from field (leak: offset_uncovered_field)",
+        "ineffective": "Transparent/blur fill (leak: transparent_or_blur_fill_legible)",
+    }
     redact_rows = "\n".join(
-        f"| `{rt}` | {cnt} |" for rt, cnt in sorted(redact_counts.items())
-    ) if redact_counts else "| _None_ | 0 |"
+        f"| `{rt}` | {cnt} | {redaction_descriptions.get(rt, 'Simulated redaction defect')} |"
+        for rt, cnt in sorted(redact_counts.items())
+    ) if redact_counts else "| _None_ | 0 | None |"
 
     # Public domain photos table
     photo_rows = "\n".join(

@@ -167,13 +167,14 @@ def apply_failed_redaction(
             covered_fractions.append(round(measured_frac, 3))
 
         elif redaction_type == "misplaced":
-            # Shift box away from field by at least fw/fh so the field remains completely exposed.
+            # Shift box away from field by at least fw/fh + 1px so the field remains
+            # completely exposed without any 1px edge overlap even at offset 0.
             # Select only candidate directions that have sufficient space inside the image canvas
             # to prevent clamping from pushing the box back over the field.
-            room_right = result_img.width - (max_x + fw)
-            room_left = min_x - fw
-            room_down = result_img.height - (max_y + fh)
-            room_up = min_y - fh
+            room_right = result_img.width - (max_x + 1 + fw)
+            room_left = min_x - 1 - fw
+            room_down = result_img.height - (max_y + 1 + fh)
+            room_up = min_y - 1 - fh
 
             candidate_dirs: list[str] = []
             if room_right >= 0:
@@ -193,30 +194,30 @@ def apply_failed_redaction(
                 chosen_dir = max(rooms, key=rooms.get)
 
             if chosen_dir == "right":
-                max_shift = min(room_right, int(fw * 0.5)) if room_right > 0 else 0
+                max_shift = min(max(0, room_right), int(fw * 0.5))
                 offset = rng.randint(0, max_shift)
-                bx1 = max_x + offset
+                bx1 = max_x + 1 + offset
                 bx2 = bx1 + fw
                 by1 = min_y
                 by2 = min_y + fh
             elif chosen_dir == "left":
-                max_shift = min(room_left, int(fw * 0.5)) if room_left > 0 else 0
+                max_shift = min(max(0, room_left), int(fw * 0.5))
                 offset = rng.randint(0, max_shift)
-                bx2 = min_x - offset
+                bx2 = min_x - 1 - offset
                 bx1 = bx2 - fw
                 by1 = min_y
                 by2 = min_y + fh
             elif chosen_dir == "down":
-                max_shift = min(room_down, int(fh * 0.5)) if room_down > 0 else 0
+                max_shift = min(max(0, room_down), int(fh * 0.5))
                 offset = rng.randint(0, max_shift)
-                by1 = max_y + offset
+                by1 = max_y + 1 + offset
                 by2 = by1 + fh
                 bx1 = min_x
                 bx2 = min_x + fw
             else:  # up
-                max_shift = min(room_up, int(fh * 0.5)) if room_up > 0 else 0
+                max_shift = min(max(0, room_up), int(fh * 0.5))
                 offset = rng.randint(0, max_shift)
-                by2 = min_y - offset
+                by2 = min_y - 1 - offset
                 by1 = by2 - fh
                 bx1 = min_x
                 bx2 = min_x + fw

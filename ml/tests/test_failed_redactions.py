@@ -190,6 +190,29 @@ def test_misplaced_redaction_seed_sweep_near_edge() -> None:
         assert red_meta["leak_fraction"] == 1.0
 
 
+def test_misplaced_redaction_strictly_non_overlapping_including_edges() -> None:
+    """Verify misplaced box coordinates are strictly disjoint from field (no 1px touch)."""
+    img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    fx1, fy1, fx2, fy2 = 400, 400, 600, 450
+    label = {
+        "fields": [
+            {
+                "type": "full_name",
+                "polygon": [[fx1, fy1], [fx2, fy1], [fx2, fy2], [fx1, fy2]],
+            }
+        ]
+    }
+    for s in range(200):
+        _, res_label = apply_failed_redaction(img, label, "misplaced", seed=s)
+        bx1, by1, bx2, by2 = res_label["redaction"]["redaction_boxes"][0]
+        # Strictly non-overlapping: at least 1px separation between box and field
+        is_separated = (bx1 > fx2) or (bx2 < fx1) or (by1 > fy2) or (by2 < fy1)
+        assert is_separated, (
+            f"Box [{bx1}, {by1}, {bx2}, {by2}] overlaps/touches field "
+            f"[{fx1}, {fy1}, {fx2}, {fy2}] at seed {s}"
+        )
+
+
 def test_partial_redaction_records_measured_covered_fraction() -> None:
     """Verify partial redaction covered_fraction matches the measured intersection area."""
     img = Image.new("RGB", (1000, 1000), (255, 255, 255))

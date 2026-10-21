@@ -505,10 +505,63 @@ def generate_screenshot_image(seed: int, width: int = 1600, height: int = 1200) 
     return img
 
 
+def get_valid_curated_photos(
+    photos_dir: str | Path = "data/photos",
+) -> list[tuple[Path, dict[str, str]]]:
+    """Retrieve verified curated CC0 / Public Domain photo files from directory.
+
+    Only files matching both curated filename and digests (sha256/sha1) are returned.
+    Files are returned deterministically sorted by filename.
+
+    Args:
+        photos_dir: Directory path where downloaded photos are stored.
+
+    Returns:
+        List of tuples of (Path, metadata_dict) for valid verified photos.
+    """
+    photos_path = Path(photos_dir)
+    if not photos_path.exists():
+        return []
+
+    curated_by_filename = {p["filename"]: p for p in PUBLIC_DOMAIN_PHOTOS}
+    valid_curated_photos: list[tuple[Path, dict[str, str]]] = []
+
+    candidate_files = (
+        sorted(photos_path.glob("*.jpg")) + sorted(photos_path.glob("*.png"))
+    )
+    for file_path in candidate_files:
+        meta = curated_by_filename.get(file_path.name)
+        if not meta:
+            logger.warning(
+                "Skipping unknown photo in photos_dir not in curated list: %s",
+                file_path.name,
+            )
+            continue
+        try:
+            with open(file_path, "rb") as f:
+                content = f.read()
+            s256 = hashlib.sha256(content).hexdigest()
+            s1 = hashlib.sha1(content).hexdigest()
+            match_sha256 = not meta.get("sha256") or s256 == meta["sha256"]
+            match_sha1 = not meta.get("sha1") or s1 == meta["sha1"]
+            if match_sha256 and match_sha1:
+                valid_curated_photos.append((file_path, meta))
+            else:
+                logger.warning(
+                    "Skipping photo %s due to hash mismatch with curated metadata",
+                    file_path.name,
+                )
+        except OSError as exc:
+            logger.warning("Could not read photo file %s: %s", file_path.name, exc)
+
+    return sorted(valid_curated_photos, key=lambda x: x[0].name)
+
+
 def generate_negative_sample(
     negative_type: str,
     seed: int,
     photos_dir: str | Path = "data/photos",
+    photo_index: int | None = None,
 ) -> tuple[Image.Image, dict[str, Any]]:
     """Generate a single negative sample image and its ground-truth label dictionary.
 
@@ -517,6 +570,8 @@ def generate_negative_sample(
                        'card_rectangle', 'screenshot', 'photo').
         seed: Deterministic integer seed.
         photos_dir: Directory to look for downloaded public domain photos.
+        photo_index: Optional index to deterministically pick from curated photo files,
+                     guaranteeing distinct photo selection across samples.
 
     Returns:
         Tuple of (PIL.Image, ground_truth_dictionary).
@@ -570,44 +625,20 @@ def generate_negative_sample(
         img = generate_screenshot_image(seed, CANVAS_WIDTH, CANVAS_HEIGHT)
 
     else:  # photo
-        photos_path = Path(photos_dir)
-        curated_by_filename = {p["filename"]: p for p in PUBLIC_DOMAIN_PHOTOS}
-        valid_curated_photos: list[tuple[Path, dict[str, str]]] = []
-
-        if photos_path.exists():
-            candidate_files = (
-                sorted(photos_path.glob("*.jpg")) + sorted(photos_path.glob("*.png"))
-            )
-            for file_path in candidate_files:
-                meta = curated_by_filename.get(file_path.name)
-                if not meta:
-                    logger.warning(
-                        "Skipping unknown photo in photos_dir not in curated list: %s",
-                        file_path.name,
-                    )
-                    continue
-                try:
-                    with open(file_path, "rb") as f:
-                        content = f.read()
-                    s256 = hashlib.sha256(content).hexdigest()
-                    s1 = hashlib.sha1(content).hexdigest()
-                    match_sha256 = not meta.get("sha256") or s256 == meta["sha256"]
-                    match_sha1 = not meta.get("sha1") or s1 == meta["sha1"]
-                    if match_sha256 and match_sha1:
-                        valid_curated_photos.append((file_path, meta))
-                    else:
-                        logger.warning(
-                            "Skipping photo %s due to hash mismatch with curated metadata",
-                            file_path.name,
-                        )
-                except OSError as exc:
-                    logger.warning("Could not read photo file %s: %s", file_path.name, exc)
+        valid_curated_photos = get_valid_curated_photos(photos_dir)
 
         if valid_curated_photos:
-            chosen_file, match_meta = valid_curated_photos[seed % len(valid_curated_photos)]
+            # Select photo by idx (when provided) or via seeded rng so all curated photos are used
+            if photo_index is not None:
+                p_idx = photo_index % len(valid_curated_photos)
+            else:
+                p_idx = rng.randrange(len(valid_curated_photos))
+            chosen_file, match_meta = valid_curated_photos[p_idx]
             loaded = Image.open(chosen_file).convert("RGB")
             img = loaded.resize((CANVAS_WIDTH, CANVAS_HEIGHT), resample=Image.Resampling.BICUBIC)
             extra_meta = {
+                "photo_id": match_meta.get("id", chosen_file.stem),
+                "photo_filename": chosen_file.name,
                 "photo_source": match_meta["source"],
                 "photo_url": match_meta["url"],
                 "photo_license": match_meta["license"],
@@ -615,8 +646,10 @@ def generate_negative_sample(
             }
         else:
             # Fallback to procedural non-network generator when no curated photos are present
-            img, proc_meta = generate_procedural_photo(seed, CANVAS_WIDTH, CANVAS_HEIGHT)
+            p_seed = seed if photo_index is None else seed + photo_index
+            img, proc_meta = generate_procedural_photo(p_seed, CANVAS_WIDTH, CANVAS_HEIGHT)
             extra_meta = {
+                "photo_id": proc_meta.get("photo_id", f"procedural_{p_seed:04d}"),
                 "photo_source": proc_meta["source"],
                 "photo_license": proc_meta["license"],
                 "photo_license_url": proc_meta["license_url"],

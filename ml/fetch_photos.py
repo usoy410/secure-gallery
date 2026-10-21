@@ -67,7 +67,7 @@ PUBLIC_DOMAIN_PHOTOS: list[dict[str, str]] = [
         "license": "Public domain",
         "license_short_name": "Public domain",
         "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
-        "description": "Red brick wall texture masonry pattern",
+        "description": "Grey brick wall texture masonry pattern",
         "retrieval_date": "2026-10-21",
         "sha1": "d284ab0785c2ed2e5562ec8421de022703f35a97",
         "sha256": "25899ccf6521d09a52e5cd25fad28686adff6a83d19d11993791041a355f90e6",
