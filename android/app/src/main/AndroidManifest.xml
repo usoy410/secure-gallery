@@ -7,6 +7,13 @@
       or permitted in any build variant or merged manifest.
     -->
 
+    <!-- Photo access (§8.1). Android 14+ may grant selected photos only. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+
     <application
         android:name=".SecureGalleryApplication"
         android:allowBackup="false"

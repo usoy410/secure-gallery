@@ -4,4 +4,25 @@
     <string name="inbox_title">Review inbox</string>
     <string name="inbox_empty_title">No items to review</string>
     <string name="inbox_empty_description">Your gallery has no pending redactions or items requiring review.</string>
+
+    <string name="nav_scan">Scan</string>
+    <string name="nav_inbox">Inbox</string>
+
+    <string name="scan_title">Gallery scan</string>
+    <string name="scan_access_title">Allow photo access</string>
+    <string name="scan_access_body">Secure Gallery checks your photos for IDs and payment cards. Everything stays on this phone. Nothing is uploaded.</string>
+    <string name="scan_access_button">Allow access</string>
+    <string name="scan_running_title">Checking your photos</string>
+    <plurals name="scan_running_body">
+        <item quantity="one">%1$d of %2$d photo checked</item>
+        <item quantity="other">%1$d of %2$d photos checked</item>
+    </plurals>
+    <string name="scan_done_title">Scan complete</string>
+    <plurals name="scan_done_body">
+        <item quantity="one">%1$d photo checked</item>
+        <item quantity="other">%1$d photos checked</item>
+    </plurals>
+    <string name="scan_now_button">Scan now</string>
+    <string name="scan_selected_body">You shared selected photos only. Secure Gallery checks just those.</string>
+    <string name="scan_selected_button">Select more photos</string>
 </resources>
