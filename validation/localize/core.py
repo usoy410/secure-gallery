@@ -211,7 +211,9 @@ def _union_box(words: list[_Word]) -> tuple[int, int, int, int]:
     )
 
 
-def find_fields(img: Image.Image, rules: list[Rule], excluded: frozenset[str]) -> list[Box]:
+def find_fields(
+    img: Image.Image, rules: list[Rule], excluded: frozenset[str], pad: int = OCR_PAD
+) -> list[Box]:
     """Run the rules over every OCR line. Boxes are in the coordinates of ``img``."""
     gray = ImageOps.grayscale(img)
     found: list[Box] = []
@@ -220,7 +222,7 @@ def find_fields(img: Image.Image, rules: list[Rule], excluded: frozenset[str]) -
         # Dark card: most text is light, but panels (e.g. the CVV strip) hold dark text.
         passes.append(ImageOps.invert(gray))
     for page in passes:
-        found += _match_lines(_ocr_lines(page), rules, excluded)
+        found += _match_lines(_ocr_lines(page), rules, excluded, pad)
     return found
 
 
@@ -228,6 +230,7 @@ def _match_lines(
     lines: list[tuple[tuple[int, int, int], list[_Word]]],
     rules: list[Rule],
     excluded: frozenset[str],
+    pad: int = OCR_PAD,
 ) -> list[Box]:
     found: list[Box] = []
     for idx, (key, words) in enumerate(lines):
@@ -245,7 +248,7 @@ def _match_lines(
                     if next_key[:2] == key[:2]:
                         hit = hit + next_words
                 x0, y0, x1, y1 = _union_box(hit)
-                x0, y0, x1, y1 = x0 - OCR_PAD, y0 - OCR_PAD, x1 + OCR_PAD, y1 + OCR_PAD
+                x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
                 found.append(Box(rule.field_type, "ocr", ((x0, y0), (x1, y0), (x1, y1), (x0, y1))))
     return found
 
@@ -255,11 +258,12 @@ def ocr_boxes(
     corners: tuple[Point, ...] | None,
     rules: list[Rule],
     excluded: frozenset[str],
+    pad: int = OCR_PAD,
 ) -> list[Box]:
     """OCR the document region. With corners, the card is first rectified to an upright
     rectangle (no template is used) and the boxes are mapped back into the image."""
     if corners is None:
-        return find_fields(image.convert("RGB"), rules, excluded)
+        return find_fields(image.convert("RGB"), rules, excluded, pad)
 
     top = ((corners[1][0] - corners[0][0]) ** 2 + (corners[1][1] - corners[0][1]) ** 2) ** 0.5
     side = ((corners[3][0] - corners[0][0]) ** 2 + (corners[3][1] - corners[0][1]) ** 2) ** 0.5
@@ -272,7 +276,7 @@ def ocr_boxes(
     )
     return [
         Box(b.field_type, b.source, tuple(project(to_image, p) for p in b.polygon))
-        for b in find_fields(upright, rules, excluded)
+        for b in find_fields(upright, rules, excluded, pad)
     ]
 
 
@@ -288,11 +292,13 @@ def localize(
     raw_corners: Any,
     rules: list[Rule],
     excluded: frozenset[str],
+    ocr_pad: int = OCR_PAD,
 ) -> Result:
     """Return the redaction boxes one strategy produces for one image.
 
     ``is_document`` says whether a supported card is present (ground truth, or the
     detector in model mode). The whole-image fallback applies only to documents.
+    ``ocr_pad`` widens each OCR box (pixels in rectified card space); RQ4 tunes it on val.
     """
     if strategy not in STRATEGIES:
         raise ValueError(f"Unknown strategy {strategy!r}; choose from {STRATEGIES}")
@@ -303,7 +309,7 @@ def localize(
         boxes += layout_boxes(template, corners)
     ocr_found: list[Box] = []
     if strategy in ("ocr_first", "hybrid"):
-        ocr_found = ocr_boxes(image, corners, rules, excluded)
+        ocr_found = ocr_boxes(image, corners, rules, excluded, ocr_pad)
         boxes += ocr_found
 
     fallback = is_document and corners is None and not ocr_found
