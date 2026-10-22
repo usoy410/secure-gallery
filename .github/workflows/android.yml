@@ -118,6 +118,15 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # The API 34 image needs about 7.4 GB for its data partition; hosted runners can have
+      # less free. Drop preinstalled toolchains this job never uses.
+      - name: Free disk space for the emulator
+        if: steps.filter.outputs.should_run == 'true'
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: Run connected tests in Android Emulator
         if: steps.filter.outputs.should_run == 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -126,6 +135,8 @@ jobs:
           target: google_apis
           arch: x86_64
           force-avd-creation: false
+          # The tests need little space; a 4 GB data partition fits on any runner.
+          disk-size: 4096M
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           # Each script line runs in its own shell, so cd and gradlew share one line.
