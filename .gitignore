@@ -33,6 +33,8 @@ Thumbs.db
 # Data directory (synthetic generation and raw data must not be committed)
 /data/
 data/
+# ...but the Android app's Room package is source code
+!android/app/src/**/data/
 
 # Model weights and training outputs
 /runs/

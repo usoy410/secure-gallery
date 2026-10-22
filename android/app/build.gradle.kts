@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.roborazzi)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -56,6 +57,11 @@ android {
     }
 }
 
+ksp {
+    // Room writes each schema version here; the files are committed so migrations can be tested.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 roborazzi {
     outputDir.set(file("build/outputs/roborazzi"))
 }
@@ -71,6 +77,11 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -83,6 +94,8 @@ dependencies {
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
