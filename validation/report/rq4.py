@@ -446,8 +446,9 @@ are one uniform fill. Partial-character band: 15% of the box. Card numbers leak 
   `over_redacted_pct` are better. A strategy that leaks less but blacks out much more
   of the card trades usefulness for safety.
 - `ocr_first` cannot see faces, QR codes or signatures, so it never covers them.
-  `layout_only` and `hybrid` map them from the template; with layout jitter their boxes
-  can miss a thin strip, which fails the strict 99.5% rule but shows as high coverage.
+  `layout_only` and `hybrid` map them from the template with a margin of 3% of the card
+  width on every side (#54), so layout jitter cannot uncover a strip. Most of
+  their `over_redacted_pct` is that margin over blank card background.
 - **Card corners come from the ground-truth labels.** `layout_only` and `hybrid` are
   scored as if the card detector were perfect, which is why their numbers barely move
   with the conditions here. Their real weakness, a detector that misplaces corners on

@@ -32,6 +32,12 @@ FILL = (0, 0, 0)
 JPEG_QUALITY = 95
 OCR_PAD = 4  # pixels added around each OCR word box, in rectified card space
 RECTIFIED_WIDTH = 1400  # OCR reads the card at this width after rectification
+# Faces, QR codes and signatures are matched by position only, so their layout box gets
+# a margin on every side, as a share of the card width. Printed fields drift up to 2% of
+# the card width plus a 0.8% print offset (ml/jitter.py), and #4 accepts templates within
+# 3% of the real card. Text fields need none: their boxes already cover the text.
+PICTURE_FIELDS = frozenset({"face_photo", "qr_code", "signature"})
+PICTURE_MARGIN = 0.03
 
 Point = tuple[float, float]
 
@@ -108,11 +114,27 @@ def load_templates() -> dict[str, dict[str, Any]]:
     return templates
 
 
+def padded_polygon(field: dict[str, Any], aspect_ratio: float) -> list[Point]:
+    """The field's polygon in unit-square card space, widened if it is a picture field.
+
+    The margin is PICTURE_MARGIN of the card width on all four sides; in unit-square
+    units that is PICTURE_MARGIN across and PICTURE_MARGIN * aspect_ratio down.
+    """
+    polygon = [(float(x), float(y)) for x, y in field["polygon"]]
+    if field["type"] not in PICTURE_FIELDS:
+        return polygon
+    xs, ys = [x for x, _ in polygon], [y for _, y in polygon]
+    mx, my = PICTURE_MARGIN, PICTURE_MARGIN * aspect_ratio
+    left, top, right, bottom = min(xs) - mx, min(ys) - my, max(xs) + mx, max(ys) + my
+    return [(left, top), (right, top), (right, bottom), (left, bottom)]
+
+
 def layout_boxes(template: dict[str, Any], corners: tuple[Point, ...]) -> list[Box]:
     """Map every sensitive template field into the image through the card homography."""
     coeffs = homography(UNIT_SQUARE, corners)
+    aspect = float(template.get("aspect_ratio", 1.0))
     return [
-        Box(f["type"], "layout", tuple(project(coeffs, (x, y)) for x, y in f["polygon"]))
+        Box(f["type"], "layout", tuple(project(coeffs, p) for p in padded_polygon(f, aspect)))
         for f in template["fields"]
         if f["sensitive"]
     ]
