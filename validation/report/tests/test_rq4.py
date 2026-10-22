@@ -13,6 +13,7 @@ from validation.report.rq4 import (
     ImageOutcome,
     aggregate,
     choose_pad,
+    covered_share,
     field_leaks,
     over_redaction,
     run_rq4,
@@ -44,6 +45,13 @@ def test_over_redaction_counts_only_non_sensitive_card_area() -> None:
     assert over_redaction({"card_corners": [], "fields": []}, [whole], (120, 120)) is None
 
 
+def test_covered_share_of_a_picture_field() -> None:
+    face = [[0, 0], [100, 0], [100, 100], [0, 100]]
+    shifted_box = [[10, 0], [110, 0], [110, 100], [10, 100]]  # misses a 10 px strip
+    assert covered_share(face, [shifted_box], (120, 120)) == pytest.approx(0.9, abs=0.02)
+    assert covered_share(face, [], (120, 120)) == 0.0
+
+
 def _r(field_type: str, channel: str, leaked: bool, judged: bool = True) -> FieldResult:
     return FieldResult("img", "philsys", "philsys-card", "none", field_type, field_type, "file",
                        channel, judged, leaked, 0.0, "x")  # fmt: skip
@@ -68,12 +76,15 @@ def test_rq4_leak_rule() -> None:
     assert rows["full_name"]["leaked"] and rows["face_photo"]["leaked"]
     assert not rows["address"]["leaked"] and not rows["address"]["strict"]
     assert rows["full_name"]["channels"] == "opacity;visible_pixels"
+    assert rows["face_photo"]["kind"] == "picture" and rows["pcn"]["kind"] == "text"
 
 
 def _outcome(strategy: str, condition: str, severity: int, leaked: int, **kw) -> ImageOutcome:
     return ImageOutcome(
         "test", strategy, 4, f"{condition}{severity}{leaked}", "philsys", condition, severity,
-        fields=5, leaked_fields=leaked, strict_leaked_fields=kw.get("strict", leaked),
+        text_fields=5, text_leaked=leaked, text_strict=kw.get("strict", leaked),
+        picture_fields=2, picture_exposed=kw.get("exposed", 0),
+        picture_covered=kw.get("covered", [1.0, 1.0]),
         fallback=kw.get("fallback", False), over_redacted=kw.get("over"),
     )  # fmt: skip
 
@@ -81,15 +92,19 @@ def _outcome(strategy: str, condition: str, severity: int, leaked: int, **kw) ->
 def test_aggregate_per_cell_and_overall() -> None:
     rows = aggregate([
         _outcome("hybrid", "none", 0, 0, over=0.1),
-        _outcome("hybrid", "blur", 3, 2, over=0.3, fallback=True, strict=4),
+        _outcome("hybrid", "blur", 3, 2, over=0.3, fallback=True, strict=4, exposed=2,
+                 covered=[0.92, 0.95]),
         _outcome("layout_only", "blur", 3, 5),
     ])  # fmt: skip
     cell = {(r["strategy"], r["condition"], r["severity"]): r for r in rows}
     blur = cell[("hybrid", "blur", "3")]
-    assert (blur["fields"], blur["leaked_fields"], blur["leak_rate"]) == (5, 2, 0.4)
+    assert (blur["text_fields"], blur["text_leaked"], blur["leak_rate"]) == (5, 2, 0.4)
     assert blur["strict_leak_rate"] == 0.8 and blur["fallback_rate"] == 1.0
+    assert (blur["picture_exposed"], blur["picture_exposed_rate"]) == (2, 1.0)
+    assert blur["picture_median_covered_pct"] == 95.0
     overall = cell[("hybrid", "ALL", "ALL")]
-    assert (overall["images"], overall["leaked_fields"], overall["images_with_leak"]) == (2, 2, 1)
+    assert (overall["images"], overall["text_leaked"], overall["images_with_leak"]) == (2, 2, 1)
+    assert overall["picture_exposed_rate"] == 0.5
     assert overall["over_redacted_pct"] == 20.0
     assert overall["leak_ci_low"] < overall["leak_rate"] < overall["leak_ci_high"]
     assert cell[("layout_only", "blur", "3")]["over_redacted_pct"] == ""

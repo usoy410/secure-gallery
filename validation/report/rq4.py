@@ -5,12 +5,14 @@ validation.localize redacts the image (solid fill, JPEG q95, as the app saves it
 the leak test from validation.leaktest judges the saved file. Results are grouped by
 strategy x condition x severity.
 
-What counts as a leak: a text field leaks when an attacker can recover its text through
-any recovery channel (visible pixels, partial characters, see-through fill, EXIF
-thumbnail, card-number structure). A picture field (face, QR code, signature) has no
-text to recover, so the opacity channel, an uncovered or see-through region, decides it.
-The stricter reading, where any channel including whole-field opacity counts for text
-fields too, is reported alongside as strict_leak_rate. Mosaic/blur is a risk flag only.
+Text and picture fields are reported separately. A text field leaks when an attacker
+can recover its text through any recovery channel (visible pixels, partial characters,
+see-through fill, EXIF thumbnail, card-number structure); that is the headline
+leak_rate. Whole-field opacity also counting for text fields is strict_leak_rate.
+Faces, QR codes and signatures have no text to recover: for them the report gives the
+share failing the 99.5% opacity rule and the median share of their area under a box,
+so a thin uncovered strip and a fully visible face are not reported as the same thing.
+Mosaic/blur is a risk flag only.
 
 Thresholds: the only tunable one is the padding OCR-first adds around each word box.
 It is picked on the val split (lowest leak rate, then least over-redaction, then the
@@ -63,9 +65,12 @@ class ImageOutcome:
     document_class: str
     condition: str
     severity: int
-    fields: int
-    leaked_fields: int
-    strict_leaked_fields: int
+    text_fields: int
+    text_leaked: int
+    text_strict: int
+    picture_fields: int
+    picture_exposed: int  # failing the 99.5% opacity rule
+    picture_covered: list[float]  # share of each picture field's area under a box
     fallback: bool
     over_redacted: float | None  # share of the non-sensitive card area covered
     field_rows: list[dict[str, Any]] = field(default_factory=list, repr=False)
@@ -113,6 +118,15 @@ def _mask(size: tuple[int, int], polygons: Iterable) -> Image.Image:
     return mask
 
 
+def covered_share(polygon: list, boxes: Iterable, size: tuple[int, int]) -> float:
+    """Share of a field's area that lies under at least one redaction box."""
+    field_mask = _mask(size, [polygon])
+    area = field_mask.histogram()[255]
+    if area == 0:
+        return 0.0
+    return ImageChops.multiply(field_mask, _mask(size, boxes)).histogram()[255] / area
+
+
 def over_redaction(label: dict, boxes: Iterable, size: tuple[int, int]) -> float | None:
     """Share of the card's non-sensitive area (card minus sensitive fields) under a box."""
     corners = label.get("card_corners") or []
@@ -129,7 +143,10 @@ def over_redaction(label: dict, boxes: Iterable, size: tuple[int, int]) -> float
 
 
 def field_leaks(results: list) -> list[dict[str, Any]]:
-    """One row per sensitive field: ``leaked`` by the RQ4 rule, ``strict`` by any channel."""
+    """One row per sensitive field: ``leaked`` by the RQ4 rule, ``strict`` by any channel.
+
+    For picture fields ``leaked`` means the field fails the opacity rule ("exposed").
+    """
     by_field: dict[tuple[str, str], list] = {}
     for r in results:
         if r.channel in FILE_CHANNELS:
@@ -142,8 +159,11 @@ def field_leaks(results: list) -> list[dict[str, Any]]:
         )
         excluded = RISK_CHANNELS if field_type in PICTURE_FIELDS else TEXT_EXCLUDED
         leaked = any(c not in excluded for c in hits)
-        rows.append({"field_type": field_type, "field_name": name, "leaked": leaked,
-                     "strict": bool(hits), "channels": ";".join(hits)})  # fmt: skip
+        kind = "picture" if field_type in PICTURE_FIELDS else "text"
+        rows.append({
+            "field_type": field_type, "field_name": name, "kind": kind, "leaked": leaked,
+            "strict": bool(hits), "channels": ";".join(hits),
+        })  # fmt: skip
     return rows
 
 
@@ -182,6 +202,15 @@ def evaluate(
             source=saved,
         )  # fmt: skip
     rows = field_leaks(judged)
+    polygons = {(f["type"], f.get("name", "")): f["polygon"] for f in label.get("fields", [])}
+    for row in rows:
+        if row["kind"] == "picture":
+            polygon = polygons[(row["field_type"], row["field_name"])]
+            row["covered"] = round(covered_share(polygon, boxes, image.size), 4)
+        else:
+            row["covered"] = ""
+    text = [r for r in rows if r["kind"] == "text"]
+    pictures = [r for r in rows if r["kind"] == "picture"]
     return ImageOutcome(
         split=record["split"],
         strategy=strategy,
@@ -190,9 +219,12 @@ def evaluate(
         document_class=record["document_class"],
         condition=record["condition"],
         severity=int(record["severity"]),
-        fields=len(rows),
-        leaked_fields=sum(r["leaked"] for r in rows),
-        strict_leaked_fields=sum(r["strict"] for r in rows),
+        text_fields=len(text),
+        text_leaked=sum(r["leaked"] for r in text),
+        text_strict=sum(r["strict"] for r in text),
+        picture_fields=len(pictures),
+        picture_exposed=sum(r["leaked"] for r in pictures),
+        picture_covered=[r["covered"] for r in pictures],
         fallback=result.fallback,
         over_redacted=over_redaction(label, boxes, image.size),
         field_rows=rows,
@@ -218,12 +250,16 @@ def aggregate(outcomes: list[ImageOutcome]) -> list[dict[str, Any]]:
     rows = []
     for key in sorted(groups, key=order):
         group = groups[key]
-        fields = sum(o.fields for o in group)
-        leaked = sum(o.leaked_fields for o in group)
-        strict = sum(o.strict_leaked_fields for o in group)
+        fields = sum(o.text_fields for o in group)
+        leaked = sum(o.text_leaked for o in group)
+        strict = sum(o.text_strict for o in group)
         low, high = wilson_interval(leaked, fields)
+        pictures = sum(o.picture_fields for o in group)
+        exposed = sum(o.picture_exposed for o in group)
+        p_low, p_high = wilson_interval(exposed, pictures)
+        covered = sorted(c for o in group for c in o.picture_covered)
         images = len(group)
-        leaky_images = sum(o.leaked_fields > 0 for o in group)
+        leaky_images = sum(o.text_leaked > 0 for o in group)
         fallbacks = sum(o.fallback for o in group)
         over = [o.over_redacted for o in group if o.over_redacted is not None]
         rows.append({
@@ -231,14 +267,22 @@ def aggregate(outcomes: list[ImageOutcome]) -> list[dict[str, Any]]:
             "condition": key[1],
             "severity": key[2],
             "images": images,
-            "fields": fields,
-            "leaked_fields": leaked,
+            "text_fields": fields,
+            "text_leaked": leaked,
             "leak_rate": round(leaked / fields, 4) if fields else 0.0,
             "leak_ci_low": round(low, 4),
             "leak_ci_high": round(high, 4),
             "strict_leak_rate": round(strict / fields, 4) if fields else 0.0,
             "images_with_leak": leaky_images,
             "image_leak_rate": round(leaky_images / images, 4) if images else 0.0,
+            "picture_fields": pictures,
+            "picture_exposed": exposed,
+            "picture_exposed_rate": round(exposed / pictures, 4) if pictures else "",
+            "picture_ci_low": round(p_low, 4) if pictures else "",
+            "picture_ci_high": round(p_high, 4) if pictures else "",
+            "picture_median_covered_pct": (
+                round(100 * covered[len(covered) // 2], 1) if covered else ""
+            ),
             "over_redacted_pct": round(100 * sum(over) / len(over), 2) if over else "",
             "fallbacks": fallbacks,
             "fallback_rate": round(fallbacks / images, 4) if images else 0.0,
@@ -318,11 +362,19 @@ def _table(rows: list[dict[str, Any]], columns: list[str]) -> str:
 def write_readme(out: Path, summary: dict[str, Any], rows: list[dict[str, Any]],
                  tuning: list[dict[str, Any]]) -> None:  # fmt: skip
     overall = [r for r in rows if r["condition"] == "ALL"]
+
+    def pct(value: Any) -> str:
+        return f"{100 * value:.1f}%" if value != "" else "n/a"
+
     headline = [
-        {**r, "leak": f"{100 * r['leak_rate']:.1f}% ({r['leaked_fields']}/{r['fields']})",
-         "95% CI": f"{100 * r['leak_ci_low']:.1f}–{100 * r['leak_ci_high']:.1f}%",
+        {"strategy": r["strategy"], "images": r["images"],
+         "text leak": f"{pct(r['leak_rate'])} ({r['text_leaked']}/{r['text_fields']})",
+         "95% CI": f"{pct(r['leak_ci_low'])} to {pct(r['leak_ci_high'])}",
+         "pictures exposed": f"{pct(r['picture_exposed_rate'])} "
+                             f"({r['picture_exposed']}/{r['picture_fields']})",
+         "picture area covered (median)": f"{r['picture_median_covered_pct']}%",
          "over-redacted": f"{r['over_redacted_pct']}%",
-         "fallback": f"{100 * r['fallback_rate']:.1f}%"}
+         "fallback": pct(r["fallback_rate"])}
         for r in overall
     ]  # fmt: skip
     text = f"""# RQ4: localization strategies by image condition
@@ -330,61 +382,72 @@ def write_readme(out: Path, summary: dict[str, Any], rows: list[dict[str, Any]],
 Generated by `python -m validation.report rq4`. Re-run that command to reproduce every
 file here; it rebuilds the benchmark from `{summary['config']}` if it is missing.
 
-**Data:** {summary['test_images']} test images ({summary['test_fields']} sensitive
-fields) from the synthetic benchmark, card images only. Negatives and the D7
-failed-redaction cases are left out. Thresholds were tuned on {summary['val_images']}
-validation images; the test split was scored once.
+**Data:** {summary['test_images']} test images from the synthetic benchmark, with
+{summary['test_fields']} sensitive text fields and {summary['test_pictures']} picture
+fields (faces, QR codes, signatures). Card images only: negatives and the D7
+failed-redaction cases are left out. The benchmark has layout jitter turned on, so
+printed fields sit a few pixels away from their template positions (§10.1).
+Thresholds were tuned on {summary['val_images']} validation images; the test split
+was scored once.
 
 **Tuned threshold:** OCR box padding = **{summary['pad']} px** (in straightened card
-space), chosen on val from {list(summary['pad_grid'])}. It applies to `ocr_first` and
-`hybrid`; `layout_only` has no tunable threshold.
+space), chosen on val from {list(summary['pad_grid'])} by lowest text leak rate, then
+least over-redaction. It applies to `ocr_first` and `hybrid`; `layout_only` has no
+tunable threshold.
 
-**Fixed values (not tuned):** leak = character error rate ≤ 0.3 or 4 consecutive digits
-of an ID or card number recovered (§9.2); opacity fails below 99.5% uniform pixels;
-partial-character band = 15% of the box; card-number leak at ≤ 1,000 Luhn-valid
-candidates. Mosaic/blur is a risk flag and does not count as a leak here.
+**Fixed values (not tuned):** a text field leaks when its text comes back with a
+character error rate of 0.3 or less, or when 4 consecutive digits of an ID or card
+number come back (§9.2). A picture field is "exposed" when under 99.5% of its pixels
+are one uniform fill. Partial-character band: 15% of the box. Card numbers leak at
+1,000 or fewer Luhn-valid candidates. Mosaic/blur is a risk flag, not a leak.
 
 ## Headline (test split, all conditions)
 
-{_table(headline, ["strategy", "images", "leak", "95% CI", "over-redacted", "fallback"])}
+{_table(headline, list(headline[0]) if headline else ["strategy"])}
 
 ## Files
 
 - `rq4_results.csv`: the main table. One row per strategy × condition × severity, plus
   an `ALL` row per strategy. Severity 0 with condition `none` is the clean card.
-  - `leak_rate`: share of sensitive fields an attacker could recover.
-    `leaked_fields / fields`. A text field counts when its text comes back through any
-    recovery channel: visible pixels, clipped characters at a box edge, a see-through
-    fill, the EXIF thumbnail, or the card-number structure. A face, QR code or
-    signature counts when its area is not fully and solidly covered (opacity).
+  - `leak_rate`: share of sensitive text fields (ID numbers, names, dates, addresses,
+    card numbers, CVV) whose text an attacker could recover:
+    `text_leaked / text_fields`. Recovery channels: visible pixels, clipped characters
+    at a box edge, a see-through fill, the EXIF thumbnail, the card-number structure.
   - `leak_ci_low`, `leak_ci_high`: 95% Wilson confidence interval for that rate.
     Small cells give wide intervals; compare strategies by whether intervals overlap.
-  - `strict_leak_rate`: the same, but whole-field opacity also counts for text fields:
-    any part of the field area left uncovered is a leak even when no text can be read.
-    Tight boxes around the text (as `ocr_first` draws) always fail this reading.
-  - `image_leak_rate`: share of images with at least one leaked field.
+  - `strict_leak_rate`: the same, but any part of a text field's area left uncovered
+    also counts, even when no text can be read. Tight boxes around the text alone
+    (as `ocr_first` draws) always fail this reading.
+  - `image_leak_rate`: share of images with at least one leaked text field.
+  - `picture_exposed_rate` (with `picture_ci_low`, `picture_ci_high`): share of faces,
+    QR codes and signatures that are not fully and solidly covered (99.5% rule).
+  - `picture_median_covered_pct`: the typical share of a picture field's area that sits
+    under a redaction box. This tells a thin uncovered strip (about 90% or more covered)
+    apart from a face left in full view (near 0%).
   - `over_redacted_pct`: average share of the card's non-sensitive area (headings,
     logos, sex, height, weight, background) that the strategy blacked out anyway.
   - `fallback_rate`: share of images where the strategy gave up and blacked out the
     whole image (no usable card corners and no OCR match).
 - `rq4_fields.csv`: one row per strategy × test image × sensitive field, with
-  `leaked` and the channels that recovered it. Use it to see which fields leak.
+  `leaked`, `strict`, the channels that recovered it, and `covered` for pictures.
 - `tuning.csv`: validation results for each padding tried for `ocr_first`.
-- `leak_rate_<condition>.png`: leak rate (with 95% CI bars) against severity 1–3 for
-  that condition, one line per strategy. Severity 0 is the clean card.
+- `leak_rate_<condition>.png`: text leak rate (with 95% CI bars) against severity 1–3
+  for that condition, one line per strategy. Severity 0 is the clean card.
 
 ## Reading the results
 
-- Lower `leak_rate` is better; so is lower `over_redacted_pct`. A strategy that leaks
-  less but blacks out much more of the card trades usefulness for safety.
-- `ocr_first` cannot see faces, QR codes or signatures, so its leak rate includes
-  those picture fields; `layout_only` and `hybrid` map them from the template.
+- Lower `leak_rate`, lower `picture_exposed_rate`, higher picture coverage and lower
+  `over_redacted_pct` are better. A strategy that leaks less but blacks out much more
+  of the card trades usefulness for safety.
+- `ocr_first` cannot see faces, QR codes or signatures, so it never covers them.
+  `layout_only` and `hybrid` map them from the template; with layout jitter their boxes
+  can miss a thin strip, which fails the strict 99.5% rule but shows as high coverage.
 - These are synthetic cards. Treat the numbers as a controlled comparison between
   strategies, not as the leak rate on real photos.
 
 ## Validation tuning
 
-{_table(tuning, ["pad", "images", "fields", "leaked_fields", "leak_rate",
+{_table(tuning, ["pad", "images", "text_fields", "text_leaked", "leak_rate",
                   "over_redacted_pct"])}
 """
     (out / "README.md").write_text(text, encoding="utf-8")
@@ -420,7 +483,7 @@ def run_rq4(
         progress(f"tuning ocr_first pad={pad} on {len(val)} val images")
         outcomes = [evaluate(r, data_dir, "ocr_first", pad, work, reader, context) for r in val]
         overall = aggregate(outcomes)[-1:] if outcomes else []
-        keep = ("images", "fields", "leaked_fields", "leak_rate", "over_redacted_pct")
+        keep = ("images", "text_fields", "text_leaked", "leak_rate", "over_redacted_pct")
         tuning += [{"pad": pad, **{k: row[k] for k in keep}} for row in overall]
     pad = choose_pad(tuning)
 
@@ -447,7 +510,8 @@ def run_rq4(
         "pad_grid": pad_grid,
         "val_images": len(val),
         "test_images": len(test),
-        "test_fields": sum(o.fields for o in outcomes if o.strategy == STRATEGIES[0]),
+        "test_fields": sum(o.text_fields for o in outcomes if o.strategy == STRATEGIES[0]),
+        "test_pictures": sum(o.picture_fields for o in outcomes if o.strategy == STRATEGIES[0]),
         "charts": [p.name for p in charts],
     }  # fmt: skip
     write_readme(out, summary, rows, tuning)
