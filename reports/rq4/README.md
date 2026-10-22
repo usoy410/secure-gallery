@@ -58,6 +58,11 @@ are one uniform fill. Partial-character band: 15% of the box. Card numbers leak 
 - `tuning.csv`: validation results for each padding tried for `ocr_first`.
 - `leak_rate_<condition>.png`: text leak rate (with 95% CI bars) against severity 1–3
   for that condition, one line per strategy. Severity 0 is the clean card.
+- `examples/`: a few synthetic test images, each shown as the original next to the
+  copy every strategy saved. Red outlines mark text fields whose text was recovered,
+  orange outlines mark pictures not fully covered. One clean card per document type,
+  then one image per condition at severity 2. Rebuild without OCR:
+  `python -m validation.report rq4-examples`.
 
 ## Reading the results
 

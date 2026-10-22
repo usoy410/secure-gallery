@@ -52,6 +52,8 @@ runs/
 !templates/**
 # Evaluation charts (plots only, never card images)
 !reports/**/*.png
+# RQ4 example gallery: synthetic benchmark cards only, size-capped by a test
+!reports/rq4/examples/*.jpg
 
 # Re-ignore Python caches inside the whitelisted paths above (later rules win)
 **/__pycache__/

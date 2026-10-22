@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from validation.leaktest.core import FieldResult
+from validation.report.examples import MAX_FILE_BYTES, MAX_TOTAL_BYTES, pick_examples
 from validation.report.rq4 import (
     ImageOutcome,
     aggregate,
@@ -19,6 +20,8 @@ from validation.report.rq4 import (
     run_rq4,
 )
 from validation.report.stats import wilson_interval
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_wilson_interval() -> None:
@@ -156,6 +159,45 @@ def test_end_to_end_on_a_small_benchmark(tmp_path: Path) -> None:
     assert set(overall) == {"ocr_first", "layout_only", "hybrid"}
     assert float(overall["layout_only"]["fallback_rate"]) == 0.0  # ground-truth corners
 
+    # Only blur at severity 1 here, so the gallery holds the clean card alone.
+    assert [p.name for p in (out / "examples").glob("*.jpg")] == ["01_lto_none.jpg"]
+
     readme = (out / "README.md").read_text(encoding="utf-8")
     assert f"OCR box padding = **{result['pad']} px**" in readme
     assert json.loads((out / "summary.json").read_text(encoding="utf-8"))["pad"] == result["pad"]
+
+
+def _record(image_id: str, doc: str, condition: str, severity: int) -> dict[str, str]:
+    return {"image_path": f"images/{image_id}.png", "document_class": doc,
+            "condition": condition, "severity": str(severity)}  # fmt: skip
+
+
+def _field(image_id: str, leaked: bool, strategy: str = "ocr_first") -> dict[str, str]:
+    return {"image_id": image_id, "strategy": strategy, "kind": "text", "leaked": str(leaked)}
+
+
+def test_examples_pick_one_clean_card_per_class_then_the_leakiest_per_condition() -> None:
+    records = [
+        _record("p0", "philsys", "none", 0), _record("p1", "philsys", "none", 0),
+        _record("c0", "payment_card", "none", 0),
+        _record("b1", "lto", "blur", 2), _record("b2", "philsys", "blur", 2),
+        _record("b3", "lto", "blur", 3),  # wrong severity
+        _record("g1", "lto", "glare", 2),
+        _record("u1", "lto", "none", 0),  # not scored: left out
+    ]  # fmt: skip
+    fields = [_field(i, False) for i in ("p0", "p1", "c0", "b1", "b3", "g1")]
+    fields += [_field("b2", True), _field("b2", True), _field("b3", True)]
+    fields += [_field("b1", True, strategy="hybrid")]  # only ocr_first leaks count
+    picked = [r["image_path"] for r in pick_examples(records, fields)]
+    assert picked == ["images/p0.png", "images/c0.png", "images/b2.png", "images/g1.png"]
+
+
+def test_committed_example_gallery_stays_small() -> None:
+    """The gallery is committed to git: keep it a handful of small synthetic JPEGs."""
+    gallery = REPO_ROOT / "reports" / "rq4" / "examples"
+    files = sorted(gallery.glob("*"))
+    assert files, "run python -m validation.report rq4-examples"
+    assert all(p.suffix == ".jpg" for p in files)
+    assert len(files) <= 12
+    assert all(p.stat().st_size <= MAX_FILE_BYTES for p in files)
+    assert sum(p.stat().st_size for p in files) <= MAX_TOTAL_BYTES
