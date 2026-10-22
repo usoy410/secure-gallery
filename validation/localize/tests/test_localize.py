@@ -17,6 +17,7 @@ from ml.generate import generate_single_sample
 from validation.localize.__main__ import main, run
 from validation.localize.core import (
     JPEG_QUALITY,
+    PICTURE_FIELDS,
     STRATEGIES,
     Box,
     complete_corners,
@@ -172,6 +173,27 @@ def test_layout_only_covers_every_sensitive_field_on_a_rotated_card() -> None:
     for field in label["fields"]:
         if field["sensitive"]:
             assert _coverage(field["polygon"], result.boxes, img.size) > 0.97, field["type"]
+
+
+@pytest.mark.parametrize("variant", ["philsys-card", "lto-dl-current"])
+def test_picture_boxes_still_cover_fields_moved_by_the_largest_jitter(variant: str) -> None:
+    img, label = _card(variant)
+    xs = [p[0] for p in label["card_corners"]]
+    ys = [p[1] for p in label["card_corners"]]
+    width, height = max(xs) - min(xs), max(ys) - min(ys)
+    # ml/jitter.py: field offset up to 2% of the card width, print offset up to 0.8%
+    # of each dimension, in both directions.
+    dx, dy = 0.02 * width + 0.008 * width, 0.02 * width + 0.008 * height
+    result = _run(img, label, "layout_only")
+    pictures = [f for f in label["fields"] if f["type"] in PICTURE_FIELDS]
+    assert pictures
+    for field in pictures:
+        for sx, sy in ((dx, dy), (-dx, dy), (dx, -dy), (-dx, -dy)):
+            moved = [[x + sx, y + sy] for x, y in field["polygon"]]
+            assert _coverage(moved, result.boxes, img.size) > 0.995, (field["type"], sx, sy)
+    # Text fields keep their template size.
+    pcn = next(b for b in result.boxes if b.field_type in ("pcn", "license_number"))
+    assert _coverage(_field(label, pcn.field_type)["polygon"], (pcn,), img.size) > 0.97
 
 
 def test_ocr_first_reads_a_rotated_card_without_template_knowledge() -> None:

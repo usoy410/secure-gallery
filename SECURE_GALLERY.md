@@ -312,7 +312,7 @@ Both checks must pass:
 | Preprocessing | Resize, grayscale, contrast, perspective correction | Compare with a no-preprocessing baseline. Do not assume preprocessing helps. |
 | Text extraction | ML Kit Text Recognition v2, bundled Latin model | Verify offline behavior and the merged manifest. |
 | Corner fit + homography | OpenCV contour/quadrilateral fit inside the detector box, `getPerspectiveTransform` to the template | Template per card design variant (§15). Compare against corner-keypoint regression only if the contour fit fails often. |
-| Field localization | Layout-first template regions, unioned with OCR + regex boxes (hybrid) | Compared against OCR-first and layout-only (RQ4). Regions are only ever expanded. |
+| Field localization | Layout-first template regions, unioned with OCR + regex boxes (hybrid) | Compared against OCR-first and layout-only (RQ4). Regions are only ever expanded. Picture fields (face, QR code, signature) get a margin of 3% of the card width on every side, because no OCR box can correct their position (#54). |
 | Redaction rendering | `Bitmap`/`Canvas` opaque solid fill, flattened JPEG | Test that covered pixels are actually replaced, not hidden by the UI. |
 | Post-redaction check | §8.5 on the device; independent OCR on the desktop (§9.2) | A limited check, not a proof of complete privacy. |
 | Augmentation | Blur, rotation, glare, compression, perspective, crop, occlusion | All versions of one base image stay in the same split. |
