@@ -13,7 +13,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -23,6 +26,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sudo.securegallery.ui.inbox.InboxScreen
 import com.sudo.securegallery.ui.scan.ScanRoute
+import com.sudo.securegallery.ui.setup.SetupRoute
+import com.sudo.securegallery.ui.setup.SetupViewModel
 import com.sudo.securegallery.ui.scan.ScanViewModel
 import com.sudo.securegallery.ui.theme.SecureGalleryTheme
 import com.sudo.securegallery.ui.vault.VaultRoute
@@ -44,6 +49,20 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             SecureGalleryTheme {
+                // First-run setup (#28) comes before the tabs until it is finished.
+                var setupDone by remember { mutableStateOf<Boolean?>(null) }
+                LaunchedEffect(Unit) { setupDone = container.setupProgress.isDone() }
+                when (setupDone) {
+                    null -> return@SecureGalleryTheme
+                    false -> {
+                        SetupRoute(
+                            viewModel(factory = SetupViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
+                            onFinished = { setupDone = true },
+                        )
+                        return@SecureGalleryTheme
+                    }
+                    true -> Unit
+                }
                 var tab by rememberSaveable { mutableIntStateOf(0) }
                 Column(Modifier.fillMaxSize()) {
                     when (tab) {

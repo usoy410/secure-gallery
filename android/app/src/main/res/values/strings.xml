@@ -45,4 +45,31 @@
     <string name="vault_too_soon">Too many wrong PINs. Try again in %1$d seconds.</string>
     <string name="vault_biometric_invalidated">Your fingerprints or face changed, so fingerprint unlock was turned off. Use your PIN, then turn it on again.</string>
     <string name="vault_biometric_failed">Fingerprint or face unlock did not work. Use your PIN.</string>
+
+    <string name="setup_step_of">Step %1$d of %2$d</string>
+    <string name="setup_get_started">Get started</string>
+    <string name="setup_continue">Continue</string>
+    <string name="setup_back">Back</string>
+    <string name="setup_not_now">Not now</string>
+    <string name="setup_finish">Finish</string>
+    <string name="setup_welcome_title">Your IDs stay on this phone</string>
+    <string name="setup_welcome_body">Secure Gallery finds photos of IDs and payment cards, hides the private details, and locks the originals away. It works offline and never uploads anything.</string>
+    <string name="setup_photos_title">Allow photo access</string>
+    <string name="setup_photos_body">The app needs to read your photos to find IDs and cards. You can share all photos or only the ones you pick.</string>
+    <string name="setup_photos_allow">Allow photo access</string>
+    <string name="setup_pin_title">Choose a PIN</string>
+    <string name="setup_pin_body">Your PIN unlocks the vault that keeps your original photos. Use at least 6 digits.</string>
+    <string name="setup_pin_label">PIN</string>
+    <string name="setup_pin_confirm_label">Enter the PIN again</string>
+    <string name="setup_pin_too_short">Use at least 6 digits.</string>
+    <string name="setup_pin_mismatch">The two PINs are different.</string>
+    <string name="setup_recovery_title">Save your recovery code</string>
+    <string name="setup_recovery_body">If you forget your PIN, this code is the only way back into the vault. Write it down and keep it somewhere safe. You will not see it again.</string>
+    <string name="setup_recovery_saved">I wrote down my recovery code</string>
+    <string name="setup_biometric_title">Unlock with fingerprint or face</string>
+    <string name="setup_biometric_body">Open the vault faster with your fingerprint or face. Your PIN still works.</string>
+    <string name="setup_biometric_turn_on">Turn on</string>
+    <string name="setup_notice_title">Copies in cloud backups</string>
+    <string name="setup_notice_body">If Google Photos or another service already backed up a photo, that copy stays in the cloud. Secure Gallery cannot remove it.</string>
+    <string name="setup_notice_uninstall">Uninstalling the app deletes the vault. Export the vault first if you want to keep your originals.</string>
 </resources>

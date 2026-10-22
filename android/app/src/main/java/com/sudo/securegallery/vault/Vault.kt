@@ -60,17 +60,31 @@ class Vault(
      * once and then wipes.
      */
     fun setUp(pin: CharArray): CharArray {
+        val code = RecoveryCode.generate()
+        create(pin, code).close()
+        return code
+    }
+
+    /**
+     * Creates the vault from a PIN and a recovery code the user has already seen and saved
+     * (first-run setup, #28), and returns the unlocked key so setup can go on without a second
+     * PBKDF2 run.
+     */
+    fun create(pin: CharArray, recoveryCode: CharArray): Key {
         check(!isSetUp()) { "vault is already set up" }
         require(pin.size >= MIN_PIN_LENGTH) { "PIN must have at least $MIN_PIN_LENGTH characters" }
+        val code = requireNotNull(RecoveryCode.normalize(recoveryCode)) { "not a recovery code" }
         val dek = VaultCrypto.randomBytes(VaultCrypto.KEY_BYTES)
-        val code = RecoveryCode.generate()
         try {
             store.writeKey(RECOVERY, wrap(dek, recoveryKek(code, existing = null), RECOVERY))
             store.writeKey(PIN, wrap(dek, pinKek(pin, existing = null), PIN))
-        } finally {
+        } catch (e: Exception) {
             dek.fill(0)
+            throw e
+        } finally {
+            code.fill('0')
         }
-        return code
+        return Key(dek)
     }
 
     fun unlock(pin: CharArray): Unlock {
