@@ -50,6 +50,8 @@ runs/
 # Whitelist allowed image locations (android test snapshots and templates)
 !android/**/src/test/**
 !templates/**
+# Evaluation charts (plots only, never card images)
+!reports/**/*.png
 
 # Re-ignore Python caches inside the whitelisted paths above (later rules win)
 **/__pycache__/
