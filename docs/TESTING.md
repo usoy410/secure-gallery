@@ -59,6 +59,11 @@ cd android
 | `scan/GalleryScannerTest` | #15 | The scan indexes every image, hashes them one at a time, skips unchanged images on the next scan, re-indexes changed ones unless they are already flagged, and marks a file deleted mid-scan as failed. |
 | `scan/PhotoAccessTest` | #15 | Each Android version asks for the right photo permission, and Android 14 "selected photos" counts as partial access. |
 | `ui/ScanScreenshotTest` | #15 | Roborazzi records the scan screen: no access, scanning (light and dark), done, and done with selected photos only. |
+| `vault/VaultCryptoTest` | #20 | AES-GCM wrapping round-trips. A wrong key, changed associated data or a flipped byte is rejected (GCM tag), and a vault file renamed to another item does not decrypt. |
+| `vault/VaultTest` | #20 | Setup gives a 24-character recovery code once. PIN and recovery-code unlock work, a wrong PIN is refused and then slowed down (also across restarts), and a new PIN can be set after recovery. A copied vault cannot be opened by PIN without this phone's Keystore key. Write-and-verify deletes a corrupted file. The key file holds no PIN, code or data key. |
+| `vault/RecoveryAndLimiterTest` | #20 | Recovery codes use an unambiguous alphabet and typed codes are normalized. The wrong-PIN delay doubles from 30 s to a 1-hour cap. |
+| `vault/NoPlaintextOnDiskTest` | #20 | After an original is stored and read back, no file in the app's data, files or cache folders contains its bytes. A failed check marks the item `FAILED` and leaves the original untouched. |
+| `vault/KeystoreVaultTest` (instrumented) | #20 | On the emulator, the real Keystore HMAC key is stable, and a full setup, store, read and recovery round trip works. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 
