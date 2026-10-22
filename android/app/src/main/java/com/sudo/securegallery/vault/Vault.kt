@@ -5,19 +5,21 @@ import java.io.File
 import java.io.InputStream
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
+import javax.crypto.Cipher
 
 /**
  * The encrypted vault for originals (§8.3).
  *
  * A random AES-256 data key (DEK) encrypts every original. The DEK is stored only wrapped:
- * once under PBKDF2(PIN) mixed with a [DeviceSecret] held in the Keystore, and once under
- * PBKDF2(recovery code). Biometric unlock (#21) adds a third wrap.
+ * once under PBKDF2(PIN) mixed with a [DeviceSecret] held in the Keystore, once under
+ * PBKDF2(recovery code), and optionally under a biometric-bound Keystore key ([BiometricKey]).
  *
  * Nothing decrypted is written to disk: originals decrypt into memory or into a digest.
  */
 class Vault(
     private val store: VaultStore,
     private val deviceSecret: DeviceSecret,
+    private val biometricKey: BiometricKey? = null,
     now: () -> Long = System::currentTimeMillis,
     private val iterations: Int = PBKDF2_ITERATIONS,
     /** Test hook: runs between writing a vault file and verifying it. */
@@ -34,6 +36,14 @@ class Vault(
         data class Success(val key: Key) : Unlock
         data class WrongPin(val waitMillis: Long) : Unlock
         data class TooSoon(val waitMillis: Long) : Unlock
+    }
+
+    sealed interface BiometricStart {
+        /** Hand this cipher to `BiometricPrompt`, then pass it to [finishBiometricUnlock]. */
+        data class Ready(val cipher: Cipher) : BiometricStart
+        data object NotEnabled : BiometricStart
+        /** Enrollment changed: biometric unlock was turned off; use the PIN, then enable it again. */
+        data object Invalidated : BiometricStart
     }
 
     sealed interface StoreResult {
@@ -88,6 +98,45 @@ class Vault(
         require(newPin.size >= MIN_PIN_LENGTH) { "PIN must have at least $MIN_PIN_LENGTH characters" }
         store.writeKey(PIN, wrap(key.bytes, pinKek(newPin, existing = null), PIN))
         limiter.recordSuccess()
+    }
+
+    fun isBiometricEnabled(): Boolean = store.readKey(BIOMETRIC) != null
+
+    /** A cipher for `BiometricPrompt` to unlock before [enableBiometric]; null if unsupported. */
+    fun biometricEnrollCipher(): Cipher? = biometricKey?.encryptCipher()
+
+    /** Wraps the data key with a cipher the user just unlocked with a biometric. */
+    fun enableBiometric(key: Key, authenticatedCipher: Cipher) {
+        // The Keystore picks the IV; keep it in front of the ciphertext.
+        val sealed = authenticatedCipher.iv + authenticatedCipher.doFinal(key.bytes)
+        store.writeKey(BIOMETRIC, WrappedKey(salt = ByteArray(0), iterations = 0, sealed = sealed))
+    }
+
+    fun startBiometricUnlock(): BiometricStart {
+        val wrapped = store.readKey(BIOMETRIC) ?: return BiometricStart.NotEnabled
+        val bio = biometricKey ?: return BiometricStart.NotEnabled
+        return try {
+            BiometricStart.Ready(bio.decryptCipher(wrapped.sealed.copyOfRange(0, GCM_IV_BYTES)))
+        } catch (_: BiometricKey.KeyInvalidated) {
+            disableBiometric()
+            BiometricStart.Invalidated
+        }
+    }
+
+    /** Unwraps the data key with the cipher `BiometricPrompt` authenticated; null on failure. */
+    fun finishBiometricUnlock(authenticatedCipher: Cipher): Key? {
+        val wrapped = store.readKey(BIOMETRIC) ?: return null
+        return try {
+            Key(authenticatedCipher.doFinal(wrapped.sealed, GCM_IV_BYTES, wrapped.sealed.size - GCM_IV_BYTES))
+                .also { limiter.recordSuccess() }
+        } catch (_: GeneralSecurityException) {
+            null
+        }
+    }
+
+    fun disableBiometric() {
+        store.removeKey(BIOMETRIC)
+        biometricKey?.delete()
     }
 
     /**
@@ -179,6 +228,8 @@ class Vault(
         private const val SALT_BYTES = 16
         private const val PIN = "pin"
         private const val RECOVERY = "recovery"
+        private const val BIOMETRIC = "biometric"
+        private const val GCM_IV_BYTES = 12
 
         fun sha256Hex(bytes: ByteArray): String =
             MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

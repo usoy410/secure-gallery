@@ -21,7 +21,8 @@ fun testVault(
     secret: DeviceSecret = FakeDeviceSecret(),
     clock: FakeClock = FakeClock(),
     afterWrite: (File) -> Unit = {},
-) = Vault(VaultStore(dir), secret, clock, iterations = 1_000, afterWrite = afterWrite)
+    biometric: BiometricKey? = null,
+) = Vault(VaultStore(dir), secret, biometric, now = clock, iterations = 1_000, afterWrite = afterWrite)
 
 fun flipLastByte(file: File) {
     val bytes = file.readBytes()

@@ -43,6 +43,12 @@ class VaultStore(val dir: File) {
         save(keysFile, props)
     }
 
+    fun removeKey(method: String) {
+        val props = load(keysFile)
+        listOf("salt", "iterations", "sealed").forEach { props.remove("$method.$it") }
+        save(keysFile, props)
+    }
+
     fun readAttempts(): Pair<Int, Long> {
         val props = load(attemptsFile)
         return (props.getProperty("failures")?.toInt() ?: 0) to (props.getProperty("last")?.toLong() ?: 0L)

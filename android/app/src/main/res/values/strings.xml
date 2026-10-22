@@ -7,6 +7,7 @@
 
     <string name="nav_scan">Scan</string>
     <string name="nav_inbox">Inbox</string>
+    <string name="nav_vault">Vault</string>
 
     <string name="scan_title">Gallery scan</string>
     <string name="scan_access_title">Allow photo access</string>
@@ -25,4 +26,23 @@
     <string name="scan_now_button">Scan now</string>
     <string name="scan_selected_body">You shared selected photos only. Secure Gallery checks just those.</string>
     <string name="scan_selected_button">Select more photos</string>
+
+    <string name="vault_title">Vault</string>
+    <string name="vault_not_set_up_title">Vault not set up</string>
+    <string name="vault_not_set_up_body">Set a PIN in first-run setup to keep originals in the vault.</string>
+    <string name="vault_locked_title">Vault locked</string>
+    <string name="vault_locked_body">Enter your PIN to see original photos.</string>
+    <string name="vault_pin_label">PIN</string>
+    <string name="vault_unlock_button">Unlock</string>
+    <string name="vault_biometric_button">Use fingerprint or face</string>
+    <string name="vault_biometric_prompt_title">Unlock the vault</string>
+    <string name="vault_biometric_prompt_use_pin">Use PIN</string>
+    <string name="vault_unlocked_title">Vault unlocked</string>
+    <string name="vault_unlocked_body">It locks again when you leave the app or after 2 minutes without use.</string>
+    <string name="vault_biometric_toggle">Unlock with fingerprint or face</string>
+    <string name="vault_lock_button">Lock now</string>
+    <string name="vault_wrong_pin">Wrong PIN. Try again.</string>
+    <string name="vault_too_soon">Too many wrong PINs. Try again in %1$d seconds.</string>
+    <string name="vault_biometric_invalidated">Your fingerprints or face changed, so fingerprint unlock was turned off. Use your PIN, then turn it on again.</string>
+    <string name="vault_biometric_failed">Fingerprint or face unlock did not work. Use your PIN.</string>
 </resources>
