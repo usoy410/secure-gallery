@@ -10,7 +10,8 @@ Every redacted image is judged against its ground-truth label, field by field:
   8 of the polygon's median colour on every channel. Below 99.5% the field fails:
   the cover is not a solid fill, or it does not cover the whole field.
 
-The partial_chars, non_opaque_fill and mosaic_blur channels live in channels.py.
+The partial_chars, non_opaque_fill and mosaic_blur channels live in channels.py;
+exif_thumbnail and metadata in filemeta.py; number_structure in numbers.py.
 Only sensitive fields are judged. OCR text is used in memory and never written out.
 """
 
@@ -43,7 +44,19 @@ PICTURE_FIELDS = frozenset({"face_photo", "signature", "qr_code"})
 # ID and card numbers, where 4 recovered digits already count as a leak (§9.2).
 NUMBER_FIELDS = frozenset({"pcn", "pcn_psn", "license_number", "card_number"})
 
-CHANNELS = ("visible_pixels", "opacity", "partial_chars", "non_opaque_fill", "mosaic_blur")
+FIELD_CHANNELS = (
+    "visible_pixels",
+    "opacity",
+    "partial_chars",
+    "non_opaque_fill",
+    "mosaic_blur",
+    "exif_thumbnail",
+    "number_structure",
+)
+# Judged once per file, reported on one row with field_type "image".
+IMAGE_CHANNELS = ("metadata",)
+CHANNELS = FIELD_CHANNELS + IMAGE_CHANNELS
+THUMB_MIN_TEXT_PX = 48  # thumbnail field crops are enlarged to this height before OCR
 # Mosaic or blur over text is a recorded risk, not a recovered leak, so the "any" summary
 # row leaves it out; it is still reported on its own row.
 RISK_CHANNELS = frozenset({"mosaic_blur"})
@@ -188,26 +201,57 @@ def judge_field(
     field: dict[str, Any],
     reader: Reader,
     boxes: list | None = None,
+    meta: Any = None,
 ) -> dict[str, Verdict]:
-    """(judged, leaked, score, rule) per channel for one field.
+    """(judged, leaked, score, rule) per field channel for one field.
 
     ``boxes`` are the redaction boxes drawn on the image (any that miss the field are
     ignored). None means they are unknown and the field polygon stands in for them.
+    ``meta`` is the file's FileMeta (filemeta.py); without it the thumbnail channel
+    is not judged.
     """
     from validation.leaktest import channels as ch
+    from validation.leaktest.numbers import CANDIDATE_LEAK_MAX, remaining_candidates
 
     polygon = field["polygon"]
     share = uniform_share(image, polygon)
     verdicts: dict[str, Verdict] = {
         "opacity": (True, share < OPACITY_MIN_SHARE, round(share, 4), "uniform")
     }
-    not_text = (False, False, 1.0, "not_text")
     if field["type"] in PICTURE_FIELDS:
-        verdicts.update({c: not_text for c in CHANNELS if c != "opacity"})
+        not_text = (False, False, 1.0, "not_text")
+        verdicts.update({c: not_text for c in FIELD_CHANNELS if c != "opacity"})
         return verdicts
 
-    leaked, rate, rule = text_verdict(reader(field_crop(image, polygon)), field)
+    recovered = reader(field_crop(image, polygon))
+    leaked, rate, rule = text_verdict(recovered, field)
     verdicts["visible_pixels"] = (True, leaked, rate, rule)
+
+    # Card-number structure: Luhn-valid numbers left given the digits that came back.
+    verdicts["number_structure"] = (False, False, 0.0, "not_card_number")
+    if field["type"] == "card_number":
+        found, candidates = remaining_candidates(str(field.get("value", "")), recovered)
+        if found:
+            verdicts["number_structure"] = (
+                True, candidates <= CANDIDATE_LEAK_MAX, float(candidates), "candidates"
+            )  # fmt: skip
+        else:
+            verdicts["number_structure"] = (False, False, 0.0, "no_digits")
+
+    # Embedded EXIF thumbnail: the same visible-pixel test on the scaled-down field.
+    verdicts["exif_thumbnail"] = (False, False, 1.0, "no_thumbnail")
+    if meta is not None and meta.thumbnail is not None:
+        from validation.leaktest.filemeta import scale_polygon
+
+        thumb_poly = scale_polygon(polygon, meta.size, meta.thumbnail.size)
+        crop = field_crop(meta.thumbnail, thumb_poly)
+        if crop.height < THUMB_MIN_TEXT_PX:
+            factor = THUMB_MIN_TEXT_PX / crop.height
+            crop = crop.resize(
+                (round(crop.width * factor), THUMB_MIN_TEXT_PX), Image.Resampling.BICUBIC
+            )
+        leaked, rate, rule = text_verdict(reader(crop), field)
+        verdicts["exif_thumbnail"] = (True, leaked, rate, rule)
 
     if boxes is None:
         over = [ch.as_polygon(polygon)]
@@ -255,25 +299,34 @@ def judge_image(
     field_types: Iterable[str] | None = None,
     boxes: list | None = None,
     box_source: str = "field",
+    source: Path | None = None,
 ) -> list[FieldResult]:
-    """Judge every sensitive field (or only ``field_types``) of one redacted image."""
+    """Judge every sensitive field (or only ``field_types``) of one redacted image.
+
+    ``source`` is the redacted file on disk. With it, the EXIF thumbnail is judged per
+    field and the file's metadata on one extra row (field_type "image").
+    """
+    from validation.leaktest.filemeta import read_file_meta
+
+    meta = read_file_meta(source) if source is not None else None
     wanted = set(field_types) if field_types is not None else None
     condition = label.get("condition") or "none"
     if label.get("severity") not in (None, ""):
         condition = f"{condition}:{label['severity']}"
+    document_class = label.get("document_class") or label.get("class", "")
     results = []
     for field in label.get("fields", []):
         if not field.get("sensitive") or not field.get("polygon"):
             continue
         if wanted is not None and field["type"] not in wanted:
             continue
-        verdicts = judge_field(image, field, reader, boxes)
-        for channel in CHANNELS:
+        verdicts = judge_field(image, field, reader, boxes, meta)
+        for channel in FIELD_CHANNELS:
             judged, leaked, score, rule = verdicts[channel]
             results.append(
                 FieldResult(
                     image_id=image_id,
-                    document_class=label.get("document_class") or label.get("class", ""),
+                    document_class=document_class,
                     variant=label.get("variant", ""),
                     condition=condition,
                     field_type=field["type"],
@@ -286,6 +339,23 @@ def judge_image(
                     rule=rule,
                 )
             )
+    if meta is not None:
+        results.append(
+            FieldResult(
+                image_id=image_id,
+                document_class=document_class,
+                variant=label.get("variant", ""),
+                condition=condition,
+                field_type="image",
+                field_name="",
+                box_source="file",
+                channel="metadata",
+                judged=True,
+                leaked=bool(meta.tags),
+                score=float(len(meta.tags)),
+                rule=";".join(meta.tags) or "none",  # tag names only, never values
+            )
+        )
     return results
 
 

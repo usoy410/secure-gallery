@@ -16,6 +16,7 @@ from ml.generate import generate_dataset, generate_single_sample, get_available_
 from validation.leaktest.__main__ import main, run
 from validation.leaktest.core import (
     CHANNELS,
+    FIELD_CHANNELS,
     OPACITY_MIN_SHARE,
     cer,
     digit_run_recovered,
@@ -121,7 +122,7 @@ def test_visible_channel_rules() -> None:
 def test_picture_fields_are_judged_by_opacity_only() -> None:
     img = _canvas()
     verdicts = judge_field(img, _field("face_photo", "[SYNTHETIC_AVATAR]"), _reader("x"))
-    assert all(verdicts[c][:2] == (False, False) for c in CHANNELS if c != "opacity")
+    assert all(verdicts[c][:2] == (False, False) for c in FIELD_CHANNELS if c != "opacity")
     assert verdicts["opacity"][0] and not verdicts["opacity"][1]  # blank square is uniform
 
 
@@ -133,7 +134,7 @@ def test_only_sensitive_fields_are_judged() -> None:
     }
     results = judge_image(_canvas(), label, "img", _reader(""))
     assert {r.field_type for r in results} == {"license_number"}
-    assert [r.channel for r in results] == list(CHANNELS)
+    assert [r.channel for r in results] == list(FIELD_CHANNELS)  # no file: no metadata row
 
 
 def test_summary_gives_counts_and_percentages() -> None:
@@ -182,12 +183,15 @@ def test_cli_writes_leaks_and_summary(tmp_path: Path) -> None:
         for p in data.glob("*.json")
         for f in json.loads(p.read_text(encoding="utf-8"))["fields"]
     )
-    assert len(rows) == sensitive * len(CHANNELS)  # image x sensitive field x channel
+    images = len(list(data.glob("*.png")))
+    # One row per image x sensitive field x field channel, plus one metadata row per image.
+    assert len(rows) == sensitive * len(FIELD_CHANNELS) + images
     assert "value" not in rows[0] and "text" not in rows[0]
     with (tmp_path / "out" / "leaks_wide.csv").open(encoding="utf-8") as fh:
         wide = list(csv.DictReader(fh))
-    assert len(wide) == sensitive
-    assert set(CHANNELS) <= set(wide[0]) and {r["box_source"] for r in wide} == {"field"}
+    assert len(wide) == sensitive + images
+    assert set(CHANNELS) <= set(wide[0])
+    assert {r["box_source"] for r in wide if r["field_type"] != "image"} == {"field"}
     assert (tmp_path / "out" / "summary.csv").exists()
     assert {"fields_judged", "leaked", "leak_pct"} <= set(summary[0])
 
