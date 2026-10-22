@@ -1,5 +1,7 @@
 """Unit tests for LiteRT model export pipeline and budget assertions."""
 
+import sys
+import types
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -23,7 +25,10 @@ def test_get_file_size_mb_missing_file():
         get_file_size_mb("non_existent_file.tflite")
 
 
-def test_export_litert_models_mocked(tmp_path: Path):
+def test_export_litert_models_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # Stand-in for ultralytics so the mocked path runs without the heavy train extra.
+    monkeypatch.setitem(sys.modules, "ultralytics", types.ModuleType("ultralytics"))
+    sys.modules["ultralytics"].YOLO = MagicMock()
     # Create fake exported file produced by model.export
     fake_exported = tmp_path / "fake_exported.tflite"
     fake_exported.write_bytes(b"\x00" * (3 * 1024 * 1024))  # 3 MB

@@ -1,5 +1,7 @@
 """Unit and smoke tests for YOLO11n-pose training and CLI entry point."""
 
+import sys
+import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -28,7 +30,7 @@ def test_prepare_smoke_dataset(tmp_path: Path):
     assert len(all_images) == 50
 
 
-def test_train_yolo_pose_mocked(tmp_path: Path):
+def test_train_yolo_pose_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     dummy_yaml = tmp_path / "dataset.yaml"
     dummy_yaml.write_text("path: .\nkpt_shape: [4, 2]\n", encoding="utf-8")
 
@@ -39,8 +41,12 @@ def test_train_yolo_pose_mocked(tmp_path: Path):
     weights_dir.mkdir(parents=True)
     (weights_dir / "best.pt").write_bytes(b"dummy_weights")
 
-    with patch("ultralytics.YOLO", return_value=mock_model), \
-         patch("ml.train.export_litert_models", return_value={"mock": True}):
+    # Stand-in for ultralytics so the mocked path runs without the heavy train extra.
+    fake_ultralytics = types.ModuleType("ultralytics")
+    fake_ultralytics.YOLO = MagicMock(return_value=mock_model)
+    monkeypatch.setitem(sys.modules, "ultralytics", fake_ultralytics)
+
+    with patch("ml.train.export_litert_models", return_value={"mock": True}):
         res = train_yolo_pose(
             dummy_yaml,
             epochs=1,
