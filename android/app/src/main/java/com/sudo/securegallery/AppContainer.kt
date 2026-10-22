@@ -6,6 +6,10 @@ import com.sudo.securegallery.data.AppDatabase
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
+import com.sudo.securegallery.vault.KeystoreDeviceSecret
+import com.sudo.securegallery.vault.Vault
+import com.sudo.securegallery.vault.VaultStore
+import java.io.File
 
 /**
  * AppContainer provides manual dependency injection across the application without Hilt.
@@ -26,6 +30,9 @@ interface AppContainer {
     val galleryScanner: GalleryScanner
 
     val workManager: WorkManager
+
+    /** Encrypted originals in app-private storage (§8.3). */
+    val vault: Vault
 }
 
 /**
@@ -49,4 +56,8 @@ class DefaultAppContainer(
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }
+
+    override val vault: Vault by lazy {
+        Vault(VaultStore(File(context.filesDir, "vault")), KeystoreDeviceSecret())
+    }
 }
