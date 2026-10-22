@@ -4,7 +4,8 @@ Writes <out>/leaks.csv (one row per image x sensitive field x channel),
 <out>/leaks_wide.csv (one row per image x field, one column per channel) and
 <out>/summary.csv (counts and percentages per class, condition and channel), and
 prints the summary table. Redaction boxes are read from <id>.boxes.json beside each
-image or from the label; without them the field polygon stands in for the box.
+image or from the label; without them the field polygon stands in for the box. The
+file itself is also checked for an EXIF thumbnail and identifying metadata.
 """
 
 from __future__ import annotations
@@ -41,7 +42,13 @@ def run(redacted_dir: Path, labels_dir: Path, out: Path, reader: Reader | None =
         boxes, source = load_boxes(image_path, label)
         with Image.open(image_path) as img:
             results += judge_image(
-                img.convert("RGB"), label, image_id, reader, boxes=boxes, box_source=source
+                img.convert("RGB"),
+                label,
+                image_id,
+                reader,
+                boxes=boxes,
+                box_source=source,
+                source=image_path,
             )
     write_leaks(results, out / "leaks.csv")
     write_leaks_wide(results, out / "leaks_wide.csv")
