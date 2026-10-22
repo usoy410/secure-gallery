@@ -6,9 +6,14 @@ import com.sudo.securegallery.data.AppDatabase
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
+import com.sudo.securegallery.vault.KeystoreBiometricKey
 import com.sudo.securegallery.vault.KeystoreDeviceSecret
 import com.sudo.securegallery.vault.Vault
+import com.sudo.securegallery.vault.VaultSession
 import com.sudo.securegallery.vault.VaultStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 /**
@@ -33,6 +38,9 @@ interface AppContainer {
 
     /** Encrypted originals in app-private storage (§8.3). */
     val vault: Vault
+
+    /** The current vault unlock; locks on background and after 2 idle minutes. */
+    val vaultSession: VaultSession
 }
 
 /**
@@ -58,6 +66,10 @@ class DefaultAppContainer(
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }
 
     override val vault: Vault by lazy {
-        Vault(VaultStore(File(context.filesDir, "vault")), KeystoreDeviceSecret())
+        Vault(VaultStore(File(context.filesDir, "vault")), KeystoreDeviceSecret(), KeystoreBiometricKey())
+    }
+
+    override val vaultSession: VaultSession by lazy {
+        VaultSession(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
     }
 }

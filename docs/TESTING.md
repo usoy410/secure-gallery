@@ -64,6 +64,10 @@ cd android
 | `vault/RecoveryAndLimiterTest` | #20 | Recovery codes use an unambiguous alphabet and typed codes are normalized. The wrong-PIN delay doubles from 30 s to a 1-hour cap. |
 | `vault/NoPlaintextOnDiskTest` | #20 | After an original is stored and read back, no file in the app's data, files or cache folders contains its bytes. A failed check marks the item `FAILED` and leaves the original untouched. |
 | `vault/KeystoreVaultTest` (instrumented) | #20 | On the emulator, the real Keystore HMAC key is stable, and a full setup, store, read and recovery round trip works. |
+| `vault/VaultBiometricTest` | #21 | A biometric-unlocked cipher unwraps the same data key. When enrollment changes, biometric unlock turns itself off, the PIN still works, and the user can re-enroll. A wrong cipher is rejected. |
+| `vault/VaultSessionTest` | #21 | The unlocked session locks after 2 idle minutes, activity restarts the timer, locking is immediate on demand (as on background), and every lock wipes the key bytes. |
+| `ui/SecureWindowTest` | #21 | `FLAG_SECURE` is set while a secure screen is shown and cleared when it leaves. |
+| `ui/VaultScreenshotTest` | #21 | Roborazzi records the vault: locked (light and dark), PIN entry, wrong PIN, too many attempts, fingerprint changed, unlocked, and not set up. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 
