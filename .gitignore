@@ -34,6 +34,13 @@ Thumbs.db
 /data/
 data/
 
+# Model weights and training outputs
+/runs/
+runs/
+*.pt
+*.tflite
+*.onnx
+
 # Block image files everywhere by default (hard rule: never commit real ID or card images)
 *.jpg
 *.jpeg
