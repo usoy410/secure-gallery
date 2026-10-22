@@ -10,12 +10,14 @@ Every redacted image is judged against its ground-truth label, field by field:
   8 of the polygon's median colour on every channel. Below 99.5% the field fails:
   the cover is not a solid fill, or it does not cover the whole field.
 
+The partial_chars, non_opaque_fill and mosaic_blur channels live in channels.py.
 Only sensitive fields are judged. OCR text is used in memory and never written out.
 """
 
 from __future__ import annotations
 
 import csv
+import json
 import re
 import statistics
 from collections.abc import Callable, Iterable
@@ -41,7 +43,10 @@ PICTURE_FIELDS = frozenset({"face_photo", "signature", "qr_code"})
 # ID and card numbers, where 4 recovered digits already count as a leak (§9.2).
 NUMBER_FIELDS = frozenset({"pcn", "pcn_psn", "license_number", "card_number"})
 
-CHANNELS = ("visible_pixels", "opacity")
+CHANNELS = ("visible_pixels", "opacity", "partial_chars", "non_opaque_fill", "mosaic_blur")
+# Mosaic or blur over text is a recorded risk, not a recovered leak, so the "any" summary
+# row leaves it out; it is still reported on its own row.
+RISK_CHANNELS = frozenset({"mosaic_blur"})
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
 
 Reader = Callable[[Image.Image], str]
@@ -55,6 +60,7 @@ class FieldResult:
     condition: str
     field_type: str
     field_name: str
+    box_source: str  # where the redaction boxes came from: "file", "label" or "field"
     channel: str
     judged: bool  # False when the channel does not apply (OCR on a picture field)
     leaked: bool
@@ -163,29 +169,82 @@ def field_crop(image: Image.Image, polygon: list) -> Image.Image:
 # --- judging --------------------------------------------------------------------
 
 
+def text_verdict(recovered: str, field: dict[str, Any]) -> tuple[bool, float, str]:
+    """The §9.2 rule: (leaked, CER, deciding rule) for OCR text read from a field."""
+    truth = str(field.get("value", ""))
+    rate = round(cer(recovered, truth), 4)
+    if rate <= CER_LEAK_MAX:
+        return True, rate, "cer"
+    if field["type"] in NUMBER_FIELDS and digit_run_recovered(recovered, truth):
+        return True, rate, "digits"
+    return False, rate, "cer"
+
+
+Verdict = tuple[bool, bool, float, str]  # judged, leaked, score, rule
+
+
 def judge_field(
-    image: Image.Image, field: dict[str, Any], reader: Reader
-) -> tuple[tuple[bool, bool, float, str], tuple[bool, bool, float, str]]:
-    """(judged, leaked, score, rule) for the visible-pixel and opacity channels."""
+    image: Image.Image,
+    field: dict[str, Any],
+    reader: Reader,
+    boxes: list | None = None,
+) -> dict[str, Verdict]:
+    """(judged, leaked, score, rule) per channel for one field.
+
+    ``boxes`` are the redaction boxes drawn on the image (any that miss the field are
+    ignored). None means they are unknown and the field polygon stands in for them.
+    """
+    from validation.leaktest import channels as ch
+
     polygon = field["polygon"]
-
     share = uniform_share(image, polygon)
-    opacity = (True, share < OPACITY_MIN_SHARE, round(share, 4), "uniform")
-
+    verdicts: dict[str, Verdict] = {
+        "opacity": (True, share < OPACITY_MIN_SHARE, round(share, 4), "uniform")
+    }
+    not_text = (False, False, 1.0, "not_text")
     if field["type"] in PICTURE_FIELDS:
-        visible = (False, False, 1.0, "not_text")
+        verdicts.update({c: not_text for c in CHANNELS if c != "opacity"})
+        return verdicts
+
+    leaked, rate, rule = text_verdict(reader(field_crop(image, polygon)), field)
+    verdicts["visible_pixels"] = (True, leaked, rate, rule)
+
+    if boxes is None:
+        over = [ch.as_polygon(polygon)]
     else:
-        recovered = reader(field_crop(image, polygon))
-        truth = str(field.get("value", ""))
-        rate = cer(recovered, truth)
-        digits = field["type"] in NUMBER_FIELDS and digit_run_recovered(recovered, truth)
-        if rate <= CER_LEAK_MAX:
-            visible = (True, True, round(rate, 4), "cer")
-        elif digits:
-            visible = (True, True, round(rate, 4), "digits")
-        else:
-            visible = (True, False, round(rate, 4), "cer")
-    return visible, opacity
+        over = ch.boxes_over_field(image.size, polygon, [ch.as_polygon(b) for b in boxes])
+    if not over:  # nothing drawn over the field: visible_pixels and opacity already judge it
+        no_box = (False, False, 1.0, "no_box")
+        verdicts.update(partial_chars=no_box, non_opaque_fill=no_box, mosaic_blur=no_box)
+        return verdicts
+
+    def judge(text: str) -> tuple[bool, float, str]:
+        return text_verdict(text, field)
+
+    for name, outcome in (
+        ("partial_chars", ch.partial_chars(image, over, reader, judge)),
+        ("non_opaque_fill", ch.non_opaque_fill(image, over, reader, judge)),
+        ("mosaic_blur", ch.mosaic_blur(image, over)),
+    ):
+        verdicts[name] = (outcome.judged, outcome.leaked, outcome.score, outcome.rule)
+    return verdicts
+
+
+def load_boxes(image_path: Path, label: dict[str, Any]) -> tuple[list | None, str]:
+    """The redaction boxes for an image and where they came from.
+
+    1. <image id>.boxes.json beside the image (written by validation.localize);
+    2. the label's redaction.redaction_boxes (D7 failed-redaction cases);
+    3. None: unknown, so each field polygon stands in for its box.
+    """
+    box_file = image_path.with_name(image_path.stem + ".boxes.json")
+    if box_file.exists():
+        record = json.loads(box_file.read_text(encoding="utf-8"))
+        return [b["polygon"] for b in record.get("boxes", [])], "file"
+    drawn = (label.get("redaction") or {}).get("redaction_boxes")
+    if drawn is not None:
+        return list(drawn), "label"
+    return None, "field"
 
 
 def judge_image(
@@ -194,6 +253,8 @@ def judge_image(
     image_id: str,
     reader: Reader,
     field_types: Iterable[str] | None = None,
+    boxes: list | None = None,
+    box_source: str = "field",
 ) -> list[FieldResult]:
     """Judge every sensitive field (or only ``field_types``) of one redacted image."""
     wanted = set(field_types) if field_types is not None else None
@@ -206,9 +267,9 @@ def judge_image(
             continue
         if wanted is not None and field["type"] not in wanted:
             continue
-        for channel, (judged, leaked, score, rule) in zip(
-            CHANNELS, judge_field(image, field, reader), strict=True
-        ):
+        verdicts = judge_field(image, field, reader, boxes)
+        for channel in CHANNELS:
+            judged, leaked, score, rule = verdicts[channel]
             results.append(
                 FieldResult(
                     image_id=image_id,
@@ -217,6 +278,7 @@ def judge_image(
                     condition=condition,
                     field_type=field["type"],
                     field_name=field.get("name", ""),
+                    box_source=box_source if boxes is not None else "field",
                     channel=channel,
                     judged=judged,
                     leaked=leaked,
@@ -267,7 +329,8 @@ def write_leaks(results: list[FieldResult], path: Path) -> None:
 def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
     """Leak counts and percentages per class, condition and channel.
 
-    The "any" channel counts a field as leaked when any judged channel leaked.
+    The "any" channel counts a field as leaked when any judged channel recovered it;
+    mosaic_blur is a risk flag and is reported only on its own row.
     Rows with class or condition "ALL" aggregate across that dimension.
     """
     per_field: dict[tuple[str, str, str, str], list[FieldResult]] = {}
@@ -282,7 +345,12 @@ def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
                 rows.append((r.document_class, r.condition, r.channel, r.leaked))
         first = group[0]
         rows.append(
-            (first.document_class, first.condition, "any", any(r.leaked for r in group if r.judged))
+            (
+                first.document_class,
+                first.condition,
+                "any",
+                any(r.leaked for r in group if r.judged and r.channel not in RISK_CHANNELS),
+            )
         )
 
     table: dict[tuple[str, str, str], list[int]] = {}
@@ -308,6 +376,27 @@ def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
             "leak_pct": round(100 * leaked / judged, 2) if judged else 0.0,
         })  # fmt: skip
     return summary
+
+
+def write_leaks_wide(results: list[FieldResult], path: Path) -> None:
+    """One row per image x field, with one column per channel: leak, ok or n/a."""
+    rows: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for r in results:
+        row = rows.setdefault((r.image_id, r.field_type, r.field_name), {
+            "image_id": r.image_id, "document_class": r.document_class, "variant": r.variant,
+            "condition": r.condition, "field_type": r.field_type, "field_name": r.field_name,
+            "box_source": r.box_source,
+        })  # fmt: skip
+        row[r.channel] = ("leak" if r.leaked else "ok") if r.judged else "n/a"
+        if r.channel == "mosaic_blur":
+            row["fill_style"] = r.rule
+    path.parent.mkdir(parents=True, exist_ok=True)
+    columns = ["image_id", "document_class", "variant", "condition", "field_type",
+               "field_name", "box_source", *CHANNELS, "fill_style"]  # fmt: skip
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows.values())
 
 
 def write_summary(summary: list[dict[str, Any]], path: Path) -> None:

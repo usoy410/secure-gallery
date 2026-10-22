@@ -1,8 +1,10 @@
 """CLI: python -m validation.leaktest <redacted_dir> --labels <dir> [--out <dir>]
 
-Writes <out>/leaks.csv (one row per image x sensitive field x channel) and
+Writes <out>/leaks.csv (one row per image x sensitive field x channel),
+<out>/leaks_wide.csv (one row per image x field, one column per channel) and
 <out>/summary.csv (counts and percentages per class, condition and channel), and
-prints the summary table.
+prints the summary table. Redaction boxes are read from <id>.boxes.json beside each
+image or from the label; without them the field polygon stands in for the box.
 """
 
 from __future__ import annotations
@@ -17,9 +19,11 @@ from validation.leaktest.core import (
     Reader,
     format_summary,
     judge_image,
+    load_boxes,
     match_labels,
     summarize,
     write_leaks,
+    write_leaks_wide,
     write_summary,
 )
 
@@ -34,9 +38,13 @@ def run(redacted_dir: Path, labels_dir: Path, out: Path, reader: Reader | None =
     results = []
     for image_id, image_path, label_path in match_labels(redacted_dir, labels_dir):
         label = json.loads(label_path.read_text(encoding="utf-8"))
+        boxes, source = load_boxes(image_path, label)
         with Image.open(image_path) as img:
-            results += judge_image(img.convert("RGB"), label, image_id, reader)
+            results += judge_image(
+                img.convert("RGB"), label, image_id, reader, boxes=boxes, box_source=source
+            )
     write_leaks(results, out / "leaks.csv")
+    write_leaks_wide(results, out / "leaks_wide.csv")
     summary = summarize(results)
     write_summary(summary, out / "summary.csv")
     return summary
