@@ -1,0 +1,24 @@
+{
+  "config": "configs/dataset.yaml",
+  "pad": 2,
+  "pad_grid": [
+    2,
+    4,
+    8,
+    12
+  ],
+  "val_images": 150,
+  "test_images": 156,
+  "test_fields": 520,
+  "test_pictures": 260,
+  "charts": [
+    "leak_rate_blur.png",
+    "leak_rate_crop.png",
+    "leak_rate_glare.png",
+    "leak_rate_jpeg_compression.png",
+    "leak_rate_low_resolution.png",
+    "leak_rate_occlusion.png",
+    "leak_rate_perspective.png",
+    "leak_rate_rotation.png"
+  ]
+}

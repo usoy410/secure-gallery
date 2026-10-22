@@ -340,7 +340,7 @@ def write_charts(rows: list[dict[str, Any]], out: Path) -> list[Path]:
             ax.errorbar(xs, ys, yerr=err, marker="o", capsize=3, label=strategy)
         ax.set_title(f"Leak rate vs {condition.replace('_', ' ')} severity")
         ax.set_xlabel("Severity (0 = no condition)")
-        ax.set_ylabel("Fields leaked (%)")
+        ax.set_ylabel("Text fields leaked (%)")
         ax.set_xticks([0, 1, 2, 3])
         ax.set_ylim(-2, 102)
         ax.grid(alpha=0.3)
@@ -442,6 +442,12 @@ are one uniform fill. Partial-character band: 15% of the box. Card numbers leak 
 - `ocr_first` cannot see faces, QR codes or signatures, so it never covers them.
   `layout_only` and `hybrid` map them from the template; with layout jitter their boxes
   can miss a thin strip, which fails the strict 99.5% rule but shows as high coverage.
+- **Card corners come from the ground-truth labels.** `layout_only` and `hybrid` are
+  scored as if the card detector were perfect, which is why their numbers barely move
+  with the conditions here. Their real weakness, a detector that misplaces corners on
+  blurred or glared photos, shows only once the trained detector (D8, issue #9) supplies
+  corners. Read this report as "localization given the card's corners", not as the
+  end-to-end comparison.
 - These are synthetic cards. Treat the numbers as a controlled comparison between
   strategies, not as the leak rate on real photos.
 

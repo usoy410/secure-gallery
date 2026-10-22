@@ -1,0 +1,5 @@
+pad,images,text_fields,text_leaked,leak_rate,over_redacted_pct
+2,150,500,35,0.07,0.87
+4,150,500,35,0.07,0.91
+8,150,500,35,0.07,1.02
+12,150,500,36,0.072,1.3
