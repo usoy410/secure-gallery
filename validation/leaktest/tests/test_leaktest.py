@@ -15,6 +15,7 @@ from ml.failed_redactions import FAILED_REDACTION_TYPES, apply_failed_redaction
 from ml.generate import generate_dataset, generate_single_sample, get_available_templates
 from validation.leaktest.__main__ import main, run
 from validation.leaktest.core import (
+    CHANNELS,
     OPACITY_MIN_SHARE,
     cer,
     digit_run_recovered,
@@ -106,21 +107,22 @@ def _field(kind: str, value: str = "9117-8364-8737-7219") -> dict:
 
 def test_visible_channel_rules() -> None:
     img = _canvas()
-    visible, _ = judge_field(img, _field("pcn"), _reader("9117-8364-8737-7219"))
-    assert visible == (True, True, 0.0, "cer")
-    visible, _ = judge_field(img, _field("pcn"), _reader("##### 8737 #####"))
-    assert visible[1] and visible[3] == "digits"
-    visible, _ = judge_field(img, _field("full_name", "DELA CRUZ, JUAN"), _reader("8737"))
-    assert not visible[1]  # 4-digit rule only applies to ID and card numbers
-    visible, _ = judge_field(img, _field("pcn"), _reader(""))
-    assert visible == (True, False, 1.0, "cer")
+
+    def visible(field: dict, text: str) -> tuple:
+        return judge_field(img, field, _reader(text))["visible_pixels"]
+
+    assert visible(_field("pcn"), "9117-8364-8737-7219") == (True, True, 0.0, "cer")
+    assert visible(_field("pcn"), "##### 8737 #####")[1:4:2] == (True, "digits")
+    # The 4-digit rule only applies to ID and card numbers.
+    assert not visible(_field("full_name", "DELA CRUZ, JUAN"), "8737")[1]
+    assert visible(_field("pcn"), "") == (True, False, 1.0, "cer")
 
 
 def test_picture_fields_are_judged_by_opacity_only() -> None:
     img = _canvas()
-    visible, opacity = judge_field(img, _field("face_photo", "[SYNTHETIC_AVATAR]"), _reader("x"))
-    assert visible[:2] == (False, False)
-    assert opacity[0] and not opacity[1]  # blank white square is uniform
+    verdicts = judge_field(img, _field("face_photo", "[SYNTHETIC_AVATAR]"), _reader("x"))
+    assert all(verdicts[c][:2] == (False, False) for c in CHANNELS if c != "opacity")
+    assert verdicts["opacity"][0] and not verdicts["opacity"][1]  # blank square is uniform
 
 
 def test_only_sensitive_fields_are_judged() -> None:
@@ -131,7 +133,7 @@ def test_only_sensitive_fields_are_judged() -> None:
     }
     results = judge_image(_canvas(), label, "img", _reader(""))
     assert {r.field_type for r in results} == {"license_number"}
-    assert [r.channel for r in results] == ["visible_pixels", "opacity"]
+    assert [r.channel for r in results] == list(CHANNELS)
 
 
 def test_summary_gives_counts_and_percentages() -> None:
@@ -180,8 +182,12 @@ def test_cli_writes_leaks_and_summary(tmp_path: Path) -> None:
         for p in data.glob("*.json")
         for f in json.loads(p.read_text(encoding="utf-8"))["fields"]
     )
-    assert len(rows) == 2 * sensitive  # one row per image x sensitive field x channel
+    assert len(rows) == sensitive * len(CHANNELS)  # image x sensitive field x channel
     assert "value" not in rows[0] and "text" not in rows[0]
+    with (tmp_path / "out" / "leaks_wide.csv").open(encoding="utf-8") as fh:
+        wide = list(csv.DictReader(fh))
+    assert len(wide) == sensitive
+    assert set(CHANNELS) <= set(wide[0]) and {r["box_source"] for r in wide} == {"field"}
     assert (tmp_path / "out" / "summary.csv").exists()
     assert {"fields_judged", "leaked", "leak_pct"} <= set(summary[0])
 
