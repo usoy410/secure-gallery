@@ -38,6 +38,8 @@ cd android
 ./gradlew lint
 ```
 
+For every test suite (Android and Python), what each group proves, and the research reports, see [`docs/TESTING.md`](docs/TESTING.md).
+
 ---
 
 ## Installing the Debug APK with `adb`
