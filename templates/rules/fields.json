@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "description": "OCR-first field rules (SECURE_GALLERY.md §8.2, §8.6). Shared by the desktop harness (validation/localize) and the app. Rules know nothing about card layout: each one matches the text of a single OCR line. Patterns use the regex subset that Python re and java.util.regex read the same way.",
+  "exclude_words": [
+    "REPUBLIC", "REPUBLIKA", "PILIPINAS", "PHILIPPINES", "PAMBANSANG", "PAGKAKAKILANLAN",
+    "DEPARTMENT", "TRANSPORTATION", "LAND", "OFFICE", "EPHILID", "SPECIMEN", "VALID",
+    "BANK", "UNIBANK", "METROBANK", "UNIONBANK", "LANDBANK", "VISA", "MASTERCARD", "PAYMENT"
+  ],
+  "rules": [
+    {
+      "field_type": "pcn",
+      "pattern": "(?<![0-9])[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}(?![0-9])",
+      "description": "PhilSys Card Number, 16 digits in dash-separated groups of four."
+    },
+    {
+      "field_type": "card_number",
+      "pattern": "(?<![0-9])[0-9]{4} ?[0-9]{4} ?[0-9]{4} ?[0-9]{4}(?![0-9])",
+      "validate": "luhn",
+      "description": "Payment card number, 16 digits, Luhn-valid."
+    },
+    {
+      "field_type": "license_number",
+      "pattern": "(?<![A-Z0-9])[A-Z][0-9]{2}-[0-9]{2}-[0-9]{6}(?![0-9])",
+      "description": "LTO license number, e.g. A01-23-456789."
+    },
+    {
+      "field_type": "date_of_birth",
+      "pattern": "(?<![0-9])(19|20)[0-9]{2}/(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])(?![0-9])",
+      "description": "Date as YYYY/MM/DD."
+    },
+    {
+      "field_type": "date_of_birth",
+      "pattern": "(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER) [0-9]{1,2}, (19|20)[0-9]{2}",
+      "description": "Date as MONTH DD, YYYY."
+    },
+    {
+      "field_type": "expiry_date",
+      "pattern": "(?<![0-9/])(0[1-9]|1[0-2])/[0-9]{2}(?![0-9/])",
+      "description": "Card expiry as MM/YY."
+    },
+    {
+      "field_type": "cvv",
+      "pattern": "^[0-9]{3,4}$",
+      "description": "A line holding only three or four digits."
+    },
+    {
+      "field_type": "full_name",
+      "pattern": "^[A-Z][A-Z'.-]+( [A-Z][A-Z'.-]+)*, [A-Z][A-Z'.-]+( [A-Z][A-Z'.-]+)*(, [A-Z][A-Z'.-]+( [A-Z][A-Z'.-]+)*)?$",
+      "skip_if_excluded_word": true,
+      "description": "Upper-case name with a comma after the surname: LAST, FIRST[, MIDDLE]."
+    },
+    {
+      "field_type": "cardholder_name",
+      "pattern": "^[A-Z][A-Z'.-]+( [A-Z][A-Z'.-]+){1,3}$",
+      "skip_if_excluded_word": true,
+      "description": "Two to four upper-case words with no digits."
+    },
+    {
+      "field_type": "address",
+      "pattern": "^[0-9]{1,5} [A-Z0-9][A-Z0-9 .,'-]*[A-Z][A-Z0-9 .,'-]*$",
+      "extend_next_line": true,
+      "description": "A line starting with a house number. The next line of the same paragraph is taken as the rest of the address."
+    }
+  ]
+}

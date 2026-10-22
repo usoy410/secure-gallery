@@ -41,12 +41,19 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng fonts-dejavu-core fonts-liberation
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng fonts-dejavu-core fonts-liberation \
+            libgl1 libglib2.0-0
+
+      - name: Cache PaddleOCR models (leak-test judge)
+        uses: actions/cache@v4
+        with:
+          path: ~/.paddlex/official_models
+          key: paddlex-${{ hashFiles('validation/leaktest/ocr.py') }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,leaktest]"
 
       - name: Lint with ruff
         run: |
