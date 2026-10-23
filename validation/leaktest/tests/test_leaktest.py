@@ -18,8 +18,10 @@ from validation.leaktest.core import (
     CHANNELS,
     FIELD_CHANNELS,
     OPACITY_MIN_SHARE,
+    FieldResult,
     cer,
     digit_run_recovered,
+    has_leak,
     judge_field,
     judge_image,
     match_labels,
@@ -232,22 +234,33 @@ def test_unredacted_text_leaks_through_the_visible_channel() -> None:
     assert visible and all(visible.values()), visible
 
 
+def _result(field_type: str, channel: str, leaked: bool = True) -> FieldResult:
+    return FieldResult("img", "philsys", "philsys-card", "none", field_type, "", "file",
+                       channel, judged=True, leaked=leaked, score=0.0, rule="")  # fmt: skip
+
+
+def test_has_leak_follows_the_agreed_rule() -> None:
+    # Opacity alone on a text field is the strict reading, not a leak (RQ4 leak_rate).
+    assert not has_leak([_result("pcn", "opacity"), _result("full_name", "mosaic_blur")])
+    assert not has_leak([_result("pcn", "visible_pixels", leaked=False)])
+    assert has_leak([_result("pcn", "visible_pixels")])
+    assert has_leak([_result("pcn", "exif_thumbnail")])
+    assert has_leak([_result("face_photo", "opacity")])  # pictures are judged on coverage
+    assert has_leak([_result("image", "metadata")])
+
+
 def test_fail_on_leak_exits_only_when_something_leaked(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import validation.leaktest.__main__ as cli
 
-    def row(channel: str, leaked: int) -> dict:
-        return {"document_class": "ALL", "condition": "ALL", "channel": channel,
-                "fields_judged": 4, "leaked": leaked, "leak_pct": 25.0 * leaked}  # fmt: skip
-
     for folder in ("redacted", "labels"):
         (tmp_path / folder).mkdir()
     args = [str(tmp_path / "redacted"), "--labels", str(tmp_path / "labels"), "--fail-on-leak"]
-    # A mosaic risk flag alone is not a leak; the "any" row decides.
-    monkeypatch.setattr(cli, "run", lambda *a, **k: [row("mosaic_blur", 2), row("any", 0)])
+    args += ["--out", str(tmp_path / "out")]
+    monkeypatch.setattr(cli, "judge_dir", lambda *a, **k: [_result("pcn", "opacity")])
     cli.main(args)
-    monkeypatch.setattr(cli, "run", lambda *a, **k: [row("opacity", 1), row("any", 1)])
+    monkeypatch.setattr(cli, "judge_dir", lambda *a, **k: [_result("qr_code", "opacity")])
     with pytest.raises(SystemExit) as exc:
         cli.main(args)
     assert exc.value.code == 1

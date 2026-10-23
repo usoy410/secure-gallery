@@ -60,6 +60,10 @@ THUMB_MIN_TEXT_PX = 48  # thumbnail field crops are enlarged to this height befo
 # Mosaic or blur over text is a recorded risk, not a recovered leak, so the "any" summary
 # row leaves it out; it is still reported on its own row.
 RISK_CHANNELS = frozenset({"mosaic_blur"})
+# Text fields are judged on whether their text can be recovered; whole-field opacity
+# only says the cover is not one uniform fill over the field, which tight boxes over
+# the text alone always fail. Shared with validation.report.rq4.
+TEXT_EXCLUDED = RISK_CHANNELS | {"opacity"}
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
 
 Reader = Callable[[Image.Image], str]
@@ -448,16 +452,22 @@ def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
     return summary
 
 
-def has_leak(summary: list[dict[str, Any]]) -> bool:
-    """True if any field leaked on a judged channel, or any file kept identifying metadata.
+def has_leak(results: list[FieldResult]) -> bool:
+    """True if anything leaked by the agreed rule (the one RQ4 reports as leak_rate).
 
-    Uses the all-classes, all-conditions "any" row, which leaves out the mosaic_blur risk flag.
+    - Text field: its text came back through a recovery channel. Whole-field opacity
+      alone does not count (that is the strict reading, see TEXT_EXCLUDED).
+    - Picture field: it failed any judged channel, opacity included.
+    - File: it kept an EXIF thumbnail of a field or identifying metadata.
+    Mosaic or blur is a risk flag and never counts.
     """
-    return any(
-        row["leaked"] > 0
-        for row in summary
-        if row["document_class"] == "ALL" and row["condition"] == "ALL" and row["channel"] == "any"
-    )
+    for r in results:
+        if not (r.judged and r.leaked) or r.channel in RISK_CHANNELS:
+            continue
+        if r.field_type not in PICTURE_FIELDS and r.channel in TEXT_EXCLUDED:
+            continue
+        return True
+    return False
 
 
 def write_leaks_wide(results: list[FieldResult], path: Path) -> None:

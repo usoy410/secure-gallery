@@ -6,12 +6,16 @@ on:
       - master
     paths:
       - 'android/**'
+      # The device leak-test job runs this code on the emulator's output (#18).
+      - 'validation/leaktest/**'
       - '.github/workflows/android.yml'
   pull_request:
     branches:
       - master
     paths:
       - 'android/**'
+      # The device leak-test job runs this code on the emulator's output (#18).
+      - 'validation/leaktest/**'
       - '.github/workflows/android.yml'
   schedule:
     # Run nightly at 02:00 UTC

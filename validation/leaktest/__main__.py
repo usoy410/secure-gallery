@@ -4,7 +4,7 @@ Writes <out>/leaks.csv (one row per image x sensitive field x channel),
 <out>/leaks_wide.csv (one row per image x field, one column per channel) and
 <out>/summary.csv (counts and percentages per class, condition and channel), and
 prints the summary table. With --fail-on-leak it exits with status 1 if anything
-leaked. Redaction boxes are read from <id>.boxes.json beside each
+leaked by the agreed rule (core.has_leak). Redaction boxes are read from <id>.boxes.json beside each
 image or from the label; without them the field polygon stands in for the box. The
 file itself is also checked for an EXIF thumbnail and identifying metadata.
 """
@@ -32,6 +32,11 @@ from validation.leaktest.core import (
 
 
 def run(redacted_dir: Path, labels_dir: Path, out: Path, reader: Reader | None = None) -> list:
+    return report(judge_dir(redacted_dir, labels_dir, reader), out)
+
+
+def judge_dir(redacted_dir: Path, labels_dir: Path, reader: Reader | None = None) -> list:
+    """Judge every redacted image against its label (PaddleOCR unless ``reader`` is given)."""
     import json
 
     if reader is None:
@@ -52,6 +57,11 @@ def run(redacted_dir: Path, labels_dir: Path, out: Path, reader: Reader | None =
                 box_source=source,
                 source=image_path,
             )
+    return results
+
+
+def report(results: list, out: Path) -> list:
+    """Write the CSVs and return the summary rows."""
     write_leaks(results, out / "leaks.csv")
     write_leaks_wide(results, out / "leaks_wide.csv")
     summary = summarize(results)
@@ -77,13 +87,14 @@ def main(argv: list[str] | None = None) -> None:
         if not folder.is_dir():
             parser.error(f"folder not found: {folder}")
     try:
-        summary = run(args.redacted_dir, args.labels, args.out)
+        results = judge_dir(args.redacted_dir, args.labels)
+        summary = report(results, args.out)
     except (FileNotFoundError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     print(format_summary(summary))
     print(f"\nWrote {args.out / 'leaks.csv'} and {args.out / 'summary.csv'}")
-    if args.fail_on_leak and has_leak(summary):
+    if args.fail_on_leak and has_leak(results):
         print("Leak found: see leaks_wide.csv", file=sys.stderr)
         sys.exit(1)
 
