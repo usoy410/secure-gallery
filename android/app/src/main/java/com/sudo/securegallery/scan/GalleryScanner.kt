@@ -5,7 +5,11 @@ import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.data.ItemState
 import com.sudo.securegallery.detect.DetectorConfig
+import com.sudo.securegallery.detect.Corner
 import com.sudo.securegallery.detect.DocumentDetector
+import com.sudo.securegallery.localize.FieldLocalizer
+import com.sudo.securegallery.localize.HybridLocalizer
+import kotlinx.coroutines.CancellationException
 import java.io.InputStream
 import java.security.MessageDigest
 
@@ -14,14 +18,16 @@ import java.security.MessageDigest
  *
  * Processing hashes the file (streamed, never decoded) and then, when a model is bundled, runs
  * the detector on a copy decoded at detection size (#16). An image with no detection at or
- * above the threshold becomes NOT_DETECTED; a detected one keeps PENDING with its class,
- * confidence and corners, waiting for field localization (#17).
+ * above the threshold becomes NOT_DETECTED; a detected one keeps its class, confidence and
+ * corners. Field localization (#17) then decodes it at OCR size, stores the boxes to redact
+ * (never the text read) and sets REDACTED or NEEDS_CHECK by the §8.2 confidence level.
  */
 class GalleryScanner(
     private val source: ImageSource,
     private val dao: ItemDao,
     private val detector: DocumentDetector? = null,
     private val detectorConfig: DetectorConfig = DetectorConfig(),
+    private val localizer: FieldLocalizer? = null,
 ) {
     data class Result(val found: Int, val processed: Int, val missing: Int)
 
@@ -47,6 +53,9 @@ class GalleryScanner(
         if (detector != null) {
             for (item in dao.awaitingDetection()) dao.update(detect(detector, item))
         }
+        if (localizer != null) {
+            for (item in dao.awaitingLocalization()) dao.update(localize(localizer, item))
+        }
         return Result(found = images.size, processed = processed, missing = missing)
     }
 
@@ -67,6 +76,28 @@ class GalleryScanner(
             documentConfidence = best.confidence,
             cardCorners = CardCorners(best.corners.flatMap { listOf(it.x, it.y) }),
         )
+    }
+
+    /**
+     * Finds the boxes to redact on one detected item. Like detection, a failure leaves the item
+     * as it was for the next scan. The OCR bitmap and everything read from it are dropped here.
+     */
+    private suspend fun localize(localizer: FieldLocalizer, item: Item): Item {
+        val documentClass = item.documentClass ?: return item
+        val found = try {
+            val image = source.loadForOcr(item.mediaStoreId, HybridLocalizer.OCR_MAX_SIDE) ?: return item
+            try {
+                val corners = item.cardCorners?.xy?.chunked(2)?.map { Corner(it[0], it[1]) }
+                localizer.localize(image, documentClass, item.documentConfidence ?: 0f, corners)
+            } finally {
+                image.bitmap.recycle()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: RuntimeException) {
+            return item
+        }
+        return item.moveTo(found.state).copy(boxes = found.boxes)
     }
 
     /** Adds new images; a changed file that was not flagged is indexed again. */
