@@ -135,6 +135,35 @@ class GalleryScannerTest {
     }
 
     @Test
+    fun detectedImageRunsFieldLocalizationWhenProvided() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        val corners = listOf(Corner(10f, 20f), Corner(110f, 20f), Corner(110f, 80f), Corner(10f, 80f))
+        val detector = com.sudo.securegallery.detect.DocumentDetector {
+            listOf(Detection(DocumentClass.PHILSYS, 0.9f, floatArrayOf(10f, 20f, 110f, 80f), corners))
+        }
+        val expectedBox = com.sudo.securegallery.data.RedactionBox(
+            com.sudo.securegallery.data.FieldType.PCN,
+            listOf(10f, 20f, 110f, 20f, 110f, 40f, 10f, 40f),
+            0.9f,
+        )
+        val localizer = com.sudo.securegallery.detect.FieldLocalizer { _, _ ->
+            com.sudo.securegallery.detect.LocalizationResult(
+                boxes = listOf(expectedBox),
+                state = ItemState.REDACTED,
+                fallback = false,
+                fieldRulesMatched = true,
+            )
+        }
+        source.decodable[1] = 1600
+        GalleryScanner(source, dao, detector, fieldLocalizer = localizer).scan()
+
+        val id = dao.byMediaStoreId(1)!!
+        assertEquals(ItemState.REDACTED, id.state)
+        assertEquals(1, id.boxes.size)
+        assertEquals(expectedBox, id.boxes[0])
+    }
+
+    @Test
     fun withoutAModelImagesAreOnlyHashed() = runTest {
         source.files[1] = "id photo".toByteArray()
         source.decodable[1] = 1600

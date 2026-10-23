@@ -54,6 +54,21 @@ class MediaStoreImageSource(
         return bitmap.toDetectorImage(originalWidth, originalHeight).also { bitmap.recycle() }
     }
 
+    override fun loadForOcr(mediaStoreId: Long, maxSide: Int): Bitmap? {
+        val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
+        return try {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
+                val originalWidth = info.size.width
+                val originalHeight = info.size.height
+                val scale = minOf(1f, maxSide.toFloat() / maxOf(originalWidth, originalHeight))
+                decoder.setTargetSize(maxOf(1, (originalWidth * scale).toInt()), maxOf(1, (originalHeight * scale).toInt()))
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            }
+        } catch (_: java.io.IOException) {
+            null
+        }
+    }
+
     override fun open(mediaStoreId: Long): InputStream? {
         val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
         return try {

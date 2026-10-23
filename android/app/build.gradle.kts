@@ -6,6 +6,19 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val copyTemplates = tasks.register<Copy>("copyTemplates") {
+    from(File(rootDir.parentFile, "templates")) {
+        include("*.json")
+        exclude("schema.json")
+        into("templates")
+    }
+    from(File(rootDir.parentFile, "templates/rules")) {
+        include("*.json")
+        into("templates/rules")
+    }
+    into(layout.buildDirectory.dir("generated/assets/templates"))
+}
+
 android {
     namespace = "com.sudo.securegallery"
     compileSdk = 36
@@ -45,6 +58,11 @@ android {
     androidResources {
         // The model is memory-mapped from the APK, so it must not be compressed.
         noCompress += "tflite"
+    }
+    sourceSets {
+        getByName("main") {
+            assets.srcDir(copyTemplates)
+        }
     }
     testOptions {
         unitTests {
@@ -91,6 +109,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.litert)
     implementation(libs.litert.gpu)
+    implementation(libs.mlkit.text.recognition)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

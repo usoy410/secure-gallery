@@ -6,6 +6,7 @@ import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.data.ItemState
 import com.sudo.securegallery.detect.DetectorConfig
 import com.sudo.securegallery.detect.DocumentDetector
+import com.sudo.securegallery.detect.FieldLocalizer
 import java.io.InputStream
 import java.security.MessageDigest
 
@@ -14,14 +15,16 @@ import java.security.MessageDigest
  *
  * Processing hashes the file (streamed, never decoded) and then, when a model is bundled, runs
  * the detector on a copy decoded at detection size (#16). An image with no detection at or
- * above the threshold becomes NOT_DETECTED; a detected one keeps PENDING with its class,
- * confidence and corners, waiting for field localization (#17).
+ * above the threshold becomes NOT_DETECTED. A detected image runs hybrid field localization (#17)
+ * to locate sensitive fields and transitions to REDACTED or NEEDS_CHECK; if no localizer is
+ * configured, it stays PENDING with its class, confidence, and corners.
  */
 class GalleryScanner(
     private val source: ImageSource,
     private val dao: ItemDao,
     private val detector: DocumentDetector? = null,
     private val detectorConfig: DetectorConfig = DetectorConfig(),
+    private val fieldLocalizer: FieldLocalizer? = null,
 ) {
     data class Result(val found: Int, val processed: Int, val missing: Int)
 
@@ -38,11 +41,31 @@ class GalleryScanner(
                 dao.update(item.moveTo(ItemState.FAILED))
                 missing++
             } else {
-                dao.update(detect(item.copy(contentHash = hash)))
+                val detected = detect(item.copy(contentHash = hash))
+                val localized = if (detected.state == ItemState.PENDING && detected.documentClass != null && fieldLocalizer != null) {
+                    localize(detected)
+                } else {
+                    detected
+                }
+                dao.update(localized)
                 processed++
             }
         }
         return Result(found = images.size, processed = processed, missing = missing)
+    }
+
+    private suspend fun localize(item: Item): Item {
+        val localizer = fieldLocalizer ?: return item
+        val bitmap = source.loadForOcr(item.mediaStoreId) ?: return item
+        val result = try {
+            localizer.localize(item, bitmap)
+        } finally {
+            bitmap.recycle()
+        }
+        return item.copy(
+            boxes = result.boxes,
+            state = result.state,
+        )
     }
 
     private fun detect(item: Item): Item {

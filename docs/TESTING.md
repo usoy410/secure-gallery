@@ -80,6 +80,12 @@ cd android
 | `data/MigrationTest` | #16 | A version 1 database (built from the committed schema) upgrades to version 2 and keeps its items. |
 | `scan/GalleryScannerTest` (detection) | #16 | The scan decodes at detection size only, keeps the most confident detection's class, confidence and corners, and marks images with none `NOT_DETECTED`. |
 | `detect/DetectorInstrumentedTest` (instrumented) | #16 | On the emulator, the bundled model loads from the app's assets and finds the right class on at least 4 of 5 synthetic photos it never saw in training. |
+| `detect/FieldRulesTest` | #17 | OCR field rules match PCN, LTO license, dates, Luhn-valid card numbers, and skip excluded words. |
+| `detect/HomographyTest` | #17 | Corner completion and Matrix.setPolyToPoly perspective mapping from unit-square template to image coordinates. |
+| `detect/CardTemplateTest` | #17 | Templates parse from JSON and apply 3% card width padding to picture fields. |
+| `detect/HybridFieldLocalizerTest` | #17 | Hybrid localization covers template fields even when text cannot be read, refines boxes with OCR, falls back on missing corners, and sets REDACTED or NEEDS_CHECK. |
+| `detect/NoPlaintextLeakedTest` | #17 | OCR recognized plaintext is strictly ephemeral in memory and never saved in Item, RedactionBox, or Room database. |
+| `detect/HybridLocalizerInstrumentedTest` (instrumented) | #17 | On the emulator, bundled ML Kit Text Recognition v2 and template homography localize sensitive fields on all 5 synthetic photo fixtures. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 

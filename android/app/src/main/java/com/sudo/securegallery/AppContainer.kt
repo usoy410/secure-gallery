@@ -40,6 +40,9 @@ interface AppContainer {
     /** The bundled document detector, or null if the build has no model (#16). */
     val detector: LiteRtDetector?
 
+    /** Hybrid field localizer combining card templates and on-device OCR (#17). */
+    val localizer: com.sudo.securegallery.detect.FieldLocalizer?
+
     val workManager: WorkManager
 
     /** Encrypted originals in app-private storage (§8.3). */
@@ -73,9 +76,33 @@ class DefaultAppContainer(
 
     override val detector: LiteRtDetector? by lazy { LiteRtDetector.open(context.assets) }
 
+    override val localizer: com.sudo.securegallery.detect.FieldLocalizer? by lazy {
+        val templates = com.sudo.securegallery.detect.CardTemplate.loadAll(context.assets)
+        val rules = try {
+            com.sudo.securegallery.detect.FieldRules.load(context.assets)
+        } catch (_: Exception) {
+            null
+        }
+        if (rules != null && templates.isNotEmpty()) {
+            com.sudo.securegallery.detect.HybridFieldLocalizer(
+                templates,
+                rules,
+                com.sudo.securegallery.detect.MlKitOcrEngine(),
+            )
+        } else {
+            null
+        }
+    }
+
     override val galleryScanner: GalleryScanner by lazy {
         val detector = detector
-        GalleryScanner(imageSource, database.itemDao(), detector, detector?.config ?: com.sudo.securegallery.detect.DetectorConfig())
+        GalleryScanner(
+            imageSource,
+            database.itemDao(),
+            detector,
+            detector?.config ?: com.sudo.securegallery.detect.DetectorConfig(),
+            localizer,
+        )
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }

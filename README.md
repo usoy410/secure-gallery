@@ -8,6 +8,13 @@ When sensitive documents are detected, Secure Gallery:
 3. Performs an on-device re-check to guarantee zero residual text or numbers before prompting to delete the original.
 4. Provides a **Review Inbox** where users can audit detections, adjust redaction bounding boxes, or mark items as not sensitive.
 
+## On-Device Detection & Hybrid Field Localization (§5.1, §8.2)
+
+- **Layout-Anchored Hybrid Redaction:** Fits the card's 4 corners and computes a homography to the class template using `android.graphics.Matrix.setPolyToPoly` (without OpenCV). Template field polygons are mapped into image coordinates, redacting sensitive fields even when text cannot be read.
+- **On-Device OCR Refinement:** Evaluates mapped regions using bundled ML Kit Text Recognition v2 and regex rules from `templates/rules/fields.json`. The final box is `union(template region, matched OCR box)` and is never shrunk.
+- **Robust Fallbacks:** Degraded images with no detectable corners fall back to OCR-first field rules; cards with unreadable text fall back to a whole-document redaction box with `NEEDS_CHECK` state.
+- **Strict Privacy Guarantees:** OCR text remains strictly in ephemeral memory and is never persisted to Room, local files, or logs. All models and recognition libraries are completely bundled offline without `android.permission.INTERNET`.
+
 ## Hard Architectural Rules
 
 - **Fully Offline:** The app never requests or merges `android.permission.INTERNET`. All inference models (LiteRT, ML Kit OCR) run strictly on-device.

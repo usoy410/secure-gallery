@@ -23,4 +23,10 @@ interface ImageSource {
      * decodes at full resolution (§8.2). Null if it cannot be decoded.
      */
     fun loadForDetection(mediaStoreId: Long, maxSide: Int): DetectorImage? = null
+
+    /**
+     * Decodes the image with its long side bounded by [maxSide] (<= 2048 px per §8.2) for OCR.
+     */
+    fun loadForOcr(mediaStoreId: Long, maxSide: Int = 2048): android.graphics.Bitmap? =
+        open(mediaStoreId)?.use { android.graphics.BitmapFactory.decodeStream(it) }
 }

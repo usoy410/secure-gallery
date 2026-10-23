@@ -23,6 +23,8 @@ eggs/
 # Android / Gradle caches and artifacts
 .gradle/
 */build/
+.kotlin/
+**/.kotlin/
 
 # IDE / OS caches
 .DS_Store
