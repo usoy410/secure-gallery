@@ -189,6 +189,14 @@ def _ocr_lines(img: Image.Image) -> list[tuple[tuple[int, int, int], list[_Word]
         lines.setdefault(key, []).append(
             _Word(text, (left, top, left + data["width"][i], top + data["height"][i]))
         )
+    return _order_lines(lines)
+
+
+def _order_lines(
+    lines: dict[tuple[int, int, int], list[_Word]],
+) -> list[tuple[tuple[int, int, int], list[_Word]]]:
+    """Lines top to bottom and words left to right, with each word's offset in its line,
+    then pieces of one printed row joined. The app ports this (FieldRules.orderLines)."""
     ordered = []
     for key in sorted(lines, key=lambda k: (min(w.box[1] for w in lines[k]), k)):
         words = sorted(lines[key], key=lambda w: w.box[0])

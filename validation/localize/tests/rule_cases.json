@@ -1,0 +1,727 @@
+{
+ "description": "Field-rule matching cases shared by validation/localize (Python) and the app's FieldRules (Kotlin, #17). Synthetic text only. Each line is one OCR line: block, line in block, and words as [text, left, top, right, bottom]. Expected boxes come from validation/localize/core.py with OCR_PAD 4; both test suites check them.",
+ "cases": [
+  {
+   "name": "pcn",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "PCN",
+       40,
+       50,
+       90,
+       80
+      ],
+      [
+       "1234-5678-9012-3456",
+       100,
+       50,
+       400,
+       80
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "pcn",
+     "box": [
+      96,
+      46,
+      404,
+      84
+     ]
+    }
+   ]
+  },
+  {
+   "name": "luhn_valid_card_number",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "4111",
+       100,
+       200,
+       160,
+       230
+      ],
+      [
+       "1111",
+       170,
+       200,
+       230,
+       230
+      ],
+      [
+       "1111",
+       240,
+       200,
+       300,
+       230
+      ],
+      [
+       "1111",
+       310,
+       200,
+       370,
+       230
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "card_number",
+     "box": [
+      96,
+      196,
+      374,
+      234
+     ]
+    }
+   ]
+  },
+  {
+   "name": "luhn_invalid_card_number",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "4111",
+       100,
+       200,
+       160,
+       230
+      ],
+      [
+       "1111",
+       170,
+       200,
+       230,
+       230
+      ],
+      [
+       "1111",
+       240,
+       200,
+       300,
+       230
+      ],
+      [
+       "1112",
+       310,
+       200,
+       370,
+       230
+      ]
+     ]
+    }
+   ],
+   "expected": []
+  },
+  {
+   "name": "full_name",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "DELA",
+       100,
+       300,
+       160,
+       330
+      ],
+      [
+       "CRUZ,",
+       170,
+       300,
+       240,
+       330
+      ],
+      [
+       "JUAN",
+       250,
+       300,
+       320,
+       330
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "full_name",
+     "box": [
+      96,
+      296,
+      324,
+      334
+     ]
+    }
+   ]
+  },
+  {
+   "name": "excluded_word_skips_name_rules",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "REPUBLIC",
+       10,
+       10,
+       120,
+       40
+      ],
+      [
+       "OF",
+       130,
+       10,
+       160,
+       40
+      ],
+      [
+       "THE",
+       170,
+       10,
+       220,
+       40
+      ],
+      [
+       "PHILIPPINES",
+       230,
+       10,
+       400,
+       40
+      ]
+     ]
+    }
+   ],
+   "expected": []
+  },
+  {
+   "name": "address_takes_next_line_of_same_block",
+   "lines": [
+    {
+     "block": 2,
+     "line": 0,
+     "words": [
+      [
+       "12",
+       100,
+       400,
+       130,
+       430
+      ],
+      [
+       "MABINI",
+       140,
+       400,
+       240,
+       430
+      ],
+      [
+       "ST",
+       250,
+       400,
+       280,
+       430
+      ]
+     ]
+    },
+    {
+     "block": 2,
+     "line": 1,
+     "words": [
+      [
+       "QUEZON",
+       100,
+       440,
+       200,
+       470
+      ],
+      [
+       "CITY",
+       210,
+       440,
+       270,
+       470
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "address",
+     "box": [
+      96,
+      396,
+      284,
+      474
+     ]
+    },
+    {
+     "field_type": "cardholder_name",
+     "box": [
+      96,
+      436,
+      274,
+      474
+     ]
+    }
+   ]
+  },
+  {
+   "name": "address_ignores_next_line_of_other_block",
+   "lines": [
+    {
+     "block": 2,
+     "line": 0,
+     "words": [
+      [
+       "12",
+       100,
+       400,
+       130,
+       430
+      ],
+      [
+       "MABINI",
+       140,
+       400,
+       240,
+       430
+      ],
+      [
+       "ST",
+       250,
+       400,
+       280,
+       430
+      ]
+     ]
+    },
+    {
+     "block": 3,
+     "line": 0,
+     "words": [
+      [
+       "QUEZON",
+       100,
+       440,
+       200,
+       470
+      ],
+      [
+       "CITY",
+       210,
+       440,
+       270,
+       470
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "address",
+     "box": [
+      96,
+      396,
+      284,
+      434
+     ]
+    },
+    {
+     "field_type": "cardholder_name",
+     "box": [
+      96,
+      436,
+      274,
+      474
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pieces_of_one_row_are_joined",
+   "lines": [
+    {
+     "block": 3,
+     "line": 0,
+     "words": [
+      [
+       "JUAN",
+       100,
+       500,
+       160,
+       530
+      ]
+     ]
+    },
+    {
+     "block": 4,
+     "line": 0,
+     "words": [
+      [
+       "SANTOS",
+       170,
+       502,
+       260,
+       532
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "cardholder_name",
+     "box": [
+      96,
+      496,
+      264,
+      536
+     ]
+    }
+   ]
+  },
+  {
+   "name": "far_apart_pieces_stay_separate",
+   "lines": [
+    {
+     "block": 3,
+     "line": 0,
+     "words": [
+      [
+       "JUAN",
+       100,
+       500,
+       160,
+       530
+      ]
+     ]
+    },
+    {
+     "block": 4,
+     "line": 0,
+     "words": [
+      [
+       "SANTOS",
+       400,
+       502,
+       490,
+       532
+      ]
+     ]
+    }
+   ],
+   "expected": []
+  },
+  {
+   "name": "lines_are_read_top_to_bottom",
+   "lines": [
+    {
+     "block": 2,
+     "line": 1,
+     "words": [
+      [
+       "QUEZON",
+       100,
+       440,
+       200,
+       470
+      ],
+      [
+       "CITY",
+       210,
+       440,
+       270,
+       470
+      ]
+     ]
+    },
+    {
+     "block": 2,
+     "line": 0,
+     "words": [
+      [
+       "12",
+       100,
+       400,
+       130,
+       430
+      ],
+      [
+       "MABINI",
+       140,
+       400,
+       240,
+       430
+      ],
+      [
+       "ST",
+       250,
+       400,
+       280,
+       430
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "address",
+     "box": [
+      96,
+      396,
+      284,
+      474
+     ]
+    },
+    {
+     "field_type": "cardholder_name",
+     "box": [
+      96,
+      436,
+      274,
+      474
+     ]
+    }
+   ]
+  },
+  {
+   "name": "words_are_read_left_to_right",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "JUAN",
+       250,
+       300,
+       320,
+       330
+      ],
+      [
+       "CRUZ,",
+       170,
+       300,
+       240,
+       330
+      ],
+      [
+       "DELA",
+       100,
+       300,
+       160,
+       330
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "full_name",
+     "box": [
+      96,
+      296,
+      324,
+      334
+     ]
+    }
+   ]
+  },
+  {
+   "name": "expiry_inside_a_longer_line",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "VALID",
+       100,
+       600,
+       160,
+       630
+      ],
+      [
+       "THRU",
+       170,
+       600,
+       230,
+       630
+      ],
+      [
+       "12/29",
+       240,
+       600,
+       310,
+       630
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "expiry_date",
+     "box": [
+      236,
+      596,
+      314,
+      634
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cvv_line",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "123",
+       500,
+       100,
+       560,
+       130
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "cvv",
+     "box": [
+      496,
+      96,
+      564,
+      134
+     ]
+    }
+   ]
+  },
+  {
+   "name": "lower_case_is_read_as_upper_case",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "juan",
+       100,
+       300,
+       160,
+       330
+      ],
+      [
+       "dela",
+       170,
+       300,
+       230,
+       330
+      ],
+      [
+       "cruz",
+       240,
+       300,
+       300,
+       330
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "cardholder_name",
+     "box": [
+      96,
+      296,
+      304,
+      334
+     ]
+    }
+   ]
+  },
+  {
+   "name": "dates",
+   "lines": [
+    {
+     "block": 1,
+     "line": 0,
+     "words": [
+      [
+       "1990/01/02",
+       100,
+       700,
+       250,
+       730
+      ]
+     ]
+    },
+    {
+     "block": 2,
+     "line": 0,
+     "words": [
+      [
+       "JANUARY",
+       100,
+       760,
+       200,
+       790
+      ],
+      [
+       "2,",
+       210,
+       760,
+       230,
+       790
+      ],
+      [
+       "1990",
+       240,
+       760,
+       300,
+       790
+      ]
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "field_type": "date_of_birth",
+     "box": [
+      96,
+      696,
+      254,
+      734
+     ]
+    },
+    {
+     "field_type": "date_of_birth",
+     "box": [
+      96,
+      756,
+      304,
+      794
+     ]
+    }
+   ]
+  }
+ ]
+}

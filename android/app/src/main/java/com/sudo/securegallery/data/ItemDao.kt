@@ -27,6 +27,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE state = 'PENDING' AND content_hash IS NOT NULL AND document_class IS NULL ORDER BY id")
     suspend fun awaitingDetection(): List<Item>
 
+    /** Detected items still waiting for field localization (#17). */
+    @Query("SELECT * FROM items WHERE state = 'PENDING' AND document_class IS NOT NULL ORDER BY id")
+    suspend fun awaitingLocalization(): List<Item>
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 

@@ -1,6 +1,7 @@
 package com.sudo.securegallery.scan
 
 import com.sudo.securegallery.detect.DetectorImage
+import com.sudo.securegallery.localize.OcrImage
 import java.io.InputStream
 
 /** One public gallery image as MediaStore reports it. No pixels, no file name. */
@@ -23,4 +24,7 @@ interface ImageSource {
      * decodes at full resolution (§8.2). Null if it cannot be decoded.
      */
     fun loadForDetection(mediaStoreId: Long, maxSide: Int): DetectorImage? = null
+
+    /** The image decoded with its long side at most [maxSide] pixels, for OCR (§8.2). Null if it cannot be decoded. */
+    fun loadForOcr(mediaStoreId: Long, maxSide: Int): OcrImage? = null
 }

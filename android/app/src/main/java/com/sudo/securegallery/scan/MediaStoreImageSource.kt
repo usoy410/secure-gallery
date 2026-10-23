@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.provider.MediaStore
 import com.sudo.securegallery.detect.DetectorImage
+import com.sudo.securegallery.localize.OcrImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -36,6 +37,13 @@ class MediaStoreImageSource(
     }
 
     override fun loadForDetection(mediaStoreId: Long, maxSide: Int): DetectorImage? {
+        val image = decode(mediaStoreId, maxSide) ?: return null
+        return image.bitmap.toDetectorImage(image.originalWidth, image.originalHeight).also { image.bitmap.recycle() }
+    }
+
+    override fun loadForOcr(mediaStoreId: Long, maxSide: Int): OcrImage? = decode(mediaStoreId, maxSide)
+
+    private fun decode(mediaStoreId: Long, maxSide: Int): OcrImage? {
         val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
         var originalWidth = 0
         var originalHeight = 0
@@ -51,7 +59,7 @@ class MediaStoreImageSource(
         } catch (_: java.io.IOException) {
             return null
         }
-        return bitmap.toDetectorImage(originalWidth, originalHeight).also { bitmap.recycle() }
+        return OcrImage(bitmap, originalWidth, originalHeight)
     }
 
     override fun open(mediaStoreId: Long): InputStream? {

@@ -6,6 +6,44 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+/**
+ * Copies the card templates and field rules from the repo's templates/ folder (shared with the
+ * desktop harness, #3 and #10) into the APK's assets under templates/, so they are never
+ * copied by hand.
+ */
+abstract class CopyTemplates : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val templatesDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Inject
+    abstract val fs: FileSystemOperations
+
+    @TaskAction
+    fun copy() {
+        fs.sync {
+            from(templatesDir) {
+                include("*.json", "rules/*.json")
+                exclude("schema.json")
+            }
+            into(outputDir.dir("templates"))
+        }
+    }
+}
+
+val copyTemplates = tasks.register<CopyTemplates>("copyTemplates") {
+    templatesDir.set(rootDir.resolve("../templates"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(copyTemplates, CopyTemplates::outputDir)
+    }
+}
+
 android {
     namespace = "com.sudo.securegallery"
     compileSdk = 36
@@ -91,6 +129,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.litert)
     implementation(libs.litert.gpu)
+    // Bundled Latin model: no download at runtime (§8.6, §20.1).
+    implementation(libs.mlkit.text.recognition)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
