@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -132,6 +133,57 @@ class GalleryScannerTest {
         assertEquals(0.9f, id.documentConfidence)
         assertEquals(CardCorners(listOf(10f, 20f, 110f, 20f, 110f, 80f, 10f, 80f)), id.cardCorners)
         assertEquals(ItemState.NOT_DETECTED, dao.byMediaStoreId(2)!!.state)
+    }
+
+    @Test
+    fun itemsHashedWithoutAModelAreDetectedOnTheNextScan() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.decodable[1] = 1600
+        GalleryScanner(source, dao, detector = null).scan() // an older build, or no model
+        assertNull(dao.byMediaStoreId(1)!!.documentClass)
+
+        GalleryScanner(source, dao, cardDetector).scan()
+        assertEquals(DocumentClass.PHILSYS, dao.byMediaStoreId(1)!!.documentClass)
+    }
+
+    @Test
+    fun aFailingImageDoesNotBlockTheOthers() = runTest {
+        source.files[1] = "broken".toByteArray()
+        source.files[2] = "id photo".toByteArray()
+        source.decodable[1] = 1601
+        source.decodable[2] = 1600
+        val detector = com.sudo.securegallery.detect.DocumentDetector { image ->
+            if (image.originalWidth == 1601) throw IllegalStateException("bad image") else cardDetector.detect(image)
+        }
+        GalleryScanner(source, dao, detector).scan()
+        val broken = dao.byMediaStoreId(1)!!
+        assertEquals(sha256Hex("broken"), broken.contentHash) // the hash is kept
+        assertNull(broken.documentClass) // and detection is tried again next time
+        assertEquals(DocumentClass.PHILSYS, dao.byMediaStoreId(2)!!.documentClass)
+    }
+
+    @Test
+    fun aChangedFileLosesItsOldDetection() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.decodable[1] = 1600
+        GalleryScanner(source, dao, cardDetector).scan()
+        assertNotNull(dao.byMediaStoreId(1)!!.cardCorners)
+
+        source.files[1] = "edited, now unreadable".toByteArray()
+        source.modified[1] = 99L
+        source.decodable.remove(1L)
+        GalleryScanner(source, dao, cardDetector).scan()
+        val item = dao.byMediaStoreId(1)!!
+        assertNull(item.documentClass)
+        assertNull(item.cardCorners)
+    }
+
+    private val cardDetector = com.sudo.securegallery.detect.DocumentDetector { image ->
+        if (image.originalWidth == 1600) {
+            listOf(Detection(DocumentClass.PHILSYS, 0.9f, floatArrayOf(0f, 0f, 1f, 1f), List(4) { Corner(it.toFloat(), 0f) }))
+        } else {
+            emptyList()
+        }
     }
 
     @Test

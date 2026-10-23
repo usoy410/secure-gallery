@@ -38,18 +38,30 @@ class GalleryScanner(
                 dao.update(item.moveTo(ItemState.FAILED))
                 missing++
             } else {
-                dao.update(detect(item.copy(contentHash = hash)))
+                dao.update(item.copy(contentHash = hash))
                 processed++
             }
+        }
+        // Detection is a separate pass over every hashed item still waiting for it, so items
+        // hashed by an earlier build (or one without a model) are picked up too.
+        if (detector != null) {
+            for (item in dao.awaitingDetection()) dao.update(detect(detector, item))
         }
         return Result(found = images.size, processed = processed, missing = missing)
     }
 
-    private fun detect(item: Item): Item {
-        val detector = detector ?: return item
-        val image = source.loadForDetection(item.mediaStoreId, detectorConfig.inputSize) ?: return item
-        val best = detector.detect(image).maxByOrNull { it.confidence }
-            ?: return item.moveTo(ItemState.NOT_DETECTED).copy(documentClass = null, documentConfidence = null, cardCorners = null)
+    /**
+     * Runs the detector on one item. If the image cannot be decoded or the detector fails, the
+     * item is left as it was and tried again on the next scan; one bad image never blocks the rest.
+     */
+    private fun detect(detector: DocumentDetector, item: Item): Item {
+        val found = try {
+            val image = source.loadForDetection(item.mediaStoreId, detectorConfig.inputSize) ?: return item
+            detector.detect(image)
+        } catch (_: RuntimeException) {
+            return item
+        }
+        val best = found.maxByOrNull { it.confidence } ?: return item.moveTo(ItemState.NOT_DETECTED)
         return item.copy(
             documentClass = best.documentClass,
             documentConfidence = best.confidence,
@@ -65,12 +77,19 @@ class GalleryScanner(
         for (image in images) {
             val item = dao.byMediaStoreId(image.mediaStoreId) ?: continue
             val changed = item.dateModified != image.dateModified || item.sizeBytes != image.sizeBytes
-            if (changed && item.state.canMoveTo(ItemState.PENDING)) {
+            // Still PENDING (not yet past detection) or allowed back to PENDING: index again.
+            val resettable = item.state == ItemState.PENDING || item.state.canMoveTo(ItemState.PENDING)
+            if (changed && resettable) {
                 dao.update(
-                    item.moveTo(ItemState.PENDING).copy(
+                    item.copy(
+                        state = ItemState.PENDING,
                         dateModified = image.dateModified,
                         sizeBytes = image.sizeBytes,
                         contentHash = null,
+                        // New content: the old detection no longer applies.
+                        documentClass = null,
+                        documentConfidence = null,
+                        cardCorners = null,
                     ),
                 )
             }
