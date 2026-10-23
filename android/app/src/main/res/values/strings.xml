@@ -72,4 +72,30 @@
     <string name="setup_notice_title">Copies in cloud backups</string>
     <string name="setup_notice_body">If Google Photos or another service already backed up a photo, that copy stays in the cloud. Secure Gallery cannot remove it.</string>
     <string name="setup_notice_uninstall">Uninstalling the app deletes the vault. Export the vault first if you want to keep your originals.</string>
+
+    <string name="vault_export_button">Export vault</string>
+    <string name="vault_import_button">Import vault</string>
+    <string name="vault_export_file_name">secure-gallery-vault.zip</string>
+    <plurals name="vault_transfer_exported">
+        <item quantity="one">Exported %1$d original. Keep the file and your recovery code safe.</item>
+        <item quantity="other">Exported %1$d originals. Keep the file and your recovery code safe.</item>
+    </plurals>
+    <plurals name="vault_transfer_imported">
+        <item quantity="one">Imported %1$d original. Unlock with your PIN to see it.</item>
+        <item quantity="other">Imported %1$d originals. Unlock with your PIN to see them.</item>
+    </plurals>
+    <string name="vault_transfer_wrong_code">That recovery code does not open this export.</string>
+    <string name="vault_transfer_not_empty">This vault already has originals. Import only works into an empty vault.</string>
+    <string name="vault_transfer_invalid">This file is not a Secure Gallery export, or it is damaged.</string>
+    <string name="vault_transfer_failed">The file could not be read or written. Try again.</string>
+    <string name="vault_warning_title">Keep a copy of your vault</string>
+    <string name="vault_warning_body">Uninstalling Secure Gallery deletes the vault and every original in it. Use Export vault to save a copy, and keep your recovery code with it.</string>
+    <string name="vault_warning_never">Do not show this again</string>
+    <string name="vault_warning_ok">OK</string>
+    <string name="vault_import_title">Import a vault</string>
+    <string name="vault_import_body">Enter the recovery code that belongs to this export, and your PIN on this phone.</string>
+    <string name="vault_import_code_label">Recovery code</string>
+    <string name="vault_import_pin_label">Your PIN</string>
+    <string name="vault_import_confirm">Import</string>
+    <string name="vault_import_cancel">Cancel</string>
 </resources>
