@@ -1,0 +1,7 @@
+{
+  "_comment": "Detector thresholds (SECURE_GALLERY.md 8.2). Placeholders until tuned on the validation split; change them here, not in code.",
+  "not_detected_below": 0.35,
+  "high_at_or_above": 0.6,
+  "nms_iou": 0.5,
+  "max_detections": 5
+}

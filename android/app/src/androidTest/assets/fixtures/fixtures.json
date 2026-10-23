@@ -1,0 +1,22 @@
+[
+  {
+    "file": "philsys_card.jpg",
+    "document_class": "philsys"
+  },
+  {
+    "file": "philsys_ephilid.jpg",
+    "document_class": "philsys"
+  },
+  {
+    "file": "lto_current.jpg",
+    "document_class": "lto"
+  },
+  {
+    "file": "lto_previous.jpg",
+    "document_class": "lto"
+  },
+  {
+    "file": "payment_card.jpg",
+    "document_class": "payment_card"
+  }
+]

@@ -52,3 +52,13 @@ data class RedactionBox(
         require(confidence in 0f..1f) { "confidence must be between 0 and 1" }
     }
 }
+
+/**
+ * The card's four corners in original-image pixels, top-left, top-right, bottom-right,
+ * bottom-left, as `x1, y1, ..., x4, y4` (from the detector, §8.2).
+ */
+data class CardCorners(val xy: List<Float>) {
+    init {
+        require(xy.size == 8) { "4 corners are 8 numbers" }
+    }
+}

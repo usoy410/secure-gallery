@@ -3,6 +3,7 @@ package com.sudo.securegallery
 import android.content.Context
 import androidx.work.WorkManager
 import com.sudo.securegallery.data.AppDatabase
+import com.sudo.securegallery.detect.LiteRtDetector
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
@@ -36,6 +37,9 @@ interface AppContainer {
 
     val galleryScanner: GalleryScanner
 
+    /** The bundled document detector, or null if the build has no model (#16). */
+    val detector: LiteRtDetector?
+
     val workManager: WorkManager
 
     /** Encrypted originals in app-private storage (§8.3). */
@@ -67,8 +71,11 @@ class DefaultAppContainer(
         MediaStoreImageSource(context.contentResolver, context.packageName)
     }
 
+    override val detector: LiteRtDetector? by lazy { LiteRtDetector.open(context.assets) }
+
     override val galleryScanner: GalleryScanner by lazy {
-        GalleryScanner(imageSource, database.itemDao())
+        val detector = detector
+        GalleryScanner(imageSource, database.itemDao(), detector, detector?.config ?: com.sudo.securegallery.detect.DetectorConfig())
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }
