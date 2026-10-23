@@ -74,6 +74,12 @@ cd android
 | `setup/SetupFlowTest` | #28 | Setup runs in order and skips the biometric step on phones without one. An interrupted setup resumes after the last saved step, goes back to the PIN if no vault exists, and skips ahead if the vault exists but the step was not saved. |
 | `setup/SetupViewModelTest` | #28 | PINs must have 6 digits and match. The vault is created only after the user confirms the recovery code, with the exact code shown, and setup leaves an unlocked session. Going back discards the code. Setup interrupted at the code resumes at the PIN with no vault. Finishing marks setup done. |
 | `ui/SetupScreenshotTest` | #28 | Roborazzi records every setup screen in light and dark: welcome, photo access, PIN (and mismatch), recovery code, biometric opt-in, and the cloud-backup and uninstall notice. |
+| `detect/YoloPosePostProcessorTest` | #16 | The raw detector output becomes detections: best class above the threshold, class-agnostic NMS, normalized or pixel coordinates mapped back through the letterbox to the original photo, corners ordered top-left clockwise, and a cap on detections. |
+| `detect/RecordedTensorTest` | #16 | On tensors recorded from the bundled model for five synthetic photos, the Kotlin post-processing gives the same class, confidence (within 0.002), box and corners (within 2.5 px) as Ultralytics. Regenerate with `python -m ml.android_fixtures`. |
+| `detect/PreprocessTest`, `detect/DetectorConfigTest` | #16 | Letterboxing with grey bars from an already downsampled decode; thresholds and model shape come from `detector.json` and `detection.json`. |
+| `data/MigrationTest` | #16 | A version 1 database (built from the committed schema) upgrades to version 2 and keeps its items. |
+| `scan/GalleryScannerTest` (detection) | #16 | The scan decodes at detection size only, keeps the most confident detection's class, confidence and corners, and marks images with none `NOT_DETECTED`. |
+| `detect/DetectorInstrumentedTest` (instrumented) | #16 | On the emulator, the bundled model loads from the app's assets and finds the right class on at least 4 of 5 synthetic photos it never saw in training. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 

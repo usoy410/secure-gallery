@@ -1,20 +1,27 @@
 package com.sudo.securegallery.scan
 
+import com.sudo.securegallery.data.CardCorners
 import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.data.ItemState
+import com.sudo.securegallery.detect.DetectorConfig
+import com.sudo.securegallery.detect.DocumentDetector
 import java.io.InputStream
 import java.security.MessageDigest
 
 /**
  * The first full scan (§8.2): index every gallery image, then process them one at a time.
  *
- * Processing is only hashing for now; detection (#16) will plug in after the hash. Bytes are
- * streamed through the digest, never decoded into a bitmap.
+ * Processing hashes the file (streamed, never decoded) and then, when a model is bundled, runs
+ * the detector on a copy decoded at detection size (#16). An image with no detection at or
+ * above the threshold becomes NOT_DETECTED; a detected one keeps PENDING with its class,
+ * confidence and corners, waiting for field localization (#17).
  */
 class GalleryScanner(
     private val source: ImageSource,
     private val dao: ItemDao,
+    private val detector: DocumentDetector? = null,
+    private val detectorConfig: DetectorConfig = DetectorConfig(),
 ) {
     data class Result(val found: Int, val processed: Int, val missing: Int)
 
@@ -31,11 +38,23 @@ class GalleryScanner(
                 dao.update(item.moveTo(ItemState.FAILED))
                 missing++
             } else {
-                dao.update(item.copy(contentHash = hash))
+                dao.update(detect(item.copy(contentHash = hash)))
                 processed++
             }
         }
         return Result(found = images.size, processed = processed, missing = missing)
+    }
+
+    private fun detect(item: Item): Item {
+        val detector = detector ?: return item
+        val image = source.loadForDetection(item.mediaStoreId, detectorConfig.inputSize) ?: return item
+        val best = detector.detect(image).maxByOrNull { it.confidence }
+            ?: return item.moveTo(ItemState.NOT_DETECTED).copy(documentClass = null, documentConfidence = null, cardCorners = null)
+        return item.copy(
+            documentClass = best.documentClass,
+            documentConfidence = best.confidence,
+            cardCorners = CardCorners(best.corners.flatMap { listOf(it.x, it.y) }),
+        )
     }
 
     /** Adds new images; a changed file that was not flagged is indexed again. */

@@ -21,6 +21,12 @@ class Converters {
     fun idToClass(id: String?): DocumentClass? = id?.let(DocumentClass::fromId)
 
     @TypeConverter
+    fun cornersToString(corners: CardCorners?): String? = corners?.xy?.joinToString(",")
+
+    @TypeConverter
+    fun stringToCorners(encoded: String?): CardCorners? = encoded?.let { CardCorners(it.split(",").map(String::toFloat)) }
+
+    @TypeConverter
     fun boxesToString(boxes: List<RedactionBox>): String = encodeBoxes(boxes)
 
     @TypeConverter

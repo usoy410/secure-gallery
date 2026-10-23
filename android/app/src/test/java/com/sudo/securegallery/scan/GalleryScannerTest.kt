@@ -7,6 +7,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sudo.securegallery.data.AppDatabase
 import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.data.ItemState
+import com.sudo.securegallery.data.DocumentClass
+import com.sudo.securegallery.data.CardCorners
+import com.sudo.securegallery.detect.Corner
+import com.sudo.securegallery.detect.Detection
+import com.sudo.securegallery.detect.DetectorImage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -101,6 +106,44 @@ class GalleryScannerTest {
         assertEquals(2, dao.countProcessed().first())
     }
 
+    @Test
+    fun detectedImageKeepsItsClassConfidenceAndCorners() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.files[2] = "cat photo".toByteArray()
+        val corners = listOf(Corner(10f, 20f), Corner(110f, 20f), Corner(110f, 80f), Corner(10f, 80f))
+        val detector = com.sudo.securegallery.detect.DocumentDetector { image ->
+            assertEquals(640, maxOf(image.width, image.height)) // decoded at detection size only
+            if (image.originalWidth == 1600) {
+                listOf(
+                    Detection(DocumentClass.LTO, 0.5f, floatArrayOf(10f, 20f, 110f, 80f), corners),
+                    Detection(DocumentClass.PHILSYS, 0.9f, floatArrayOf(10f, 20f, 110f, 80f), corners),
+                )
+            } else {
+                emptyList()
+            }
+        }
+        source.decodable[1] = 1600
+        source.decodable[2] = 1200
+        GalleryScanner(source, dao, detector).scan()
+
+        val id = dao.byMediaStoreId(1)!!
+        assertEquals(ItemState.PENDING, id.state) // waits for field localization (#17)
+        assertEquals(DocumentClass.PHILSYS, id.documentClass) // the most confident detection
+        assertEquals(0.9f, id.documentConfidence)
+        assertEquals(CardCorners(listOf(10f, 20f, 110f, 20f, 110f, 80f, 10f, 80f)), id.cardCorners)
+        assertEquals(ItemState.NOT_DETECTED, dao.byMediaStoreId(2)!!.state)
+    }
+
+    @Test
+    fun withoutAModelImagesAreOnlyHashed() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.decodable[1] = 1600
+        GalleryScanner(source, dao, detector = null).scan()
+        val item = dao.byMediaStoreId(1)!!
+        assertEquals(ItemState.PENDING, item.state)
+        assertNull(item.documentClass)
+    }
+
     private fun sha256Hex(text: String) = GalleryScanner.sha256(ByteArrayInputStream(text.toByteArray()))
 
     private class FakeSource : ImageSource {
@@ -113,6 +156,16 @@ class GalleryScannerTest {
 
         override suspend fun listImages() = (files.keys + listed).sorted().map { id ->
             GalleryImage(id, modified[id] ?: 1L, files[id]?.size?.toLong() ?: 0L)
+        }
+
+        /** Images that decode, with their original long side; decoded at most 640 px. */
+        val decodable = mutableMapOf<Long, Int>()
+
+        override fun loadForDetection(mediaStoreId: Long, maxSide: Int): DetectorImage? {
+            val long = decodable[mediaStoreId] ?: return null
+            val w = minOf(long, maxSide)
+            val h = w * 3 / 4
+            return DetectorImage(IntArray(w * h), w, h, long, long * 3 / 4)
         }
 
         override fun open(mediaStoreId: Long): InputStream? {

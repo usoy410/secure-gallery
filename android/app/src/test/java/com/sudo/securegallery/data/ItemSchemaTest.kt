@@ -77,7 +77,7 @@ class ItemSchemaTest {
     companion object {
         val ALLOWED_COLUMNS = setOf(
             "id", "media_store_id", "date_modified", "size_bytes", "content_hash", "state",
-            "document_class", "document_confidence", "boxes", "retry_count",
+            "document_class", "document_confidence", "boxes", "retry_count", "card_corners",
         )
     }
 }

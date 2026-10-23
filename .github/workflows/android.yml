@@ -25,6 +25,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # The detector model (assets/detector.tflite) is stored with Git LFS.
+          lfs: true
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -74,6 +77,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          lfs: true
 
       - name: Check if emulator test should run
         id: filter

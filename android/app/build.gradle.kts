@@ -42,6 +42,10 @@ android {
     buildFeatures {
         compose = true
     }
+    androidResources {
+        // The model is memory-mapped from the APK, so it must not be compressed.
+        noCompress += "tflite"
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -85,6 +89,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.litert)
+    implementation(libs.litert.gpu)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

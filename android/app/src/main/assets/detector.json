@@ -1,0 +1,28 @@
+{
+  "class_names": [
+    "philsys",
+    "lto",
+    "payment_card"
+  ],
+  "format": "secure-gallery-yolo-pose-litert",
+  "input_size": [
+    640,
+    640
+  ],
+  "keypoint_order": [
+    "top_left",
+    "top_right",
+    "bottom_right",
+    "bottom_left"
+  ],
+  "kpt_shape": [
+    4,
+    2
+  ],
+  "model_name": "yolo11n-pose",
+  "num_classes": 3,
+  "num_keypoints": 4,
+  "output_coordinates": "normalized",
+  "quantization": "int8",
+  "target_budget_mb": 10.0
+}

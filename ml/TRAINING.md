@@ -63,3 +63,31 @@ Reports per-class Precision, Recall, F1, mAP50, and Mean Corner Distance Error (
 ```bash
 python -m ml.export --model runs/pose/train/weights/best.pt --data data/yolo_pose/dataset.yaml --output runs/export
 ```
+
+---
+
+## 4. Interim Model in the App (#16)
+
+Until the full training run (#9) lands, the app ships an **interim** model so the on-device
+detector can be built and tested end to end. It is not the research model: do not report its
+numbers as results.
+
+- **Data:** the synthetic benchmark's train split (`data/benchmark`, 468 images after
+  conversion), validated on its val split (156 images).
+- **Training:** `python -m ml.train --data data/yolo_pose/dataset.yaml --epochs 25 --batch 8`
+  on 4 CPU cores, 33 minutes, from the `yolo11n-pose.pt` pretrained weights.
+- **Val (synthetic):** box mAP50 0.995 and pose mAP50 0.995 for all three classes. Synthetic val
+  images come from the same generator as training, so expect lower numbers on real photos.
+- **Export:** INT8 LiteRT, 3.0 MB, copied to `android/app/src/main/assets/detector.tflite`
+  (Git LFS) with its metadata as `detector.json`. Thresholds live in `detection.json`.
+- **Output format:** `[1, 15, 8400]`, box and keypoint coordinates normalized to the input size
+  (`"output_coordinates": "normalized"` in the metadata).
+- **Runtime:** the app uses LiteRT 1.4.2 (classic `Interpreter`, `GpuDelegate`). LiteRT 2.x for
+  Android needs a newer Kotlin than the app uses; the 1.4 runtime runs this model (checked with
+  `ai-edge-litert==1.4.0` in Python).
+
+After replacing the model, regenerate the Android test fixtures and recorded tensors:
+
+```bash
+python -m ml.android_fixtures
+```

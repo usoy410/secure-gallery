@@ -65,6 +65,9 @@ def build_model_metadata(
         "num_keypoints": len(kpts),
         "kpt_shape": [len(kpts), 2],
         "quantization": quantization.lower(),
+        # Ultralytics' LiteRT export gives box and keypoint coordinates as fractions of the
+        # input size (0..1), not pixels; the app scales them by input_size.
+        "output_coordinates": "normalized",
     }
     if extra:
         metadata.update(extra)
