@@ -50,10 +50,15 @@ class LiteRtDetector private constructor(
         const val MODEL = "detector.tflite"
         const val METADATA = "detector.json"
         const val THRESHOLDS = "detection.json"
+        private const val MIN_MODEL_BYTES = 100_000L // an LFS pointer is about 130 bytes
 
-        /** Null when the app was built without a model (detection is then skipped). */
+        /**
+         * Null when the app was built without a usable model, for example a clone without Git
+         * LFS, which has a small pointer file in its place. Detection is then skipped.
+         */
         fun open(assets: AssetManager): LiteRtDetector? {
             if (MODEL !in assets.list("").orEmpty()) return null
+            if (assets.openFd(MODEL).use { it.declaredLength } < MIN_MODEL_BYTES) return null
             val config = loadConfig(assets)
             val model = map(assets)
             val compat = CompatibilityList()
