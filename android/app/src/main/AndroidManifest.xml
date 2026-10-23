@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       CRITICAL SECURITY RULE (§8.1):
       This application is strictly offline. No android.permission.INTERNET is requested
       or permitted in any build variant or merged manifest.
     -->
+    <!-- ML Kit's logging transport asks for INTERNET; the app never goes online (§20.1). -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
 
     <!-- Photo access (§8.1). Android 14+ may grant selected photos only. -->
     <uses-permission
