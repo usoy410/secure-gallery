@@ -66,7 +66,8 @@ data class CardTemplate(
 
         /** Every template bundled in the APK, sorted by file name like the desktop harness. */
         fun loadAll(assets: AssetManager): List<CardTemplate> =
-            assets.list(ASSET_DIR).orEmpty().filter { it.endsWith(".json") }.sorted().map { name ->
+            // Robolectric also lists rules/fields.json from the subfolder; Android does not.
+            assets.list(ASSET_DIR).orEmpty().filter { it.endsWith(".json") && "/" !in it }.sorted().map { name ->
                 parse(assets.open("$ASSET_DIR/$name").bufferedReader().use { it.readText() })
             }
     }

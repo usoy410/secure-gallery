@@ -1,23 +1,31 @@
 package com.sudo.securegallery.scan
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sudo.securegallery.data.AppDatabase
+import com.sudo.securegallery.data.CardCorners
+import com.sudo.securegallery.data.DocumentClass
+import com.sudo.securegallery.data.FieldType
 import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.data.ItemState
-import com.sudo.securegallery.data.DocumentClass
-import com.sudo.securegallery.data.CardCorners
+import com.sudo.securegallery.data.RedactionBox
 import com.sudo.securegallery.detect.Corner
 import com.sudo.securegallery.detect.Detection
 import com.sudo.securegallery.detect.DetectorImage
+import com.sudo.securegallery.localize.FieldLocalizer
+import com.sudo.securegallery.localize.Localization
+import com.sudo.securegallery.localize.OcrFailedException
+import com.sudo.securegallery.localize.OcrImage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -178,8 +186,45 @@ class GalleryScannerTest {
         assertNull(item.cardCorners)
     }
 
+    @Test
+    fun detectedImagesGetTheirBoxesAndConfidenceLevel() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.files[2] = "cat photo".toByteArray()
+        source.decodable[1] = 4000
+        source.decodable[2] = 1200
+        val box = RedactionBox(FieldType.PCN, listOf(1f, 2f, 3f, 2f, 3f, 4f, 1f, 4f), 0.9f)
+        val calls = mutableListOf<String>()
+        val localizer = FieldLocalizer { image, documentClass, confidence, corners ->
+            calls += "${image.bitmap.width}x${image.bitmap.height} of ${image.originalWidth} $documentClass $confidence ${corners?.size}"
+            Localization(listOf(box), ItemState.REDACTED, fallback = false)
+        }
+        GalleryScanner(source, dao, cardDetector, localizer = localizer).scan()
+
+        assertEquals(listOf("2048x1536 of 4000 PHILSYS 0.9 4"), calls) // decoded at OCR size only
+        val id = dao.byMediaStoreId(1)!!
+        assertEquals(ItemState.REDACTED, id.state)
+        assertEquals(listOf(box), id.boxes)
+        assertEquals(ItemState.NOT_DETECTED, dao.byMediaStoreId(2)!!.state)
+        assertTrue(source.ocrBitmaps.all { it.isRecycled }) // the OCR bitmap is not kept
+    }
+
+    @Test
+    fun aFailedLocalizationIsTriedAgainOnTheNextScan() = runTest {
+        source.files[1] = "id photo".toByteArray()
+        source.decodable[1] = 4000
+        val failing = FieldLocalizer { _, _, _, _ -> throw OcrFailedException("MlKitException") }
+        GalleryScanner(source, dao, cardDetector, localizer = failing).scan()
+        val kept = dao.byMediaStoreId(1)!!
+        assertEquals(ItemState.PENDING, kept.state)
+        assertEquals(DocumentClass.PHILSYS, kept.documentClass)
+
+        val working = FieldLocalizer { _, _, _, _ -> Localization(emptyList(), ItemState.NEEDS_CHECK, fallback = false) }
+        GalleryScanner(source, dao, cardDetector, localizer = working).scan()
+        assertEquals(ItemState.NEEDS_CHECK, dao.byMediaStoreId(1)!!.state)
+    }
+
     private val cardDetector = com.sudo.securegallery.detect.DocumentDetector { image ->
-        if (image.originalWidth == 1600) {
+        if (image.originalWidth == 1600 || image.originalWidth == 4000) {
             listOf(Detection(DocumentClass.PHILSYS, 0.9f, floatArrayOf(0f, 0f, 1f, 1f), List(4) { Corner(it.toFloat(), 0f) }))
         } else {
             emptyList()
@@ -218,6 +263,15 @@ class GalleryScannerTest {
             val w = minOf(long, maxSide)
             val h = w * 3 / 4
             return DetectorImage(IntArray(w * h), w, h, long, long * 3 / 4)
+        }
+
+        val ocrBitmaps = mutableListOf<Bitmap>()
+
+        override fun loadForOcr(mediaStoreId: Long, maxSide: Int): OcrImage? {
+            val long = decodable[mediaStoreId] ?: return null
+            val w = minOf(long, maxSide)
+            val bitmap = Bitmap.createBitmap(w, w * 3 / 4, Bitmap.Config.ARGB_8888).also { ocrBitmaps += it }
+            return OcrImage(bitmap, long, long * 3 / 4)
         }
 
         override fun open(mediaStoreId: Long): InputStream? {

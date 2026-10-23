@@ -48,7 +48,8 @@ fun interface FieldLocalizer {
  *
  * Templates are per design variant, but the detector only gives the class. The variant whose
  * text fields hold the most OCR matches is used; on a tie every tied variant is used, so a
- * field is never left out because the wrong variant was picked.
+ * field is never left out because the wrong variant was picked. The level is high (§8.2) when
+ * the document confidence is high and OCR read a field inside every template text field.
  */
 class HybridLocalizer(
     private val templates: List<CardTemplate>,
@@ -78,8 +79,9 @@ class HybridLocalizer(
                 val scores = mapped.map { boxes -> ocrFound.count { o -> boxes.any { it.isText() && it.contains(o) } } }
                 val chosen = mapped.filterIndexed { i, _ -> scores[i] == scores.max() }
                 layout = chosen.flatten()
-                allTextFieldsRead = chosen.size == 1 &&
-                    chosen.single().filter { it.isText() }.all { field -> ocrFound.any { field.contains(it) } }
+                // Variants can share a layout (both LTO designs do), so a tie is fine when every
+                // tied variant had all its text fields read.
+                allTextFieldsRead = chosen.all { boxes -> boxes.filter { it.isText() }.all { f -> ocrFound.any { f.contains(it) } } }
             }
         }
 
