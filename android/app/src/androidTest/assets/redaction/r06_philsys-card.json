@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-card",
+ "card_corners": [
+  [
+   635,
+   218
+  ],
+  [
+   1438,
+   214
+  ],
+  [
+   1440,
+   721
+  ],
+  [
+   637,
+   724
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and National Emblems",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     667,
+     233
+    ],
+    [
+     1406,
+     229
+    ],
+    [
+     1407,
+     295
+    ],
+    [
+     667,
+     299
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nPAMBANSANG PAGKAKAKILANLAN"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     676,
+     329
+    ],
+    [
+     893,
+     328
+    ],
+    [
+     894,
+     652
+    ],
+    [
+     677,
+     653
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     924,
+     318
+    ],
+    [
+     1390,
+     316
+    ],
+    [
+     1390,
+     361
+    ],
+    [
+     924,
+     363
+    ]
+   ],
+   "value": "1352-7769-1206-3436"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     925,
+     378
+    ],
+    [
+     1390,
+     376
+    ],
+    [
+     1391,
+     478
+    ],
+    [
+     925,
+     480
+    ]
+   ],
+   "value": "BAILEY, BOBBY, MOYER"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     925,
+     495
+    ],
+    [
+     1198,
+     494
+    ],
+    [
+     1198,
+     545
+    ],
+    [
+     925,
+     546
+    ]
+   ],
+   "value": "1967/06/01"
+  },
+  {
+   "name": "Signature / Ghost Image",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     1231,
+     489
+    ],
+    [
+     1391,
+     488
+    ],
+    [
+     1391,
+     549
+    ],
+    [
+     1231,
+     549
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     925,
+     561
+    ],
+    [
+     1198,
+     560
+    ],
+    [
+     1199,
+     661
+    ],
+    [
+     926,
+     662
+    ]
+   ],
+   "value": "992 WRIGHT ROAD\nALEXANDER VILLE"
+  },
+  {
+   "name": "PhilSys QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     1231,
+     560
+    ],
+    [
+     1391,
+     559
+    ],
+    [
+     1392,
+     660
+    ],
+    [
+     1231,
+     660
+    ]
+   ],
+   "value": "PHILSYS-CHECK:1352-7769-1206-3436:BAILEY"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92006,
+ "stored_rotated": false
+}

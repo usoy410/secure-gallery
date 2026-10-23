@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-ephilid",
+ "card_corners": [
+  [
+   605,
+   318
+  ],
+  [
+   1392,
+   434
+  ],
+  [
+   1319,
+   930
+  ],
+  [
+   532,
+   815
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and ePhilID Banner",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     634,
+     337
+    ],
+    [
+     1359,
+     444
+    ],
+    [
+     1350,
+     508
+    ],
+    [
+     624,
+     402
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nEPHILID"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     630,
+     423
+    ],
+    [
+     810,
+     450
+    ],
+    [
+     775,
+     688
+    ],
+    [
+     595,
+     662
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     827,
+     452
+    ],
+    [
+     1063,
+     487
+    ],
+    [
+     1057,
+     527
+    ],
+    [
+     821,
+     492
+    ]
+   ],
+   "value": "9864-2112-8476-9065"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     819,
+     501
+    ],
+    [
+     1055,
+     536
+    ],
+    [
+     1042,
+     625
+    ],
+    [
+     806,
+     591
+    ]
+   ],
+   "value": "HARPER, TIMOTHY, JOHNSON"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     805,
+     601
+    ],
+    [
+     1041,
+     636
+    ],
+    [
+     1033,
+     685
+    ],
+    [
+     797,
+     651
+    ]
+   ],
+   "value": "1995/10/27"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     592,
+     681
+    ],
+    [
+     1025,
+     745
+    ],
+    [
+     1009,
+     854
+    ],
+    [
+     576,
+     791
+    ]
+   ],
+   "value": "34 CHAMPACA ROAD EXTENSION\nAMBER VILLE"
+  },
+  {
+   "name": "PhilSys Check QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     1094,
+     492
+    ],
+    [
+     1347,
+     529
+    ],
+    [
+     1307,
+     801
+    ],
+    [
+     1054,
+     764
+    ]
+   ],
+   "value": "PHILSYS-CHECK:9864-2112-8476-9065:HARPER"
+  },
+  {
+   "name": "Digital Validation / Specimen Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     1052,
+     780
+    ],
+    [
+     1304,
+     817
+    ],
+    [
+     1293,
+     896
+    ],
+    [
+     1040,
+     859
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92002,
+ "stored_rotated": false
+}

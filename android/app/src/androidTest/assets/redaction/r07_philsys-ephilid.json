@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-ephilid",
+ "card_corners": [
+  [
+   397,
+   532
+  ],
+  [
+   1212,
+   569
+  ],
+  [
+   1188,
+   1082
+  ],
+  [
+   374,
+   1045
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and ePhilID Banner",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     429,
+     548
+    ],
+    [
+     1179,
+     583
+    ],
+    [
+     1176,
+     650
+    ],
+    [
+     426,
+     615
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nEPHILID"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     433,
+     637
+    ],
+    [
+     620,
+     645
+    ],
+    [
+     609,
+     891
+    ],
+    [
+     422,
+     883
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     637,
+     646
+    ],
+    [
+     881,
+     657
+    ],
+    [
+     879,
+     698
+    ],
+    [
+     635,
+     687
+    ]
+   ],
+   "value": "4543-2821-9335-7439"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     635,
+     697
+    ],
+    [
+     879,
+     708
+    ],
+    [
+     875,
+     800
+    ],
+    [
+     631,
+     789
+    ]
+   ],
+   "value": "YU, LISA, EDWARDS"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     630,
+     800
+    ],
+    [
+     874,
+     811
+    ],
+    [
+     872,
+     862
+    ],
+    [
+     628,
+     851
+    ]
+   ],
+   "value": "1973/06/11"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     421,
+     903
+    ],
+    [
+     869,
+     924
+    ],
+    [
+     864,
+     1037
+    ],
+    [
+     416,
+     1017
+    ]
+   ],
+   "value": "849 BANABA ROAD, TAMMY VILLE"
+  },
+  {
+   "name": "PhilSys Check QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     914,
+     659
+    ],
+    [
+     1175,
+     670
+    ],
+    [
+     1162,
+     952
+    ],
+    [
+     901,
+     940
+    ]
+   ],
+   "value": "PHILSYS-CHECK:4543-2821-9335-7439:YU"
+  },
+  {
+   "name": "Digital Validation / Specimen Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     900,
+     956
+    ],
+    [
+     1161,
+     968
+    ],
+    [
+     1158,
+     1050
+    ],
+    [
+     897,
+     1039
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92007,
+ "stored_rotated": false
+}

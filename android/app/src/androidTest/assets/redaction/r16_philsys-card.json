@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-card",
+ "card_corners": [
+  [
+   413,
+   262
+  ],
+  [
+   1115,
+   268
+  ],
+  [
+   1111,
+   711
+  ],
+  [
+   409,
+   705
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and National Emblems",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     441,
+     275
+    ],
+    [
+     1087,
+     281
+    ],
+    [
+     1087,
+     339
+    ],
+    [
+     440,
+     333
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nPAMBANSANG PAGKAKAKILANLAN"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     447,
+     359
+    ],
+    [
+     637,
+     361
+    ],
+    [
+     634,
+     645
+    ],
+    [
+     445,
+     643
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     665,
+     353
+    ],
+    [
+     1072,
+     356
+    ],
+    [
+     1072,
+     396
+    ],
+    [
+     664,
+     393
+    ]
+   ],
+   "value": "8072-8558-9104-6923"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     664,
+     406
+    ],
+    [
+     1072,
+     409
+    ],
+    [
+     1071,
+     498
+    ],
+    [
+     664,
+     495
+    ]
+   ],
+   "value": "CARTER, LISA, HAHN"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     663,
+     508
+    ],
+    [
+     902,
+     510
+    ],
+    [
+     902,
+     554
+    ],
+    [
+     663,
+     552
+    ]
+   ],
+   "value": "1983/04/09"
+  },
+  {
+   "name": "Signature / Ghost Image",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     931,
+     506
+    ],
+    [
+     1071,
+     507
+    ],
+    [
+     1070,
+     560
+    ],
+    [
+     930,
+     559
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     663,
+     565
+    ],
+    [
+     902,
+     567
+    ],
+    [
+     901,
+     656
+    ],
+    [
+     662,
+     653
+    ]
+   ],
+   "value": "506 SIERRA MADRE AVENUE\nSTEVEN VILLE"
+  },
+  {
+   "name": "PhilSys QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     930,
+     568
+    ],
+    [
+     1070,
+     569
+    ],
+    [
+     1070,
+     657
+    ],
+    [
+     929,
+     656
+    ]
+   ],
+   "value": "PHILSYS-CHECK:8072-8558-9104-6923:CARTER"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92016,
+ "stored_rotated": true
+}

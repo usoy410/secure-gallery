@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-previous",
+ "card_corners": [
+  [
+   733,
+   356
+  ],
+  [
+   1438,
+   231
+  ],
+  [
+   1517,
+   675
+  ],
+  [
+   812,
+   801
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     763,
+     365
+    ],
+    [
+     1412,
+     249
+    ],
+    [
+     1424,
+     316
+    ],
+    [
+     775,
+     431
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     1244,
+     531
+    ],
+    [
+     1328,
+     516
+    ],
+    [
+     1335,
+     556
+    ],
+    [
+     1251,
+     571
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     1343,
+     513
+    ],
+    [
+     1448,
+     494
+    ],
+    [
+     1455,
+     534
+    ],
+    [
+     1350,
+     553
+    ]
+   ],
+   "value": "1.73 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     1352,
+     562
+    ],
+    [
+     1457,
+     543
+    ],
+    [
+     1464,
+     584
+    ],
+    [
+     1359,
+     602
+    ]
+   ],
+   "value": "83 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     786,
+     447
+    ],
+    [
+     962,
+     416
+    ],
+    [
+     1003,
+     647
+    ],
+    [
+     827,
+     679
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     829,
+     688
+    ],
+    [
+     1005,
+     656
+    ],
+    [
+     1019,
+     736
+    ],
+    [
+     843,
+     768
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     996,
+     406
+    ],
+    [
+     1419,
+     330
+    ],
+    [
+     1427,
+     375
+    ],
+    [
+     1004,
+     450
+    ]
+   ],
+   "value": "K58-30-887142"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     1006,
+     459
+    ],
+    [
+     1428,
+     384
+    ],
+    [
+     1438,
+     441
+    ],
+    [
+     1016,
+     516
+    ]
+   ],
+   "value": "BENNETT, ANGELA COPELAND"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     1025,
+     570
+    ],
+    [
+     1223,
+     535
+    ],
+    [
+     1230,
+     574
+    ],
+    [
+     1033,
+     610
+    ]
+   ],
+   "value": "2000/04/13"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     1043,
+     667
+    ],
+    [
+     1465,
+     592
+    ],
+    [
+     1477,
+     655
+    ],
+    [
+     1054,
+     730
+    ]
+   ],
+   "value": "810 43RD STREET\nANTONIO VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92014,
+ "stored_rotated": false
+}

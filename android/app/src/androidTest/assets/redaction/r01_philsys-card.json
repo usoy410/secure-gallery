@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-card",
+ "card_corners": [
+  [
+   235,
+   520
+  ],
+  [
+   1013,
+   325
+  ],
+  [
+   1136,
+   816
+  ],
+  [
+   358,
+   1011
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and National Emblems",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     269,
+     527
+    ],
+    [
+     986,
+     347
+    ],
+    [
+     1002,
+     411
+    ],
+    [
+     285,
+     591
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nPAMBANSANG PAGKAKAKILANLAN"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     301,
+     618
+    ],
+    [
+     511,
+     565
+    ],
+    [
+     590,
+     880
+    ],
+    [
+     380,
+     932
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     539,
+     548
+    ],
+    [
+     991,
+     435
+    ],
+    [
+     1002,
+     479
+    ],
+    [
+     550,
+     592
+    ]
+   ],
+   "value": "2123-8810-3446-9304"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     554,
+     607
+    ],
+    [
+     1005,
+     494
+    ],
+    [
+     1030,
+     592
+    ],
+    [
+     579,
+     705
+    ]
+   ],
+   "value": "DELACRUZ, CYNTHIA, KELLY"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     582,
+     720
+    ],
+    [
+     847,
+     653
+    ],
+    [
+     859,
+     703
+    ],
+    [
+     595,
+     769
+    ]
+   ],
+   "value": "1987/04/18"
+  },
+  {
+   "name": "Signature / Ghost Image",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     877,
+     641
+    ],
+    [
+     1033,
+     602
+    ],
+    [
+     1047,
+     660
+    ],
+    [
+     892,
+     699
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     598,
+     784
+    ],
+    [
+     863,
+     717
+    ],
+    [
+     887,
+     815
+    ],
+    [
+     623,
+     881
+    ]
+   ],
+   "value": "323 72ND DRIVE, JOSEPH VILLE"
+  },
+  {
+   "name": "PhilSys QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     894,
+     709
+    ],
+    [
+     1050,
+     670
+    ],
+    [
+     1074,
+     768
+    ],
+    [
+     919,
+     807
+    ]
+   ],
+   "value": "PHILSYS-CHECK:2123-8810-3446-9304:DELACRUZ"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92001,
+ "stored_rotated": false
+}

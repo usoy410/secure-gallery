@@ -1,0 +1,152 @@
+{
+ "class": "payment_card",
+ "document_class": "payment_card",
+ "variant": "payment-card-front",
+ "card_corners": [
+  [
+   791,
+   626
+  ],
+  [
+   1483,
+   636
+  ],
+  [
+   1477,
+   1072
+  ],
+  [
+   785,
+   1062
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Issuing Bank Logo",
+   "type": "bank_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     833,
+     653
+    ],
+    [
+     1082,
+     656
+    ],
+    [
+     1080,
+     735
+    ],
+    [
+     831,
+     731
+    ]
+   ],
+   "value": "UNIONBANK"
+  },
+  {
+   "name": "Card Network Logo",
+   "type": "card_network_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     1299,
+     956
+    ],
+    [
+     1437,
+     958
+    ],
+    [
+     1436,
+     1037
+    ],
+    [
+     1298,
+     1035
+    ]
+   ],
+   "value": "MASTERCARD"
+  },
+  {
+   "name": "Primary Account Number (PAN)",
+   "type": "card_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     843,
+     845
+    ],
+    [
+     1425,
+     853
+    ],
+    [
+     1424,
+     914
+    ],
+    [
+     843,
+     906
+    ]
+   ],
+   "value": "3530 1113 3330 0000"
+  },
+  {
+   "name": "Expiration Date",
+   "type": "expiry_date",
+   "sensitive": true,
+   "polygon": [
+    [
+     1050,
+     918
+    ],
+    [
+     1258,
+     921
+    ],
+    [
+     1257,
+     960
+    ],
+    [
+     1050,
+     957
+    ]
+   ],
+   "value": "03/30"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "cardholder_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     842,
+     967
+    ],
+    [
+     1257,
+     973
+    ],
+    [
+     1256,
+     1025
+    ],
+    [
+     841,
+     1019
+    ]
+   ],
+   "value": "RAY MUNOZ"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92010,
+ "stored_rotated": false
+}

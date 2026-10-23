@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-current",
+ "card_corners": [
+  [
+   391,
+   65
+  ],
+  [
+   1146,
+   110
+  ],
+  [
+   1118,
+   587
+  ],
+  [
+   362,
+   541
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     420,
+     81
+    ],
+    [
+     1116,
+     123
+    ],
+    [
+     1111,
+     194
+    ],
+    [
+     416,
+     152
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     873,
+     371
+    ],
+    [
+     963,
+     376
+    ],
+    [
+     961,
+     419
+    ],
+    [
+     870,
+     414
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     979,
+     377
+    ],
+    [
+     1092,
+     384
+    ],
+    [
+     1089,
+     427
+    ],
+    [
+     976,
+     420
+    ]
+   ],
+   "value": "1.54 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     976,
+     430
+    ],
+    [
+     1088,
+     437
+    ],
+    [
+     1086,
+     480
+    ],
+    [
+     973,
+     473
+    ]
+   ],
+   "value": "79 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     423,
+     171
+    ],
+    [
+     612,
+     183
+    ],
+    [
+     597,
+     431
+    ],
+    [
+     408,
+     419
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     407,
+     429
+    ],
+    [
+     596,
+     440
+    ],
+    [
+     591,
+     526
+    ],
+    [
+     402,
+     515
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     649,
+     181
+    ],
+    [
+     1102,
+     208
+    ],
+    [
+     1099,
+     256
+    ],
+    [
+     646,
+     228
+    ]
+   ],
+   "value": "F98-34-858061"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     646,
+     238
+    ],
+    [
+     1099,
+     266
+    ],
+    [
+     1095,
+     327
+    ],
+    [
+     642,
+     299
+    ]
+   ],
+   "value": "MORGAN, JAIME WILLIAMS"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     639,
+     357
+    ],
+    [
+     851,
+     370
+    ],
+    [
+     848,
+     412
+    ],
+    [
+     636,
+     399
+    ]
+   ],
+   "value": "1977/10/11"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     632,
+     461
+    ],
+    [
+     1085,
+     489
+    ],
+    [
+     1081,
+     556
+    ],
+    [
+     628,
+     528
+    ]
+   ],
+   "value": "892 ANONAS ROAD, JAMES VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92018,
+ "stored_rotated": false
+}

@@ -3,7 +3,8 @@
 Writes <out>/leaks.csv (one row per image x sensitive field x channel),
 <out>/leaks_wide.csv (one row per image x field, one column per channel) and
 <out>/summary.csv (counts and percentages per class, condition and channel), and
-prints the summary table. Redaction boxes are read from <id>.boxes.json beside each
+prints the summary table. With --fail-on-leak it exits with status 1 if anything
+leaked. Redaction boxes are read from <id>.boxes.json beside each
 image or from the label; without them the field polygon stands in for the box. The
 file itself is also checked for an EXIF thumbnail and identifying metadata.
 """
@@ -19,6 +20,7 @@ from PIL import Image
 from validation.leaktest.core import (
     Reader,
     format_summary,
+    has_leak,
     judge_image,
     load_boxes,
     match_labels,
@@ -65,6 +67,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("redacted_dir", type=Path, help="folder of redacted images")
     parser.add_argument("--labels", type=Path, required=True, help="folder of ground-truth labels")
     parser.add_argument("--out", type=Path, default=Path("data/leaktest"))
+    parser.add_argument(
+        "--fail-on-leak",
+        action="store_true",
+        help="exit with status 1 if any field or file leaked (for CI)",
+    )
     args = parser.parse_args(argv)
     for folder in (args.redacted_dir, args.labels):
         if not folder.is_dir():
@@ -76,6 +83,9 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
     print(format_summary(summary))
     print(f"\nWrote {args.out / 'leaks.csv'} and {args.out / 'summary.csv'}")
+    if args.fail_on_leak and has_leak(summary):
+        print("Leak found: see leaks_wide.csv", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-previous",
+ "card_corners": [
+  [
+   176,
+   290
+  ],
+  [
+   890,
+   205
+  ],
+  [
+   944,
+   655
+  ],
+  [
+   230,
+   741
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     205,
+     300
+    ],
+    [
+     863,
+     222
+    ],
+    [
+     872,
+     289
+    ],
+    [
+     214,
+     368
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     679,
+     495
+    ],
+    [
+     764,
+     485
+    ],
+    [
+     769,
+     525
+    ],
+    [
+     683,
+     535
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     779,
+     483
+    ],
+    [
+     885,
+     470
+    ],
+    [
+     890,
+     511
+    ],
+    [
+     784,
+     523
+    ]
+   ],
+   "value": "1.64 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     785,
+     532
+    ],
+    [
+     891,
+     520
+    ],
+    [
+     896,
+     561
+    ],
+    [
+     790,
+     573
+    ]
+   ],
+   "value": "73 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     223,
+     385
+    ],
+    [
+     402,
+     364
+    ],
+    [
+     430,
+     598
+    ],
+    [
+     252,
+     619
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     253,
+     628
+    ],
+    [
+     431,
+     607
+    ],
+    [
+     441,
+     688
+    ],
+    [
+     262,
+     710
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     437,
+     355
+    ],
+    [
+     865,
+     304
+    ],
+    [
+     871,
+     349
+    ],
+    [
+     442,
+     400
+    ]
+   ],
+   "value": "K55-45-747486"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     443,
+     409
+    ],
+    [
+     872,
+     358
+    ],
+    [
+     879,
+     416
+    ],
+    [
+     450,
+     467
+    ]
+   ],
+   "value": "SANFORD, ANDREW KEITH"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     457,
+     522
+    ],
+    [
+     657,
+     498
+    ],
+    [
+     662,
+     538
+    ],
+    [
+     462,
+     562
+    ]
+   ],
+   "value": "1966/11/08"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     469,
+     620
+    ],
+    [
+     897,
+     569
+    ],
+    [
+     905,
+     633
+    ],
+    [
+     476,
+     684
+    ]
+   ],
+   "value": "912 51ST BOULEVARD\nJOHN VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92004,
+ "stored_rotated": true
+}

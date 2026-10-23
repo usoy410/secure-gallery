@@ -448,6 +448,18 @@ def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
     return summary
 
 
+def has_leak(summary: list[dict[str, Any]]) -> bool:
+    """True if any field leaked on a judged channel, or any file kept identifying metadata.
+
+    Uses the all-classes, all-conditions "any" row, which leaves out the mosaic_blur risk flag.
+    """
+    return any(
+        row["leaked"] > 0
+        for row in summary
+        if row["document_class"] == "ALL" and row["condition"] == "ALL" and row["channel"] == "any"
+    )
+
+
 def write_leaks_wide(results: list[FieldResult], path: Path) -> None:
     """One row per image x field, with one column per channel: leak, ok or n/a."""
     rows: dict[tuple[str, str, str], dict[str, Any]] = {}

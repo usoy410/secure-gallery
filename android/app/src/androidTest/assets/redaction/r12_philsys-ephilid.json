@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-ephilid",
+ "card_corners": [
+  [
+   74,
+   610
+  ],
+  [
+   744,
+   430
+  ],
+  [
+   857,
+   853
+  ],
+  [
+   188,
+   1032
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and ePhilID Banner",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     104,
+     616
+    ],
+    [
+     721,
+     450
+    ],
+    [
+     736,
+     505
+    ],
+    [
+     119,
+     671
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nEPHILID"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     131,
+     686
+    ],
+    [
+     284,
+     645
+    ],
+    [
+     339,
+     847
+    ],
+    [
+     185,
+     888
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     298,
+     641
+    ],
+    [
+     499,
+     587
+    ],
+    [
+     508,
+     621
+    ],
+    [
+     307,
+     675
+    ]
+   ],
+   "value": "7676-7688-8716-7129"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     309,
+     683
+    ],
+    [
+     510,
+     629
+    ],
+    [
+     530,
+     705
+    ],
+    [
+     330,
+     759
+    ]
+   ],
+   "value": "SANDERS, CHRISTIAN, BRIGGS"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     332,
+     767
+    ],
+    [
+     533,
+     713
+    ],
+    [
+     544,
+     756
+    ],
+    [
+     344,
+     810
+    ]
+   ],
+   "value": "1969/05/13"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     190,
+     905
+    ],
+    [
+     558,
+     806
+    ],
+    [
+     583,
+     899
+    ],
+    [
+     215,
+     998
+    ]
+   ],
+   "value": "750 41ST EXTENSION\nNEIL VILLE"
+  },
+  {
+   "name": "PhilSys Check QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     526,
+     580
+    ],
+    [
+     740,
+     522
+    ],
+    [
+     803,
+     754
+    ],
+    [
+     588,
+     811
+    ]
+   ],
+   "value": "PHILSYS-CHECK:7676-7688-8716-7129:SANDERS"
+  },
+  {
+   "name": "Digital Validation / Specimen Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     592,
+     825
+    ],
+    [
+     806,
+     767
+    ],
+    [
+     824,
+     835
+    ],
+    [
+     610,
+     892
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92012,
+ "stored_rotated": true
+}
