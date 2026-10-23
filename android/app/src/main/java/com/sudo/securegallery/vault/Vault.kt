@@ -3,6 +3,7 @@ package com.sudo.securegallery.vault
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import javax.crypto.Cipher
@@ -177,6 +178,68 @@ class Vault(
             fail(tmp, "decryption check failed: ${e.javaClass.simpleName}")
         } catch (e: java.io.IOException) {
             fail(tmp, "could not write the vault file: ${e.javaClass.simpleName}")
+        }
+    }
+
+    sealed interface ImportResult {
+        data class Imported(val items: Int) : ImportResult
+        data object WrongRecoveryCode : ImportResult
+        /** The vault on this phone already holds originals; import only into an empty vault. */
+        data object VaultNotEmpty : ImportResult
+        data class Invalid(val reason: String) : ImportResult
+    }
+
+    /**
+     * Writes the export file (#26): the encrypted originals and the recovery-code wrap of the
+     * data key, as stored. Nothing is decrypted, so no unlock is needed. Returns the item count.
+     */
+    fun export(out: OutputStream): Int {
+        val recovery = checkNotNull(store.readKey(RECOVERY)) { "vault is not set up" }
+        val items = store.itemIds().map { it to store.itemFile(it) }
+        VaultArchive.write(out, recovery, items)
+        return items.size
+    }
+
+    /**
+     * Restores an export into this phone's empty vault (#26). The recovery code unwraps the data
+     * key; every original is decrypted into a digest to prove it is intact; only then the key is
+     * wrapped for [pin] with this phone's Keystore secret and the files move in. Biometric unlock
+     * starts off (it needs a new prompt). On any failure nothing on this phone changes.
+     */
+    fun importArchive(input: InputStream, recoveryCode: CharArray, pin: CharArray): ImportResult {
+        if (store.itemIds().isNotEmpty()) return ImportResult.VaultNotEmpty
+        val code = RecoveryCode.normalize(recoveryCode) ?: return ImportResult.WrongRecoveryCode
+        val staging = File(store.dir, "import-staging").also { it.deleteRecursively() }
+        try {
+            val archive = try {
+                VaultArchive.read(input, staging)
+            } catch (e: VaultArchive.Invalid) {
+                return ImportResult.Invalid(e.message ?: "invalid export")
+            } catch (_: java.io.IOException) {
+                return ImportResult.Invalid("not a vault export")
+            }
+            val dek = unwrap(archive.recovery, recoveryKek(code, archive.recovery), RECOVERY)
+                ?: return ImportResult.WrongRecoveryCode
+            try {
+                for ((id, file) in archive.items) {
+                    try {
+                        VaultCrypto.sha256(file, dek, id)
+                    } catch (_: GeneralSecurityException) {
+                        return ImportResult.Invalid("an original in the export is damaged")
+                    }
+                }
+                disableBiometric()
+                store.writeKey(PIN, wrap(dek, pinKek(pin, existing = null), PIN))
+                store.writeKey(RECOVERY, archive.recovery)
+                limiter.recordSuccess()
+                for ((id, file) in archive.items) check(file.renameTo(store.itemFile(id))) { "could not move $id" }
+                return ImportResult.Imported(archive.items.size)
+            } finally {
+                dek.fill(0)
+            }
+        } finally {
+            code.fill('0')
+            staging.deleteRecursively()
         }
     }
 

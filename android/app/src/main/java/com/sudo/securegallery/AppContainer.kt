@@ -10,6 +10,7 @@ import com.sudo.securegallery.setup.SetupProgressStore
 import com.sudo.securegallery.vault.KeystoreBiometricKey
 import com.sudo.securegallery.vault.KeystoreDeviceSecret
 import com.sudo.securegallery.vault.Vault
+import com.sudo.securegallery.vault.VaultPrefs
 import com.sudo.securegallery.vault.VaultSession
 import com.sudo.securegallery.vault.VaultStore
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,9 @@ interface AppContainer {
 
     /** How far first-run setup got (#28). */
     val setupProgress: SetupProgressStore
+
+    /** Vault settings that are not secrets (#26). */
+    val vaultPrefs: VaultPrefs
 }
 
 /**
@@ -78,4 +82,6 @@ class DefaultAppContainer(
     }
 
     override val setupProgress: SetupProgressStore by lazy { SetupProgressStore(context) }
+
+    override val vaultPrefs: VaultPrefs by lazy { VaultPrefs(context) }
 }

@@ -62,8 +62,16 @@ class VaultStore(val dir: File) {
     }
 
     fun itemFile(itemId: String): File {
-        require(itemId.matches(Regex("[A-Za-z0-9_-]+"))) { "bad item id" }
+        require(isItemId(itemId)) { "bad item id" }
         return File(dir, "$itemId.sgv")
+    }
+
+    /** IDs of every stored original, sorted. */
+    fun itemIds(): List<String> =
+        dir.listFiles { f -> f.isFile && f.name.endsWith(".sgv") }.orEmpty().map { it.name.removeSuffix(".sgv") }.sorted()
+
+    companion object {
+        fun isItemId(id: String) = id.matches(Regex("[A-Za-z0-9_-]{1,64}"))
     }
 
     private fun load(file: File) = Properties().apply { if (file.exists()) file.inputStream().use(::load) }
