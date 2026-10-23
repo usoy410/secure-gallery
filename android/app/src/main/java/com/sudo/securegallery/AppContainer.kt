@@ -10,6 +10,8 @@ import com.sudo.securegallery.localize.FieldLocalizer
 import com.sudo.securegallery.localize.FieldRules
 import com.sudo.securegallery.localize.HybridLocalizer
 import com.sudo.securegallery.localize.MlKitOcrEngine
+import com.sudo.securegallery.redact.MediaStoreCopyStore
+import com.sudo.securegallery.redact.Redactor
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
@@ -89,7 +91,14 @@ class DefaultAppContainer(
 
     override val galleryScanner: GalleryScanner by lazy {
         val detector = detector
-        GalleryScanner(imageSource, database.itemDao(), detector, detector?.config ?: DetectorConfig(), fieldLocalizer)
+        GalleryScanner(
+            imageSource,
+            database.itemDao(),
+            detector,
+            detector?.config ?: DetectorConfig(),
+            fieldLocalizer,
+            Redactor(imageSource, MediaStoreCopyStore(context.contentResolver)),
+        )
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }

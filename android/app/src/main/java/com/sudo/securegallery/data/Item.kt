@@ -16,6 +16,8 @@ import androidx.room.PrimaryKey
  *   tell whether the file changed since.
  * @property contentHash SHA-256 of the file bytes as lowercase hex, or null until hashed.
  * @property cardCorners the detected card's corners, or null until detected (#16).
+ * @property redactedMediaStoreId the MediaStore ID of the app's redacted copy, or null until it
+ *   is saved (#18).
  */
 @Entity(tableName = "items", indices = [Index(value = ["media_store_id"], unique = true)])
 data class Item(
@@ -30,6 +32,7 @@ data class Item(
     @ColumnInfo(name = "boxes") val boxes: List<RedactionBox> = emptyList(),
     @ColumnInfo(name = "retry_count") val retryCount: Int = 0,
     @ColumnInfo(name = "card_corners") val cardCorners: CardCorners? = null,
+    @ColumnInfo(name = "redacted_media_store_id") val redactedMediaStoreId: Long? = null,
 ) {
     /** Move to [next], or throw if §8.4 does not allow that step. */
     fun moveTo(next: ItemState): Item {

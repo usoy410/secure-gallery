@@ -31,6 +31,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE state = 'PENDING' AND document_class IS NOT NULL ORDER BY id")
     suspend fun awaitingLocalization(): List<Item>
 
+    /** Localized items whose redacted copy is not saved yet (#18). */
+    @Query("SELECT * FROM items WHERE state IN ('REDACTED', 'NEEDS_CHECK') AND redacted_media_store_id IS NULL ORDER BY id")
+    suspend fun awaitingRedaction(): List<Item>
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 

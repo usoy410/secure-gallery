@@ -14,9 +14,10 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * A version 1 database (from #15) upgrades to version 2 without losing items (issue #16).
- * The v1 tables are built from the committed schema export, then Room opens the file: it runs
- * the auto-migration and checks the result against the v2 entities, failing on any mismatch.
+ * Older databases upgrade without losing items: version 1 (#15) and version 2 (#16) to the
+ * current one (issues #16, #18). The old tables are built from the committed schema export, then
+ * Room opens the file: it runs the auto-migrations and checks the result against the current
+ * entities, failing on any mismatch.
  */
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -24,8 +25,28 @@ class MigrationTest {
 
     @Test
     fun version1To2KeepsItemsAndAddsEmptyCardCorners() = runTest {
-        val path = context.getDatabasePath("migration-test.db").apply { parentFile?.mkdirs(); delete() }
-        val schema = JSONObject(File("schemas/com.sudo.securegallery.data.AppDatabase/1.json").readText())
+        val path = createFromSchema(1, "migration-test-1.db")
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, path.absolutePath).allowMainThreadQueries().build()
+        val item = room.itemDao().byMediaStoreId(42)!!
+        assertEquals("abc", item.contentHash)
+        assertNull(item.cardCorners)
+        room.close()
+    }
+
+    @Test
+    fun version2To3KeepsItemsWithNoRedactedCopyYet() = runTest {
+        val path = createFromSchema(2, "migration-test-2.db")
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, path.absolutePath).allowMainThreadQueries().build()
+        val item = room.itemDao().byMediaStoreId(42)!!
+        assertEquals("abc", item.contentHash)
+        assertNull(item.redactedMediaStoreId)
+        room.close()
+    }
+
+    /** A database file at [version], built from its committed schema export, holding one item. */
+    private fun createFromSchema(version: Int, name: String): File {
+        val path = context.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        val schema = JSONObject(File("schemas/com.sudo.securegallery.data.AppDatabase/$version.json").readText())
             .getJSONObject("database")
         SQLiteDatabase.openOrCreateDatabase(path, null).use { db ->
             val entity = schema.getJSONArray("entities").getJSONObject(0)
@@ -41,13 +62,8 @@ class MigrationTest {
                     "document_class, document_confidence, boxes, retry_count) " +
                     "VALUES (42, 1, 2, 'abc', 'PENDING', NULL, NULL, '', 0)",
             )
-            db.version = 1
+            db.version = version
         }
-
-        val room = Room.databaseBuilder(context, AppDatabase::class.java, path.absolutePath).allowMainThreadQueries().build()
-        val item = room.itemDao().byMediaStoreId(42)!!
-        assertEquals("abc", item.contentHash)
-        assertNull(item.cardCorners)
-        room.close()
+        return path
     }
 }
