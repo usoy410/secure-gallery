@@ -1,8 +1,5 @@
 package com.sudo.securegallery.ui.vault
 
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,16 +40,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sudo.securegallery.R
 import com.sudo.securegallery.ui.SecureWindow
 import javax.crypto.Cipher
-
-/** True if the phone has a strong biometric enrolled. */
-fun hasStrongBiometric(context: android.content.Context): Boolean =
-    BiometricManager.from(context).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
 
 /** Vault tab with its state and the `BiometricPrompt` calls. */
 @Composable
@@ -62,30 +54,8 @@ fun VaultRoute(viewModel: VaultViewModel, modifier: Modifier = Modifier) {
     val title = stringResource(R.string.vault_biometric_prompt_title)
     val usePin = stringResource(R.string.vault_biometric_prompt_use_pin)
 
-    fun authenticate(cipher: Cipher, onSuccess: (Cipher) -> Unit) {
-        val prompt = BiometricPrompt(
-            activity,
-            ContextCompat.getMainExecutor(activity),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    result.cryptoObject?.cipher?.let(onSuccess) ?: viewModel.onBiometricError()
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    // Cancelling, or tapping "Use PIN", is not an error worth showing.
-                    if (errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON && errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
-                        viewModel.onBiometricError()
-                    }
-                }
-            },
-        )
-        val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setAllowedAuthenticators(BIOMETRIC_STRONG)
-            .setNegativeButtonText(usePin)
-            .build()
-        prompt.authenticate(info, BiometricPrompt.CryptoObject(cipher))
-    }
+    fun authenticate(cipher: Cipher, onSuccess: (Cipher) -> Unit) =
+        authenticateWithBiometric(activity, cipher, title, usePin, onSuccess, viewModel::onBiometricError)
 
     VaultScreen(
         state = state,

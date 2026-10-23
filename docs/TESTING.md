@@ -68,6 +68,9 @@ cd android
 | `vault/VaultSessionTest` | #21 | The unlocked session locks after 2 idle minutes, activity restarts the timer, locking is immediate on demand (as on background), and every lock wipes the key bytes. |
 | `ui/SecureWindowTest` | #21 | `FLAG_SECURE` is set while a secure screen is shown and cleared when it leaves. |
 | `ui/VaultScreenshotTest` | #21 | Roborazzi records the vault: locked (light and dark), PIN entry, wrong PIN, too many attempts, fingerprint changed, unlocked, and not set up. |
+| `setup/SetupFlowTest` | #28 | Setup runs in order and skips the biometric step on phones without one. An interrupted setup resumes after the last saved step, goes back to the PIN if no vault exists, and skips ahead if the vault exists but the step was not saved. |
+| `setup/SetupViewModelTest` | #28 | PINs must have 6 digits and match. The vault is created only after the user confirms the recovery code, with the exact code shown, and setup leaves an unlocked session. Going back discards the code. Setup interrupted at the code resumes at the PIN with no vault. Finishing marks setup done. |
+| `ui/SetupScreenshotTest` | #28 | Roborazzi records every setup screen in light and dark: welcome, photo access, PIN (and mismatch), recovery code, biometric opt-in, and the cloud-backup and uninstall notice. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 

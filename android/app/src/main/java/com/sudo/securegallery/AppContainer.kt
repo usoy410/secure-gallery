@@ -6,6 +6,7 @@ import com.sudo.securegallery.data.AppDatabase
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
+import com.sudo.securegallery.setup.SetupProgressStore
 import com.sudo.securegallery.vault.KeystoreBiometricKey
 import com.sudo.securegallery.vault.KeystoreDeviceSecret
 import com.sudo.securegallery.vault.Vault
@@ -41,6 +42,9 @@ interface AppContainer {
 
     /** The current vault unlock; locks on background and after 2 idle minutes. */
     val vaultSession: VaultSession
+
+    /** How far first-run setup got (#28). */
+    val setupProgress: SetupProgressStore
 }
 
 /**
@@ -72,4 +76,6 @@ class DefaultAppContainer(
     override val vaultSession: VaultSession by lazy {
         VaultSession(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
     }
+
+    override val setupProgress: SetupProgressStore by lazy { SetupProgressStore(context) }
 }
