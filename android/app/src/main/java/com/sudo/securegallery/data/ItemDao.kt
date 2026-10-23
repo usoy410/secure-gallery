@@ -23,6 +23,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE content_hash IS NULL AND state = 'PENDING' ORDER BY id LIMIT 1")
     suspend fun nextUnhashed(): Item?
 
+    /** Hashed items the detector has not seen yet (detected ones have a class or left PENDING). */
+    @Query("SELECT * FROM items WHERE state = 'PENDING' AND content_hash IS NOT NULL AND document_class IS NULL ORDER BY id")
+    suspend fun awaitingDetection(): List<Item>
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 

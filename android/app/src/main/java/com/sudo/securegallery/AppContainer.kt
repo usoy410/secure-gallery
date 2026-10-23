@@ -3,6 +3,7 @@ package com.sudo.securegallery
 import android.content.Context
 import androidx.work.WorkManager
 import com.sudo.securegallery.data.AppDatabase
+import com.sudo.securegallery.detect.DetectorConfig
 import com.sudo.securegallery.detect.LiteRtDetector
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
@@ -75,7 +76,7 @@ class DefaultAppContainer(
 
     override val galleryScanner: GalleryScanner by lazy {
         val detector = detector
-        GalleryScanner(imageSource, database.itemDao(), detector, detector?.config ?: com.sudo.securegallery.detect.DetectorConfig())
+        GalleryScanner(imageSource, database.itemDao(), detector, detector?.config ?: DetectorConfig())
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }
