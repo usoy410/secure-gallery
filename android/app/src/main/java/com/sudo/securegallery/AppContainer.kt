@@ -18,6 +18,8 @@ import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
 import com.sudo.securegallery.scan.ScanPrefs
+import com.sudo.securegallery.secure.CorrectRedaction
+import com.sudo.securegallery.secure.SecureOriginals
 import com.sudo.securegallery.setup.SetupProgressStore
 import com.sudo.securegallery.vault.KeystoreBiometricKey
 import com.sudo.securegallery.vault.KeystoreDeviceSecret
@@ -70,6 +72,9 @@ interface AppContainer {
 
     /** Scan settings: charging only (#27). */
     val scanPrefs: ScanPrefs
+
+    /** Saves box corrections from the review inbox (#24). */
+    val correctRedaction: CorrectRedaction
 }
 
 /**
@@ -109,13 +114,17 @@ class DefaultAppContainer(
             detector,
             detector?.config ?: DetectorConfig(),
             fieldLocalizer,
-            Redactor(
-                imageSource,
-                MediaStoreCopyStore(context.contentResolver),
-                // Without a recheck no copy is marked as passed, so no original can be deleted (#22).
-                orNull("recheck") { Recheck(FieldRules.load(context.assets), MlKitOcrEngine()) },
-            ),
+            Redactor(imageSource, copyStore, recheck),
         )
+    }
+
+    private val copyStore by lazy { MediaStoreCopyStore(context.contentResolver) }
+
+    // Without a recheck no copy is marked as passed, so no original can be deleted (#22).
+    private val recheck: Recheck? by lazy { orNull("recheck") { Recheck(FieldRules.load(context.assets), MlKitOcrEngine()) } }
+
+    override val correctRedaction: CorrectRedaction by lazy {
+        CorrectRedaction(database.itemDao(), vault, imageSource, copyStore, recheck, vaultId = { SecureOriginals.idFor(it) })
     }
 
     override val workManager: WorkManager by lazy { WorkManager.getInstance(context) }

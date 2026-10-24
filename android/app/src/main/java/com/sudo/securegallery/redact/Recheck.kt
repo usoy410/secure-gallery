@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.RectF
+import com.sudo.securegallery.data.CardCorners
 import com.sudo.securegallery.data.RedactionBox
 import com.sudo.securegallery.localize.FieldRules
 import com.sudo.securegallery.localize.OcrEngine
@@ -75,6 +76,13 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
         const val OCR_MAX_SIDE = 2048
         const val GROW_PER_SIDE = 0.15f
         private val DIGIT_RUN = Regex("[0-9]{4,}")
+
+        /** The bounding rectangle of the detected card, in original-image pixels. */
+        fun region(corners: CardCorners?): RectF? = corners?.xy?.let { xy ->
+            val xs = xy.filterIndexed { i, _ -> i % 2 == 0 }
+            val ys = xy.filterIndexed { i, _ -> i % 2 == 1 }
+            RectF(xs.min(), ys.min(), xs.max(), ys.max())
+        }
 
         /** [image] cut to [region] (clamped to the image), or [image] itself if null. */
         private fun crop(image: Bitmap, region: RectF?): Bitmap {

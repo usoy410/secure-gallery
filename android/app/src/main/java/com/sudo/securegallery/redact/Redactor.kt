@@ -32,11 +32,7 @@ class Redactor(
         try {
             val exif = source.open(item.mediaStoreId)?.use(KeptExif::read) ?: return gone(item)
             // The document region in original-image pixels, from the detector's corners.
-            val region = item.cardCorners?.xy?.let { xy ->
-                val xs = xy.filterIndexed { i, _ -> i % 2 == 0 }
-                val ys = xy.filterIndexed { i, _ -> i % 2 == 1 }
-                RectF(xs.min(), ys.min(), xs.max(), ys.max())
-            }
+            val region = Recheck.region(item.cardCorners)
             // The original's numbers, for the digit check; memory only, dropped with this call.
             val windows = recheck?.let { r ->
                 val image = source.loadForOcr(item.mediaStoreId, Recheck.OCR_MAX_SIDE) ?: return failedAttempt(item)

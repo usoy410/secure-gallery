@@ -30,7 +30,9 @@ enum class FieldType(val id: String) {
     QR_CODE("qr_code"),
     SIGNATURE("signature"),
     /** Whole-document fallback box (§8.2). */
-    WHOLE_DOCUMENT("whole_document");
+    WHOLE_DOCUMENT("whole_document"),
+    /** A box the user added in the review inbox (#24); no template field behind it. */
+    USER_BOX("user_box");
 
     companion object {
         fun fromId(id: String): FieldType = entries.first { it.id == id }

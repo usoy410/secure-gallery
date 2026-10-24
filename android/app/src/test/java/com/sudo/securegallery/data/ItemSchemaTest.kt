@@ -79,6 +79,8 @@ class ItemSchemaTest {
             "id", "media_store_id", "date_modified", "size_bytes", "content_hash", "state",
             "document_class", "document_confidence", "boxes", "retry_count", "card_corners",
             "redacted_media_store_id", "recheck_passed", "corrections",
+            // Correction counts by kind (#24): integers, no content.
+            "corrected_moves", "corrected_resizes", "corrected_adds", "corrected_deletes",
         )
     }
 }

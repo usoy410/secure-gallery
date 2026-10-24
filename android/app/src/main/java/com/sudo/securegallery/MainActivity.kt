@@ -24,7 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sudo.securegallery.ui.inbox.InboxScreen
+import com.sudo.securegallery.ui.inbox.InboxRoute
+import com.sudo.securegallery.ui.inbox.InboxViewModel
 import com.sudo.securegallery.ui.scan.ScanRoute
 import com.sudo.securegallery.ui.setup.SetupRoute
 import com.sudo.securegallery.ui.setup.SetupViewModel
@@ -67,7 +68,7 @@ class MainActivity : FragmentActivity() {
                 Column(Modifier.fillMaxSize()) {
                     when (tab) {
                         0 -> ScanRoute(viewModel(factory = ScanViewModel.factory(container)), Modifier.weight(1f))
-                        1 -> InboxScreen(Modifier.weight(1f))
+                        1 -> InboxRoute(viewModel(factory = InboxViewModel.factory(container)), Modifier.weight(1f))
                         else -> VaultRoute(
                             viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
                             Modifier.weight(1f),

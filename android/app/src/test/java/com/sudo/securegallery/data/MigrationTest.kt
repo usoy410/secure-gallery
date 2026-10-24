@@ -61,6 +61,15 @@ class MigrationTest {
         room.close()
     }
 
+    @Test
+    fun version5To6StartsWithNoBoxCorrections() = runTest {
+        val path = createFromSchema(5, "migration-test-5.db")
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, path.absolutePath).allowMainThreadQueries().build()
+        val item = room.itemDao().byMediaStoreId(42)!!
+        assertEquals(listOf(0, 0, 0, 0), listOf(item.correctedMoves, item.correctedResizes, item.correctedAdds, item.correctedDeletes))
+        room.close()
+    }
+
     /** A database file at [version], built from its committed schema export, holding one item. */
     private fun createFromSchema(version: Int, name: String): File {
         val path = context.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }

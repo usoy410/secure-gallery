@@ -25,7 +25,7 @@ class SecureOriginals(
     private val source: ImageSource,
 ) {
     /** The vault file name of an item's original. */
-    fun vaultId(item: Item) = "item-${item.id}"
+    fun vaultId(item: Item) = idFor(item)
 
     /** Vaults every ready original and returns the items whose original may be deleted. */
     suspend fun prepare(key: Vault.Key): List<Item> =
@@ -52,5 +52,10 @@ class SecureOriginals(
             val next = if (gone) ItemState.VAULTED else ItemState.ORIGINAL_STILL_PUBLIC
             if (current.state != next) dao.update(current.moveTo(next))
         }
+    }
+
+    companion object {
+        /** The vault file name of an item's original, for the other steps that read it. */
+        fun idFor(item: Item) = "item-${item.id}"
     }
 }
