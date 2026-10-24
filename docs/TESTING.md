@@ -103,6 +103,7 @@ Some results are too slow to compute in unit tests, so they live in `reports/` a
 |---|---|---|---|
 | `reports/rq4/` | `python -m validation.report rq4` | About 1 hour on CPU | Leak rate per strategy, condition and severity, with 95% intervals. Also 8 charts, a README for each column, and `examples/`. |
 | `reports/rq4/examples/` | `python -m validation.report rq4-examples` | Seconds, no OCR | 11 synthetic test images. Each shows the original next to the copy each strategy saved. Red outlines mark text the leak test recovered. Orange outlines mark pictures that are not fully covered. |
+| `ml/tests/test_release.py` | #34 | A release bundle holds the data, templates, datasheet, CC BY 4.0 data license with every third-party input, `release.json` and `SHA256SUMS`. Rebuilding from its seed matches every checksum, an edited image is reported, every card image has a watermark contrast of at least 20 (on light and dark cards), and a release with photo negatives refuses to build without the five curated photos. |
 
 `rq4-examples` reads the files an earlier `rq4` run left in `data/benchmark/rq4_work`. Run `rq4` first on a fresh clone.
 
