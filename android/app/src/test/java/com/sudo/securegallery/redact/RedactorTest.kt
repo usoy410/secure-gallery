@@ -14,6 +14,7 @@ import com.sudo.securegallery.scan.ImageSource
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +33,7 @@ class RedactorTest {
     private val item = Item(id = 1, mediaStoreId = 7, dateModified = 1, sizeBytes = 3, contentHash = "h", state = ItemState.REDACTED, boxes = listOf(box))
 
     @Test
-    fun theCopyIsSavedAndLinkedAndTheOriginalIsOnlyRead() {
+    fun theCopyIsSavedAndLinkedAndTheOriginalIsOnlyRead() = runTest {
         val source = FakeSource()
         val before = GalleryScanner.sha256(ByteArrayInputStream(source.originalBytes))
         val store = FakeStore()
@@ -50,9 +51,11 @@ class RedactorTest {
     }
 
     @Test
-    fun aFailingSaveIsRetriedThenMarkedFailed() {
+    fun aFailingSaveIsRetriedThenMarkedFailed() = runTest {
         val source = FakeSource()
-        val broken = RedactedCopyStore { _, _ -> throw IllegalStateException("disk full") }
+        val broken = object : FakeStore() {
+            override fun save(originalId: Long, jpeg: ByteArray): Long = throw IllegalStateException("disk full")
+        }
         var current = item
         repeat(Redactor.MAX_ATTEMPTS - 1) {
             current = Redactor(source, broken).redact(current)
@@ -65,14 +68,18 @@ class RedactorTest {
     }
 
     @Test
-    fun anOriginalDeletedSinceTheScanIsMarkedFailed() {
+    fun anOriginalDeletedSinceTheScanIsMarkedFailed() = runTest {
         val source = FakeSource().apply { deleted = true }
         assertEquals(ItemState.FAILED, Redactor(source, FakeStore()).redact(item).state)
     }
 
-    private class FakeStore : RedactedCopyStore {
+    private open class FakeStore : RedactedCopyStore {
         val saved = mutableListOf<Pair<Long, ByteArray>>()
         override fun save(originalId: Long, jpeg: ByteArray): Long = 500L.also { saved += originalId to jpeg }
+        override fun read(copyId: Long): ByteArray? = saved.lastOrNull()?.second
+        override fun overwrite(copyId: Long, jpeg: ByteArray) {
+            saved += saved.last().first to jpeg
+        }
     }
 
     private class FakeSource : ImageSource {

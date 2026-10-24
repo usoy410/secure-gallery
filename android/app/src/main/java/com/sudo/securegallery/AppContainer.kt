@@ -12,6 +12,7 @@ import com.sudo.securegallery.localize.FieldRules
 import com.sudo.securegallery.localize.HybridLocalizer
 import com.sudo.securegallery.localize.MlKitOcrEngine
 import com.sudo.securegallery.redact.MediaStoreCopyStore
+import com.sudo.securegallery.redact.Recheck
 import com.sudo.securegallery.redact.Redactor
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
@@ -104,7 +105,12 @@ class DefaultAppContainer(
             detector,
             detector?.config ?: DetectorConfig(),
             fieldLocalizer,
-            Redactor(imageSource, MediaStoreCopyStore(context.contentResolver)),
+            Redactor(
+                imageSource,
+                MediaStoreCopyStore(context.contentResolver),
+                // Without a recheck no copy is marked as passed, so no original can be deleted (#22).
+                orNull("recheck") { Recheck(FieldRules.load(context.assets), MlKitOcrEngine()) },
+            ),
         )
     }
 

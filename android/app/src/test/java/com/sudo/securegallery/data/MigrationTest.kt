@@ -43,6 +43,16 @@ class MigrationTest {
         room.close()
     }
 
+    @Test
+    fun version3To4MarksNoCopyAsRechecked() = runTest {
+        val path = createFromSchema(3, "migration-test-3.db")
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, path.absolutePath).allowMainThreadQueries().build()
+        val item = room.itemDao().byMediaStoreId(42)!!
+        assertEquals("abc", item.contentHash)
+        assertEquals(false, item.recheckPassed)
+        room.close()
+    }
+
     /** A database file at [version], built from its committed schema export, holding one item. */
     private fun createFromSchema(version: Int, name: String): File {
         val path = context.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
