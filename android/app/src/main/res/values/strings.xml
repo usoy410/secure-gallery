@@ -27,6 +27,7 @@
     <string name="scan_failed_body">Something went wrong while checking your photos. Try again.</string>
     <string name="scan_retry_button">Try again</string>
     <string name="scan_now_button">Scan now</string>
+    <string name="scan_charging_only">Check new photos only while charging</string>
     <plurals name="secure_ready">
         <item quantity="one">%1$d photo ready to secure</item>
         <item quantity="other">%1$d photos ready to secure</item>

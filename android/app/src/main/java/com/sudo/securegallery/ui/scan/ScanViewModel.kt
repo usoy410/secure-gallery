@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import com.sudo.securegallery.AppContainer
 import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemDao
+import com.sudo.securegallery.scan.ScanPrefs
 import com.sudo.securegallery.scan.ScanWorker
 import com.sudo.securegallery.secure.SecureOriginals
 import com.sudo.securegallery.vault.VaultSession
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -48,7 +50,20 @@ class ScanViewModel(
     private val workManager: WorkManager,
     private val secure: SecureOriginals? = null,
     private val session: VaultSession? = null,
+    private val scanPrefs: ScanPrefs? = null,
 ) : ViewModel() {
+    /** New photos are processed only while charging (#27). */
+    val chargingOnly: StateFlow<Boolean> = (scanPrefs?.chargingOnly ?: flowOf(false))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setChargingOnly(value: Boolean) {
+        val prefs = scanPrefs ?: return
+        viewModelScope.launch {
+            prefs.setChargingOnly(value)
+            ScanWorker.watchNewPhotos(workManager, value)
+        }
+    }
+
     private val secureFlow = MutableStateFlow(SecureState())
     private var pending: List<Item> = emptyList()
 
@@ -109,6 +124,7 @@ class ScanViewModel(
                     container.workManager,
                     SecureOriginals(container.database.itemDao(), container.vault, container.imageSource),
                     container.vaultSession,
+                    container.scanPrefs,
                 )
             }
         }

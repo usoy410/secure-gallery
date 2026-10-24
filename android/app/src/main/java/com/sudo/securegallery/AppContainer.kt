@@ -17,6 +17,7 @@ import com.sudo.securegallery.redact.Redactor
 import com.sudo.securegallery.scan.GalleryScanner
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.scan.MediaStoreImageSource
+import com.sudo.securegallery.scan.ScanPrefs
 import com.sudo.securegallery.setup.SetupProgressStore
 import com.sudo.securegallery.vault.KeystoreBiometricKey
 import com.sudo.securegallery.vault.KeystoreDeviceSecret
@@ -66,6 +67,9 @@ interface AppContainer {
 
     /** Vault settings that are not secrets (#26). */
     val vaultPrefs: VaultPrefs
+
+    /** Scan settings: charging only (#27). */
+    val scanPrefs: ScanPrefs
 }
 
 /**
@@ -127,6 +131,8 @@ class DefaultAppContainer(
     override val setupProgress: SetupProgressStore by lazy { SetupProgressStore(context) }
 
     override val vaultPrefs: VaultPrefs by lazy { VaultPrefs(context) }
+
+    override val scanPrefs: ScanPrefs by lazy { ScanPrefs(context) }
 
     /** [build]'s result, or null with a log line (class and message only) if it fails. */
     private fun <T> orNull(what: String, build: () -> T?): T? = try {

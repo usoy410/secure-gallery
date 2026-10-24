@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -80,6 +82,7 @@ fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
     }
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val secure by viewModel.secureState.collectAsStateWithLifecycle()
+    val chargingOnly by viewModel.chargingOnly.collectAsStateWithLifecycle()
     // The only way originals are deleted: one system dialog for the whole batch (#22).
     val deleteDialog = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         viewModel.onDeleteResult(it.resultCode == Activity.RESULT_OK)
@@ -91,6 +94,8 @@ fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
         onScanNow = viewModel::scanNow,
         modifier = modifier,
         secure = secure,
+        chargingOnly = chargingOnly,
+        onChargingOnly = viewModel::setChargingOnly,
         onSecure = {
             viewModel.secureNow { items ->
                 val uris = items.map { ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it.mediaStoreId) }
@@ -112,6 +117,8 @@ fun ScanScreen(
     modifier: Modifier = Modifier,
     secure: SecureState = SecureState(),
     onSecure: () -> Unit = {},
+    chargingOnly: Boolean = false,
+    onChargingOnly: (Boolean) -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -144,6 +151,19 @@ fun ScanScreen(
                     progress.running -> Scanning(progress)
                     progress.failed -> Failed(progress, onScanNow)
                     else -> Done(progress, onScanNow)
+                }
+            }
+            if (access != PhotoAccess.NONE) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.scan_charging_only),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(checked = chargingOnly, onCheckedChange = onChargingOnly)
                 }
             }
         }
