@@ -35,11 +35,24 @@ data class EditorState(
     val saving: Boolean = false,
 )
 
+/**
+ * One item open in the viewer (#23): the redacted copy, and the original once the eye toggle
+ * decrypted it. The original lives in memory only and is dropped when the vault locks.
+ */
+data class ViewerState(
+    val item: Item,
+    val redacted: Bitmap,
+    val original: Bitmap? = null,
+    val showOriginal: Boolean = false,
+    val loading: Boolean = false,
+)
+
 enum class InboxMessage { VAULT_LOCKED, NOT_AVAILABLE, SAVED, SAVED_NEEDS_CHECK, SAVE_FAILED }
 
 /**
- * The review inbox (§8.4, #24): the list of processed items, NEEDS_CHECK first, and the box
- * editor. The editor shows the original, so it opens only while the vault is unlocked (§8.3).
+ * The review inbox (§8.4, #24): the list of processed items, NEEDS_CHECK first, the viewer
+ * with the eye toggle (#23) and the box editor. Both show the original only while the vault is
+ * unlocked (§8.3), and drop it when the vault locks.
  */
 class InboxViewModel(
     dao: ItemDao,
@@ -55,12 +68,78 @@ class InboxViewModel(
     private val _message = MutableStateFlow<InboxMessage?>(null)
     val message: StateFlow<InboxMessage?> = _message.asStateFlow()
 
+    private val _viewer = MutableStateFlow<ViewerState?>(null)
+    val viewer: StateFlow<ViewerState?> = _viewer.asStateFlow()
+
+    /** True while the eye toggle waits for the user to unlock the vault. */
+    private val _unlockRequested = MutableStateFlow(false)
+    val unlockRequested: StateFlow<Boolean> = _unlockRequested.asStateFlow()
+
     init {
-        // The editor shows the original: it closes as soon as the vault locks.
-        session?.let { s -> viewModelScope.launch { s.unlocked.collect { if (!it) close() } } }
+        session?.let { s ->
+            viewModelScope.launch {
+                s.unlocked.collect { unlocked ->
+                    if (!unlocked) {
+                        // The original is on screen only while unlocked.
+                        close()
+                        _viewer.update { it?.copy(original = null, showOriginal = false, loading = false) }
+                    } else if (_unlockRequested.value) {
+                        _unlockRequested.value = false
+                        toggleOriginal()
+                    }
+                }
+            }
+        }
     }
 
+    /** Opens the viewer on [item]'s redacted copy. */
     fun open(item: Item) {
+        val corrector = corrector ?: return
+        viewModelScope.launch {
+            val decoded = withContext(io) { runCatching { corrector.copyPreview(item, PREVIEW_MAX_SIDE) }.getOrNull() }
+            if (decoded == null) {
+                _message.value = InboxMessage.NOT_AVAILABLE
+                return@launch
+            }
+            _viewer.value = ViewerState(item, decoded.bitmap)
+        }
+    }
+
+    /** The eye toggle: original or redacted copy. While locked it asks for an unlock first. */
+    fun toggleOriginal() {
+        val state = _viewer.value ?: return
+        if (state.showOriginal) {
+            _viewer.value = state.copy(showOriginal = false)
+            return
+        }
+        val key = session?.key() ?: run { _unlockRequested.value = true; return }
+        if (state.original != null) {
+            _viewer.value = state.copy(showOriginal = true)
+            return
+        }
+        val corrector = corrector ?: return
+        _viewer.value = state.copy(loading = true)
+        viewModelScope.launch {
+            val decoded = withContext(io) { runCatching { corrector.preview(key, state.item, PREVIEW_MAX_SIDE) }.getOrNull() }
+            if (decoded == null) _message.value = InboxMessage.NOT_AVAILABLE
+            _viewer.update { v ->
+                if (v?.item?.id != state.item.id || session?.key() == null) v?.copy(loading = false)
+                else v.copy(original = decoded?.bitmap, showOriginal = decoded != null, loading = false)
+            }
+        }
+    }
+
+    fun cancelUnlock() {
+        _unlockRequested.value = false
+    }
+
+    fun closeViewer() {
+        _viewer.value = null
+        _unlockRequested.value = false
+    }
+
+    /** Opens the box editor on [item]; needs the unlocked vault. */
+    fun openEditor(item: Item) {
         val corrector = corrector ?: return
         val key = session?.key() ?: run { _message.value = InboxMessage.VAULT_LOCKED; return }
         viewModelScope.launch {
@@ -104,7 +183,13 @@ class InboxViewModel(
                     if (result.item.recheckPassed) InboxMessage.SAVED else InboxMessage.SAVED_NEEDS_CHECK
                 else -> InboxMessage.SAVE_FAILED
             }
-            if (result is CorrectRedaction.Result.Saved) close() else _editor.update { it?.copy(saving = false) }
+            if (result is CorrectRedaction.Result.Saved) {
+                // The viewer showed the old copy: back to the list.
+                close()
+                closeViewer()
+            } else {
+                _editor.update { it?.copy(saving = false) }
+            }
         }
     }
 
@@ -116,7 +201,10 @@ class InboxViewModel(
         _message.value = null
     }
 
-    override fun onCleared() = close()
+    override fun onCleared() {
+        close()
+        closeViewer()
+    }
 
     private fun edit(change: (EditorState) -> EditorState) {
         session?.touch()

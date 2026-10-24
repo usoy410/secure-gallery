@@ -53,6 +53,10 @@ class CorrectRedaction(
         return bytes?.takeIf { Vault.sha256Hex(it) == item.contentHash }
     }
 
+    /** The redacted copy scaled to at most [maxSide] px per side, for the viewer (#23). */
+    fun copyPreview(item: Item, maxSide: Int): Decoded? =
+        item.redactedMediaStoreId?.let(store::read)?.let { decode(it, maxSide) }
+
     /** The original scaled to at most [maxSide] px per side, for the editor. */
     fun preview(key: Vault.Key?, item: Item, maxSide: Int): Decoded? = original(key, item)?.let { decode(it, maxSide) }
 

@@ -21,6 +21,14 @@
     <string name="inbox_saved">Saved. The new copy passed the check.</string>
     <string name="inbox_saved_needs_check">Saved, but the new copy did not pass the check. Its original stays in the gallery.</string>
     <string name="inbox_save_failed">Could not save. Nothing was changed.</string>
+    <string name="viewer_back">Back to the inbox</string>
+    <string name="viewer_show_original">Show original</string>
+    <string name="viewer_show_redacted">Show redacted copy</string>
+    <string name="viewer_unlock_to_show">Unlock the vault to show the original</string>
+    <string name="viewer_showing_original">Showing the original</string>
+    <string name="viewer_showing_redacted">Showing the redacted copy</string>
+    <string name="viewer_edit_boxes">Correct boxes</string>
+    <string name="viewer_cloud_backup_note">The original is gone from your gallery, but copies may still exist in cloud backups such as Google Photos. Check them too.</string>
     <string name="editor_title">Correct boxes</string>
     <string name="editor_hint">Tap a box to select it. Drag it to move, or drag a corner to resize.</string>
     <string name="editor_add">Add box</string>

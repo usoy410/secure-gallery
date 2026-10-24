@@ -47,11 +47,19 @@ import com.sudo.securegallery.data.ItemState
 
 /** The inbox tab: the list, or the box editor while an item is open (#24). */
 @Composable
-fun InboxRoute(viewModel: InboxViewModel, modifier: Modifier = Modifier) {
+fun InboxRoute(
+    viewModel: InboxViewModel,
+    modifier: Modifier = Modifier,
+    unlocked: Boolean = false,
+    unlockPrompt: @Composable (onDismiss: () -> Unit) -> Unit = {},
+) {
     val items by viewModel.items.collectAsStateWithLifecycle()
     val editor by viewModel.editor.collectAsStateWithLifecycle()
+    val viewer by viewModel.viewer.collectAsStateWithLifecycle()
+    val unlockRequested by viewModel.unlockRequested.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val state = editor
+    val viewing = viewer
     if (state != null) {
         BackHandler(onBack = viewModel::close)
         BoxEditorScreen(
@@ -68,6 +76,19 @@ fun InboxRoute(viewModel: InboxViewModel, modifier: Modifier = Modifier) {
             ),
             modifier = modifier,
         )
+    } else if (viewing != null) {
+        BackHandler(onBack = viewModel::closeViewer)
+        ViewerScreen(
+            state = viewing,
+            unlocked = unlocked,
+            actions = ViewerActions(
+                toggle = viewModel::toggleOriginal,
+                edit = { viewModel.openEditor(viewing.item) },
+                close = viewModel::closeViewer,
+            ),
+            modifier = modifier,
+        )
+        if (unlockRequested && !unlocked) unlockPrompt(viewModel::cancelUnlock)
     } else {
         InboxScreen(modifier, items, viewModel::open, message, viewModel::dismissMessage)
     }
@@ -149,7 +170,7 @@ private fun InboxRow(item: Item, onClick: () -> Unit) {
     HorizontalDivider()
 }
 
-private val DocumentClass?.label: Int
+internal val DocumentClass?.label: Int
     get() = when (this) {
         DocumentClass.PHILSYS -> R.string.inbox_class_philsys
         DocumentClass.LTO -> R.string.inbox_class_lto

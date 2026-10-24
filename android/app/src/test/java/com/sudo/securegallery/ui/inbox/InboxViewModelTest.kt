@@ -34,6 +34,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -63,7 +64,10 @@ class InboxViewModelTest {
     private val original = ByteArrayOutputStream().also {
         Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }.compress(Bitmap.CompressFormat.PNG, 100, it)
     }.toByteArray()
-    private var copy: ByteArray? = null
+    /** The redacted copy: all black. */
+    private var copy: ByteArray? = ByteArrayOutputStream().also {
+        Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK) }.compress(Bitmap.CompressFormat.JPEG, 95, it)
+    }.toByteArray()
 
     @Before
     fun setUp() {
@@ -129,12 +133,12 @@ class InboxViewModelTest {
     fun theEditorNeedsTheUnlockedVaultAndClosesWhenItLocks() {
         val item = insert(1, ItemState.REDACTED)
         val vm = viewModel()
-        vm.open(item)
+        vm.openEditor(item)
         assertEquals(InboxMessage.VAULT_LOCKED, vm.message.value)
         assertNull(vm.editor.value)
 
         unlock()
-        vm.open(item)
+        vm.openEditor(item)
         assertEquals(200f, vm.editor.value!!.edits.width)
         session.lock()
         assertNull(vm.editor.value)
@@ -145,7 +149,7 @@ class InboxViewModelTest {
         val item = insert(1, ItemState.REDACTED)
         unlock()
         val vm = viewModel()
-        vm.open(item)
+        vm.openEditor(item)
         vm.select(0)
         vm.move(20f, 0f)
         vm.move(20f, 0f)
@@ -161,5 +165,36 @@ class InboxViewModelTest {
         assertEquals(listOf(1, 0, 1, 0), listOf(stored.correctedMoves, stored.correctedResizes, stored.correctedAdds, stored.correctedDeletes))
         assertEquals(2, stored.corrections)
         assertEquals(ItemState.NEEDS_CHECK, stored.state)
+    }
+
+    @Test
+    fun theViewerShowsTheCopyAndTheEyeAsksForAnUnlockFirst() {
+        val item = insert(1, ItemState.VAULTED)
+        vault.store((vault.unlock("123456".toCharArray()) as Vault.Unlock.Success).key, "item-${item.id}", original.inputStream())
+        val vm = viewModel()
+        vm.open(item)
+        val viewer = vm.viewer.value!!
+        assertTrue(Color.red(viewer.redacted.getPixel(100, 50)) < 40)
+        assertNull(viewer.original)
+
+        vm.toggleOriginal()
+        assertEquals(true, vm.unlockRequested.value)
+        assertNull(vm.viewer.value!!.original)
+
+        // Unlocking answers the request: the original shows without another tap.
+        unlock()
+        val shown = runBlocking { withTimeout(5_000) { vm.viewer.first { it?.showOriginal == true } } }!!
+        assertEquals(false, vm.unlockRequested.value)
+        assertEquals(Color.WHITE, shown.original!!.getPixel(100, 50))
+
+        vm.toggleOriginal()
+        assertEquals(false, vm.viewer.value!!.showOriginal)
+        vm.toggleOriginal()
+        assertEquals(true, vm.viewer.value!!.showOriginal)
+
+        // Locking drops the original from memory and goes back to the copy.
+        session.lock()
+        assertNull(vm.viewer.value!!.original)
+        assertEquals(false, vm.viewer.value!!.showOriginal)
     }
 }

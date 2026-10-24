@@ -18,6 +18,9 @@ import com.sudo.securegallery.ui.inbox.BoxEditorScreen
 import com.sudo.securegallery.ui.inbox.EditorActions
 import com.sudo.securegallery.ui.inbox.EditorState
 import com.sudo.securegallery.ui.inbox.InboxScreen
+import com.sudo.securegallery.ui.inbox.ViewerActions
+import com.sudo.securegallery.ui.inbox.ViewerScreen
+import com.sudo.securegallery.ui.inbox.ViewerState
 import com.sudo.securegallery.ui.theme.SecureGalleryTheme
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +30,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Screenshot tests for [InboxScreen] covering both Light and Dark themes, the inbox with mixed
- * states, and the box editor (#24). The editor's image is a plain synthetic card shape.
+ * states, the box editor (#24) and the viewer with the eye toggle (#23). The editor's image is a plain synthetic card shape.
  *
  * Runs on JVM using Robolectric Native Graphics and Roborazzi for fast, emulator-free screenshot verification.
  */
@@ -109,4 +112,39 @@ class InboxScreenshotTest {
         }
         composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/box_editor_light.png")
     }
+
+    /** A synthetic card: light background, grey photo area, dark text bars. */
+    private fun card(redacted: Boolean) = Bitmap.createBitmap(800, 500, Bitmap.Config.ARGB_8888).apply {
+        eraseColor(android.graphics.Color.rgb(220, 232, 245))
+        val canvas = Canvas(this)
+        val grey = Paint().apply { color = android.graphics.Color.rgb(150, 160, 170) }
+        canvas.drawRect(40f, 120f, 240f, 400f, grey)
+        for (row in 0 until 3) canvas.drawRect(300f, 150f + 90f * row, 700f, 180f + 90f * row, grey)
+        if (redacted) {
+            val black = Paint().apply { color = android.graphics.Color.BLACK }
+            canvas.drawRect(40f, 120f, 240f, 400f, black)
+            canvas.drawRect(290f, 140f, 710f, 190f, black)
+        }
+    }
+
+    private val vaulted = Item(id = 9, mediaStoreId = 9, dateModified = 1, sizeBytes = 1, state = ItemState.VAULTED, documentClass = DocumentClass.PHILSYS, redactedMediaStoreId = 90)
+
+    private fun viewer(state: ViewerState, unlocked: Boolean, name: String) {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                ViewerScreen(state, unlocked, ViewerActions())
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
+    }
+
+    @Test
+    fun viewer_redactedCopy() = viewer(ViewerState(vaulted, card(redacted = true)), unlocked = true, "viewer_redacted")
+
+    @Test
+    fun viewer_original() =
+        viewer(ViewerState(vaulted, card(redacted = true), card(redacted = false), showOriginal = true), unlocked = true, "viewer_original")
+
+    @Test
+    fun viewer_lockedPrompt() = viewer(ViewerState(vaulted, card(redacted = true)), unlocked = false, "viewer_locked")
 }

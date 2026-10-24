@@ -108,6 +108,8 @@ cd android
 | `ui/inbox/InboxViewModelTest` | #24 | The inbox lists items with a copy, `NEEDS_CHECK` first. The editor opens only while the vault is unlocked and closes when it locks. A save stores the boxes and the correction counts by kind. |
 | `data/MigrationTest` (version 5) | #24 | A version 5 database upgrades to version 6 with every correction count at zero. |
 | `ui/InboxScreenshotTest` | #24 | Roborazzi screenshots of the empty inbox, the inbox with mixed states (light and dark) and the box editor with a selected box. |
+| `ui/inbox/InboxViewModelTest` (viewer) | #23 | The viewer opens on the redacted copy. The eye toggle asks for an unlock while locked, and after the unlock shows the original without another tap. It switches back and forth while unlocked, and locking drops the original from memory. |
+| `ui/InboxScreenshotTest` (viewer) | #23 | Roborazzi screenshots of the viewer showing the redacted copy, the original, and the locked state with the lock icon, each with the cloud backup note of a vaulted item. |
 | `scan/ImageQueryTest` (no selection) | #65 | The MediaStore query sends no selection, so MediaProvider cannot drop rows for the app. GIFs, the app's own files, redacted copies and pending files are filtered in Kotlin, and a null column keeps the photo. |
 | `AppContainerTest` (fallback) | #65 | When the detector or the localizer throws while being built, both become null and the scan still indexes and hashes photos. |
 | `ui/ScanScreenshotTest` (failed, found and checked) | #65 | A failed scan shows "Scan failed" and "Try again", never "Scan complete". The done screen shows photos found and checked separately. |
