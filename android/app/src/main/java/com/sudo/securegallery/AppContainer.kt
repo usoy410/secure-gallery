@@ -1,6 +1,7 @@
 package com.sudo.securegallery
 
 import android.content.Context
+import android.util.Log
 import androidx.work.WorkManager
 import com.sudo.securegallery.data.AppDatabase
 import com.sudo.securegallery.detect.DetectorConfig
@@ -48,8 +49,8 @@ interface AppContainer {
     /** The bundled document detector, or null if the build has no model (#16). */
     val detector: LiteRtDetector?
 
-    /** Hybrid field localization with the bundled templates and ML Kit (#17). */
-    val fieldLocalizer: FieldLocalizer
+    /** Hybrid field localization with the bundled templates and ML Kit (#17), or null if it could not be built. */
+    val fieldLocalizer: FieldLocalizer?
 
     val workManager: WorkManager
 
@@ -70,11 +71,17 @@ interface AppContainer {
  * Default production implementation of [AppContainer].
  *
  * Singletons are created on first use, so building the container stays cheap at startup.
+ * If the detector or the localizer cannot be built on this phone, the scan still indexes and
+ * hashes photos without them, instead of failing before it lists a single one (#65).
  *
  * @property context The application-level [Context].
  */
 class DefaultAppContainer(
-    override val context: Context
+    override val context: Context,
+    private val openDetector: (Context) -> LiteRtDetector? = { LiteRtDetector.open(it.assets) },
+    private val buildLocalizer: (Context, Float) -> FieldLocalizer = { ctx, high ->
+        HybridLocalizer(CardTemplate.loadAll(ctx.assets), FieldRules.load(ctx.assets), MlKitOcrEngine(), high)
+    },
 ) : AppContainer {
     override val database: AppDatabase by lazy { AppDatabase.create(context) }
 
@@ -82,11 +89,11 @@ class DefaultAppContainer(
         MediaStoreImageSource(context.contentResolver, context.packageName)
     }
 
-    override val detector: LiteRtDetector? by lazy { LiteRtDetector.open(context.assets) }
+    override val detector: LiteRtDetector? by lazy { orNull("detector") { openDetector(context) } }
 
-    override val fieldLocalizer: FieldLocalizer by lazy {
+    override val fieldLocalizer: FieldLocalizer? by lazy {
         val config = detector?.config ?: DetectorConfig()
-        HybridLocalizer(CardTemplate.loadAll(context.assets), FieldRules.load(context.assets), MlKitOcrEngine(), config.highConfidence)
+        orNull("field localizer") { buildLocalizer(context, config.highConfidence) }
     }
 
     override val galleryScanner: GalleryScanner by lazy {
@@ -114,4 +121,19 @@ class DefaultAppContainer(
     override val setupProgress: SetupProgressStore by lazy { SetupProgressStore(context) }
 
     override val vaultPrefs: VaultPrefs by lazy { VaultPrefs(context) }
+
+    /** [build]'s result, or null with a log line (class and message only) if it fails. */
+    private fun <T> orNull(what: String, build: () -> T?): T? = try {
+        build()
+    } catch (e: Exception) {
+        Log.e(TAG, "$what unavailable: ${e.javaClass.simpleName}: ${e.message}")
+        null
+    } catch (e: LinkageError) {
+        Log.e(TAG, "$what unavailable: ${e.javaClass.simpleName}: ${e.message}")
+        null
+    }
+
+    private companion object {
+        const val TAG = "SecureGallery"
+    }
 }

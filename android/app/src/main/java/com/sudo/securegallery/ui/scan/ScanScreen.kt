@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -83,7 +84,7 @@ fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
     )
 }
 
-/** Stateless scan screen: no access yet, scanning, or done. */
+/** Stateless scan screen: no access yet, scanning, failed, or done. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
@@ -119,6 +120,7 @@ fun ScanScreen(
                 when {
                     access == PhotoAccess.NONE -> NoAccess(onRequestAccess)
                     progress.running -> Scanning(progress)
+                    progress.failed -> Failed(progress, onScanNow)
                     else -> Done(progress, onScanNow)
                 }
             }
@@ -179,8 +181,17 @@ private fun Scanning(progress: ScanProgress) = Message(
 private fun Done(progress: ScanProgress, onScanNow: () -> Unit) = Message(
     icon = { BigIcon(Icons.Outlined.CheckCircleOutline) },
     title = stringResource(R.string.scan_done_title),
-    body = pluralStringResource(R.plurals.scan_done_body, progress.processed, progress.processed),
+    body = pluralStringResource(R.plurals.scan_done_body, progress.found, progress.found, progress.processed),
     action = { OutlinedButton(onClick = onScanNow) { Text(stringResource(R.string.scan_now_button)) } },
+)
+
+@Composable
+private fun Failed(progress: ScanProgress, onScanNow: () -> Unit) = Message(
+    icon = { BigIcon(Icons.Outlined.ErrorOutline, MaterialTheme.colorScheme.error) },
+    title = stringResource(R.string.scan_failed_title),
+    body = stringResource(R.string.scan_failed_body) + "\n" +
+        pluralStringResource(R.plurals.scan_done_body, progress.found, progress.found, progress.processed),
+    action = { Button(onClick = onScanNow) { Text(stringResource(R.string.scan_retry_button)) } },
 )
 
 @Composable
@@ -195,9 +206,12 @@ private fun SelectedPhotosNote(onSelectMore: () -> Unit) {
 }
 
 @Composable
-private fun BigIcon(image: androidx.compose.ui.graphics.vector.ImageVector) = Icon(
+private fun BigIcon(
+    image: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+) = Icon(
     imageVector = image,
     contentDescription = null,
-    tint = MaterialTheme.colorScheme.primary,
+    tint = tint,
     modifier = Modifier.size(64.dp),
 )

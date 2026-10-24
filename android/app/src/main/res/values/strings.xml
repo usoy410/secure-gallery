@@ -20,9 +20,12 @@
     </plurals>
     <string name="scan_done_title">Scan complete</string>
     <plurals name="scan_done_body">
-        <item quantity="one">%1$d photo checked</item>
-        <item quantity="other">%1$d photos checked</item>
+        <item quantity="one">%1$d photo found, %2$d checked</item>
+        <item quantity="other">%1$d photos found, %2$d checked</item>
     </plurals>
+    <string name="scan_failed_title">Scan failed</string>
+    <string name="scan_failed_body">Something went wrong while checking your photos. Try again.</string>
+    <string name="scan_retry_button">Try again</string>
     <string name="scan_now_button">Scan now</string>
     <string name="scan_selected_body">You shared selected photos only. Secure Gallery checks just those.</string>
     <string name="scan_selected_button">Select more photos</string>

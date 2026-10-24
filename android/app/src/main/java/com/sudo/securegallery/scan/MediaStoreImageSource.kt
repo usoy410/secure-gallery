@@ -5,6 +5,7 @@ import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.provider.MediaStore
+import android.util.Log
 import com.sudo.securegallery.detect.DetectorImage
 import com.sudo.securegallery.localize.OcrImage
 import kotlinx.coroutines.Dispatchers
@@ -16,23 +17,41 @@ class MediaStoreImageSource(
     private val resolver: ContentResolver,
     private val ownPackage: String,
 ) : ImageSource {
+    private companion object {
+        const val TAG = "SecureGalleryScan"
+    }
 
     override suspend fun listImages(): List<GalleryImage> = withContext(Dispatchers.IO) {
         val images = mutableListOf<GalleryImage>()
+        var rows = 0
         resolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             ImageQuery.projection,
-            ImageQuery.selection,
-            ImageQuery.selectionArgs(ownPackage),
+            null,
+            null,
             ImageQuery.SORT_ORDER,
         )?.use { cursor ->
             val id = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val modified = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
             val size = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+            val mime = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
+            val name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val owner = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.OWNER_PACKAGE_NAME)
+            val pending = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.IS_PENDING)
             while (cursor.moveToNext()) {
-                images += GalleryImage(cursor.getLong(id), cursor.getLong(modified), cursor.getLong(size))
+                rows++
+                val kept = ImageQuery.keep(
+                    mimeType = cursor.getStringOrNull(mime),
+                    displayName = cursor.getStringOrNull(name),
+                    owner = cursor.getStringOrNull(owner),
+                    pending = if (cursor.isNull(pending)) null else cursor.getInt(pending),
+                    ownPackage = ownPackage,
+                )
+                if (kept) images += GalleryImage(cursor.getLong(id), cursor.getLong(modified), cursor.getLong(size))
             }
         }
+        // Counts only: never a file name or anything else about the photos.
+        Log.i(TAG, "MediaStore returned $rows images, ${images.size} kept for the scan")
         images
     }
 
@@ -73,6 +92,8 @@ class MediaStoreImageSource(
         }
         return OcrImage(bitmap, originalWidth, originalHeight)
     }
+
+    private fun android.database.Cursor.getStringOrNull(index: Int): String? = if (isNull(index)) null else getString(index)
 
     override fun open(mediaStoreId: Long): InputStream? {
         val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
