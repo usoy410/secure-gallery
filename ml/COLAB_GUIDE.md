@@ -50,7 +50,7 @@ Rough timing on a T4:
 |---|---|
 | Install packages | about 5 minutes |
 | Generate about 6,000 training cards and the benchmark | 20 to 30 minutes |
-| Train 100 epochs | 1 to 2 hours |
+| Train 60 epochs | 1.5 to 2.5 hours |
 | Check corners and export | about 5 minutes |
 
 ### 5. Read the result
