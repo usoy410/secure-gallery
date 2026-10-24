@@ -109,8 +109,11 @@ visible strip (PR #64). The full run fixes this with more data, more epochs and 
 - **Acceptance check:** every corner of the 20 emulator photos within 3% of the card width:
 
 ```bash
-python -m ml.eval --model runs/pose/train/weights/best.pt \
+python -m ml.eval --model <run folder>/weights/best.pt \
   --photos android/app/src/androidTest/assets/redaction --max-corner-pct 3
 ```
+
+`ml.train` prints the weights path when it finishes; Ultralytics may nest it, for example
+`runs/pose/runs/pose/train-2/weights/best.pt`.
 
 `--data <dataset.yaml> --split test` reports the same measure on a split (95th percentile).
