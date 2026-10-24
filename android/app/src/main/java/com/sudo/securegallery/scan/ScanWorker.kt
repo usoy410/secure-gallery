@@ -8,7 +8,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.sudo.securegallery.SecureGalleryApplication
+import com.sudo.securegallery.secure.ReadyNotification
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 
 /** Runs [GalleryScanner] in the background, one image at a time (§8.2). */
 class ScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -16,6 +18,7 @@ class ScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result = try {
         val container = (applicationContext as SecureGalleryApplication).container
         container.galleryScanner.scan()
+        ReadyNotification.post(applicationContext, container.database.itemDao().countReadyToSecure().first())
         Result.success()
     } catch (e: CancellationException) {
         throw e

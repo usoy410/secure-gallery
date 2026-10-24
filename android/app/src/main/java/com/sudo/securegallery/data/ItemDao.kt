@@ -35,6 +35,22 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE state IN ('REDACTED', 'NEEDS_CHECK') AND redacted_media_store_id IS NULL ORDER BY id")
     suspend fun awaitingRedaction(): List<Item>
 
+    /**
+     * Items whose original may now be vaulted and deleted (#22): a saved redacted copy that
+     * passed the recheck (#19). Items whose deletion the user denied come back for a retry.
+     */
+    @Query(
+        "SELECT * FROM items WHERE state IN ('REDACTED', 'NEEDS_CHECK', 'ORIGINAL_STILL_PUBLIC') " +
+            "AND redacted_media_store_id IS NOT NULL AND recheck_passed = 1 ORDER BY id",
+    )
+    suspend fun readyToSecure(): List<Item>
+
+    @Query(
+        "SELECT COUNT(*) FROM items WHERE state IN ('REDACTED', 'NEEDS_CHECK', 'ORIGINAL_STILL_PUBLIC') " +
+            "AND redacted_media_store_id IS NOT NULL AND recheck_passed = 1",
+    )
+    fun countReadyToSecure(): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 
