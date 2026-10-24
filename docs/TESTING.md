@@ -38,6 +38,7 @@ To run one group, give its folder, for example `pytest validation/leaktest`. Set
 | `validation/leaktest/tests/test_channels.py` | #12 | §9.5 | Each recovery channel (clipped characters at a box edge, a see-through fill, mosaic or blur) flags its positive fixture and passes its negative one. Mosaic is a risk flag, not a leak. |
 | `validation/leaktest/tests/test_filemeta.py` | #13 | §9.5 | An unredacted EXIF thumbnail leaks and a redacted one does not. Metadata reports tag names, never values. The card-number check counts Luhn candidates correctly. |
 | `validation/report/tests/` | #14 | §6 (RQ4), §9.1 | Wilson intervals match published values. Over-redaction counts only non-sensitive card area. The leak rule treats text and pictures as agreed. The OCR pad is tuned on val and the report scores the test split only. The example gallery stays under its size limit. |
+| `validation/report/tests/test_pipeline.py` | #30 | §9.1 | On a hand-built export: detection precision, recall, F1, AP50, the false-positive rate on non-ID images and the confusion matrix; corner error; field recall (99.5% covered), box precision; inconclusive, retry, fallback and recheck rates; the leak table through the leak test with a stub reader. Validation-split images are never scored, and every rate carries its counts and a Wilson interval. |
 
 ## Run the Android tests
 
