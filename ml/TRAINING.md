@@ -91,3 +91,29 @@ After replacing the model, regenerate the Android test fixtures and recorded ten
 ```bash
 python -m ml.android_fixtures
 ```
+
+---
+
+## 5. Full Training Run (#9)
+
+The interim model's corners are off by a median 4.6% and up to 8.6% of the card width on the
+20 emulator photos. The app's picture margin is 3% (#54), so faces and signatures can keep a
+visible strip (PR #64). The full run fixes this with more data, more epochs and a GPU:
+
+- **Data:** `configs/detector_train.yaml`, about 6,000 synthetic cards (40 identities per
+  variant, every image condition) with seeds from 500000, so nothing overlaps the benchmark
+  (`configs/dataset.yaml`, seed 42) or the emulator fixtures. The benchmark stays the held-out
+  evaluation set.
+- **Where:** `ml/colab_train.ipynb` on a free Colab T4 GPU, 100 epochs at 640 px. Step-by-step
+  guide: `ml/COLAB_GUIDE.md`.
+- **Acceptance check:** every corner of the 20 emulator photos within 3% of the card width:
+
+```bash
+python -m ml.eval --model <run folder>/weights/best.pt \
+  --photos android/app/src/androidTest/assets/redaction --max-corner-pct 3
+```
+
+`ml.train` prints the weights path when it finishes; Ultralytics may nest it, for example
+`runs/pose/runs/pose/train-2/weights/best.pt`.
+
+`--data <dataset.yaml> --split test` reports the same measure on a split (95th percentile).

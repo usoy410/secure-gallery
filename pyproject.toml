@@ -72,3 +72,7 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# Notebook cells hold long shell commands (!python -m ...) that cannot be wrapped.
+"*.ipynb" = ["E501"]
