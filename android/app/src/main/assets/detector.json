@@ -23,6 +23,6 @@
   "num_classes": 3,
   "num_keypoints": 4,
   "output_coordinates": "normalized",
-  "quantization": "int8",
+  "quantization": "w8a16",
   "target_budget_mb": 10.0
 }

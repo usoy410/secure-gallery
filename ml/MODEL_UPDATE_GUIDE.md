@@ -14,7 +14,7 @@ Unzip `detector_model.zip` and open `eval_device_photos.json`. Look at `max_pct`
 
 | Result | What it means | What to do |
 |---|---|---|
-| `max_pct` at or under 3.0 and `missed` 0 | Every face and signature will be covered on the 20 device photos. | Go on to step 2. |
+| `max_pct` at or under 3.0 and `missed` 0 | Passes the geometry gate; device redaction/leak checks are still required. | Go on to step 2. |
 | `max_pct` over 3.0, but well under the interim model's 8.6 | Better, not enough yet. | Step 2 still improves the app. PR #64's leak test will stay red. See "If the corner check failed" below. |
 | `max_pct` about 8 or more, or `missed` above 0 | The run did not help. | Do not ship it. See "If the corner check failed". |
 
@@ -44,14 +44,18 @@ Check that the app will read the metadata. It must show the three classes in thi
 
 ```bash
 python -c "import json; m = json.load(open('android/app/src/main/assets/detector.json')); print(m['class_names'], m['output_coordinates'], m['input_size'], m['quantization'])"
-# expected: ['philsys', 'lto', 'payment_card'] normalized [640, 640] int8
+# expected: ['philsys', 'lto', 'payment_card'] normalized [640, 640] int8 (or verified w8a16)
 ```
 
-If anything differs, stop. The app expects exactly that format (`detect/DetectorConfig.kt`).
+The class order, coordinates and input shape must match the app (`detect/DetectorConfig.kt`).
+The issue #9 candidate uses `w8a16`: INT8 weights with INT16 activations and FLOAT32
+graph input/output. Its metadata must say `w8a16`, not `int8` or `fp16`. Verify actual
+tensor types as well as the label. Android runtime/delegate support and device performance
+remain required checks before accepting this variant.
 
-## 4. Check the INT8 model on the device photos
+## 4. Check the exported model on the device photos
 
-The notebook may have checked the full-precision weights. The phone runs the INT8 file, so check that one too:
+The notebook may have checked the full-precision weights. The phone runs the exported file (INT8 or W8A16), so check that file too:
 
 ```bash
 git fetch origin ccr-8bbefdfe-vrdbj7
