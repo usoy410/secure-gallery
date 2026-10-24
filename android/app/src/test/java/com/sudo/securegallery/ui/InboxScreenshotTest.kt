@@ -17,11 +17,14 @@ import com.sudo.securegallery.redact.BoxEdits
 import com.sudo.securegallery.ui.inbox.BoxEditorScreen
 import com.sudo.securegallery.ui.inbox.EditorActions
 import com.sudo.securegallery.ui.inbox.EditorState
+import com.sudo.securegallery.ui.inbox.GalleryGrid
 import com.sudo.securegallery.ui.inbox.InboxScreen
 import com.sudo.securegallery.ui.inbox.ViewerActions
 import com.sudo.securegallery.ui.inbox.ViewerScreen
 import com.sudo.securegallery.ui.inbox.ViewerState
 import com.sudo.securegallery.ui.theme.SecureGalleryTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,7 +33,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Screenshot tests for [InboxScreen] covering both Light and Dark themes, the inbox with mixed
- * states, the box editor (#24) and the viewer with the eye toggle (#23). The editor's image is a plain synthetic card shape.
+ * states, the box editor (#24), the viewer with the eye toggle (#23), and the photo grid with
+ * the delete warning (#77). The editor's image is a plain synthetic card shape.
  *
  * Runs on JVM using Robolectric Native Graphics and Roborazzi for fast, emulator-free screenshot verification.
  */
@@ -147,4 +151,29 @@ class InboxScreenshotTest {
 
     @Test
     fun viewer_lockedPrompt() = viewer(ViewerState(vaulted, card(redacted = true)), unlocked = false, "viewer_locked")
+
+    private fun grid(items: List<Item>, name: String) {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                GalleryGrid(items, onOpen = {}, thumbnail = { card(redacted = true) }, modifier = androidx.compose.ui.Modifier.padding(16.dp))
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
+    }
+
+    @Test
+    fun galleryGrid_empty() = grid(emptyList(), "gallery_empty")
+
+    @Test
+    fun galleryGrid_withItems() = grid(mixed + List(5) { mixed[2].copy(id = 10L + it, mediaStoreId = 10L + it) }, "gallery_items")
+
+    @Test
+    fun viewer_deleteWarning() {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                ViewerScreen(ViewerState(vaulted, card(redacted = true)), true, ViewerActions(), deleteWarning = true)
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/viewer_delete_warning.png")
+    }
 }

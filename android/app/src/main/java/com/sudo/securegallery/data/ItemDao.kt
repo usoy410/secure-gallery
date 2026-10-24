@@ -1,6 +1,7 @@
 package com.sudo.securegallery.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -61,6 +62,17 @@ interface ItemDao {
             "ORDER BY CASE state WHEN 'NEEDS_CHECK' THEN 0 ELSE 1 END, id DESC",
     )
     fun inbox(): Flow<List<Item>>
+
+    /** The gallery grid (#77): the same items as the inbox, newest first. */
+    @Query(
+        "SELECT * FROM items WHERE redacted_media_store_id IS NOT NULL " +
+            "AND state IN ('REDACTED', 'NEEDS_CHECK', 'VAULTED', 'ORIGINAL_STILL_PUBLIC') ORDER BY id DESC",
+    )
+    fun gallery(): Flow<List<Item>>
+
+    /** Forgets a photo the user deleted (#77). */
+    @Delete
+    suspend fun delete(item: Item)
 
     @Query("SELECT * FROM items WHERE id = :id")
     suspend fun byId(id: Long): Item?

@@ -29,6 +29,15 @@
     <string name="viewer_showing_redacted">Showing the redacted copy</string>
     <string name="viewer_edit_boxes">Correct boxes</string>
     <string name="viewer_cloud_backup_note">The original is gone from your gallery, but copies may still exist in cloud backups such as Google Photos. Check them too.</string>
+    <string name="viewer_delete">Delete photo</string>
+    <string name="viewer_delete_title">Delete this photo for good?</string>
+    <string name="viewer_delete_body">The redacted copy leaves your gallery and the original leaves the vault. Nothing brings them back. Android asks you to confirm next.</string>
+    <string name="viewer_delete_confirm">Delete</string>
+    <string name="inbox_deleted">Photo deleted.</string>
+    <string name="inbox_delete_kept">Nothing was deleted.</string>
+    <string name="gallery_title">Your photos</string>
+    <string name="gallery_empty">Processed photos appear here.</string>
+    <string name="gallery_thumbnail">Redacted photo</string>
     <string name="editor_title">Correct boxes</string>
     <string name="editor_hint">Tap a box to select it. Drag it to move, or drag a corner to resize.</string>
     <string name="editor_add">Add box</string>

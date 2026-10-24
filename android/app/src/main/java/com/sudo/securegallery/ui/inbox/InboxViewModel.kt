@@ -11,6 +11,7 @@ import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.redact.BoxEdits
 import com.sudo.securegallery.secure.CorrectRedaction
+import com.sudo.securegallery.secure.DeletePhoto
 import com.sudo.securegallery.vault.VaultSession
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ data class ViewerState(
     val loading: Boolean = false,
 )
 
-enum class InboxMessage { VAULT_LOCKED, NOT_AVAILABLE, SAVED, SAVED_NEEDS_CHECK, SAVE_FAILED }
+enum class InboxMessage { VAULT_LOCKED, NOT_AVAILABLE, SAVED, SAVED_NEEDS_CHECK, SAVE_FAILED, DELETED, DELETE_KEPT }
 
 /**
  * The review inbox (§8.4, #24): the list of processed items, NEEDS_CHECK first, the viewer
@@ -59,8 +60,17 @@ class InboxViewModel(
     private val session: VaultSession?,
     private val corrector: CorrectRedaction?,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val deleter: DeletePhoto? = null,
 ) : ViewModel() {
     val items: StateFlow<List<Item>> = dao.inbox().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The gallery grid on the scan tab (#77), newest first. */
+    val galleryItems: StateFlow<List<Item>> = dao.gallery().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** True while the viewer's "delete for good" warning is open (#77). */
+    private val _deleteWarning = MutableStateFlow(false)
+    val deleteWarning: StateFlow<Boolean> = _deleteWarning.asStateFlow()
+    private var pendingDelete: Item? = null
 
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
@@ -129,6 +139,41 @@ class InboxViewModel(
         }
     }
 
+    fun requestDelete() {
+        if (_viewer.value != null) _deleteWarning.value = true
+    }
+
+    fun cancelDelete() {
+        _deleteWarning.value = false
+    }
+
+    /**
+     * After the warning: hands the public files to [launch] for the system delete dialog. If none
+     * is left in the gallery, the vault file and the item go at once.
+     */
+    fun confirmDelete(launch: (List<Long>) -> Unit) {
+        _deleteWarning.value = false
+        val item = _viewer.value?.item ?: return
+        val deleter = deleter ?: return
+        viewModelScope.launch {
+            val ids = withContext(io) { deleter.publicFiles(item) }
+            pendingDelete = item
+            if (ids.isEmpty()) onDeleteResult(true) else launch(ids)
+        }
+    }
+
+    /** The system delete dialog's answer. */
+    fun onDeleteResult(allowed: Boolean) {
+        val item = pendingDelete ?: return
+        val deleter = deleter ?: return
+        pendingDelete = null
+        viewModelScope.launch {
+            val deleted = withContext(io) { runCatching { deleter.finish(item, allowed) }.getOrDefault(false) }
+            _message.value = if (deleted) InboxMessage.DELETED else InboxMessage.DELETE_KEPT
+            if (deleted) closeViewer()
+        }
+    }
+
     fun cancelUnlock() {
         _unlockRequested.value = false
     }
@@ -136,6 +181,7 @@ class InboxViewModel(
     fun closeViewer() {
         _viewer.value = null
         _unlockRequested.value = false
+        _deleteWarning.value = false
     }
 
     /** Opens the box editor on [item]; needs the unlocked vault. */
@@ -216,7 +262,14 @@ class InboxViewModel(
         const val PREVIEW_MAX_SIDE = 2048
 
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
-            initializer { InboxViewModel(container.database.itemDao(), container.vaultSession, container.correctRedaction) }
+            initializer {
+                InboxViewModel(
+                    container.database.itemDao(),
+                    container.vaultSession,
+                    container.correctRedaction,
+                    deleter = container.deletePhoto,
+                )
+            }
         }
     }
 }
