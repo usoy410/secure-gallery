@@ -78,7 +78,7 @@ class ItemSchemaTest {
         val ALLOWED_COLUMNS = setOf(
             "id", "media_store_id", "date_modified", "size_bytes", "content_hash", "state",
             "document_class", "document_confidence", "boxes", "retry_count", "card_corners",
-            "redacted_media_store_id", "recheck_passed",
+            "redacted_media_store_id", "recheck_passed", "corrections",
         )
     }
 }
