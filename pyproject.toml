@@ -10,8 +10,9 @@ requires-python = ">=3.11"
 license = { text = "AGPL-3.0" }
 dependencies = [
     "faker==33.1.0",
-    # ml.renderer measures the watermark with NumPy (#34).
-    "numpy==2.4.6",
+    # ml.renderer measures the watermark with NumPy (#34). A range, not a pin: the leaktest
+    # extras (PaddleX) need numpy<2.4 and the train extras pin 2.4.6.
+    "numpy>=1.24,<3",
     "pillow==11.1.0",
     "qrcode==8.0",
     "pyyaml==6.0.2",
