@@ -35,7 +35,30 @@ data class ScanProgress(
     val processed: Int = 0,
     val running: Boolean = false,
     val failed: Boolean = false,
-)
+    val stage: ScanStage = ScanStage.FINGERPRINT,
+    /** For [ScanStage.DETECT]: photos looked at so far; otherwise unused. */
+    val stageDone: Int = 0,
+    /** Photos the current step still has to do. */
+    val stageLeft: Int = 0,
+) {
+    companion object {
+        /**
+         * The step a running scan is on (#65 follow-up). The scan does each step for every photo
+         * before the next, so the first step with work left is the current one.
+         */
+        fun of(found: Int, processed: Int, detect: Int, fields: Int, redact: Int, running: Boolean, failed: Boolean) =
+            when {
+                processed < found -> ScanProgress(found, processed, running, failed, ScanStage.FINGERPRINT, processed, found - processed)
+                detect > 0 -> ScanProgress(found, processed, running, failed, ScanStage.DETECT, processed - detect, detect)
+                fields > 0 -> ScanProgress(found, processed, running, failed, ScanStage.FIELDS, 0, fields)
+                redact > 0 -> ScanProgress(found, processed, running, failed, ScanStage.REDACT, 0, redact)
+                else -> ScanProgress(found, processed, running, failed, ScanStage.FINISHING)
+            }
+    }
+}
+
+/** The steps of a scan, in order (§8.2). */
+enum class ScanStage { FINGERPRINT, DETECT, FIELDS, REDACT, FINISHING }
 
 /** Whether a scan is running, and whether the last one failed. */
 private data class WorkStatus(val running: Boolean, val failed: Boolean)
@@ -110,8 +133,12 @@ class ScanViewModel(
         }
 
     val progress: StateFlow<ScanProgress> =
-        combine(dao.countAll(), dao.countProcessed(), status) { found, processed, work ->
-            ScanProgress(found, processed, work.running, work.failed)
+        combine(
+            combine(dao.countAll(), dao.countProcessed(), ::Pair),
+            combine(dao.countAwaitingDetection(), dao.countAwaitingLocalization(), dao.countAwaitingRedaction(), ::Triple),
+            status,
+        ) { (found, processed), (detect, fields, redact), work ->
+            ScanProgress.of(found, processed, detect, fields, redact, work.running, work.failed)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanProgress())
 
     fun scanNow() = ScanWorker.enqueue(workManager)
