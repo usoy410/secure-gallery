@@ -187,7 +187,9 @@ of a base identity land in the same split (guaranteeing zero data leakage).
 
 - **Was any preprocessing or filtering performed?**
   Images are rendered deterministically to 1600x1200 RGB canvas without non-deterministic chunks.
-  Diagonal `SPECIMEN – NOT VALID` watermarks are burnt into clean card renders.
+  Every card carries a diagonal `SPECIMEN – NOT VALID` watermark burnt into its pixels: red
+  on light cards, light grey on dark ones. The renderer measures it (`watermark_contrast` in
+  each label, the mean change on its own pixels, 0 to 255) and a release fails below 20.
 - **Are ground-truth labels provided?**
   Yes, every image is paired with a pixel-accurate JSON label and indexed in `manifest.csv`.
 
@@ -199,15 +201,24 @@ of a base identity land in the same split (guaranteeing zero data leakage).
   - Redaction leak testing and safeguard audit (evaluating residual detectability).
   - Evaluating false-positive rates on receipts, loyalty cards, and ordinary photos.
 - **What tasks should this dataset NOT be used for?**
-  This dataset must NOT be used to generate forged or counterfeit identification documents.
-  All demographic data is fictional.
+  - **Identity verification or KYC.** No image shows a real person or a real document, so a
+    model or rule tuned on it says nothing about whether a real ID is genuine.
+  - **Making, printing or passing off fake IDs or payment cards**, with or without the
+    watermark. All names, numbers, addresses and faces are fictional; the card numbers pass
+    the Luhn check only so redaction rules can be tested.
+  - **Training face recognition.** The faces are procedural cartoons.
+  - Any use that removes or hides the `SPECIMEN – NOT VALID` watermark.
 
 ## 6. Distribution and Maintenance
 
 - **How is the dataset distributed?**
   Exported via `python -m ml.generate dataset --config <config.yaml>`.
-- **License:** AGPL-3.0 for generator code and synthetic outputs;
-  CC0 / Public Domain for referenced background photos.
+- **License:** the data (images, labels, manifest, datasheet) is CC BY 4.0. The generator
+  code is AGPL-3.0, a separate license that does not cover the data. Background photos are
+  public domain or CC0, and the bundled Liberation Sans font is SIL OFL 1.1. A release bundle
+  lists every third-party input in `LICENSE-DATA.md`.
+- **Reproducibility:** `python -m ml.generate release --seed <S>` rebuilds a release, and
+  `--verify <bundle>` checks every file against its `SHA256SUMS`.
 - **Maintenance:** Maintained by the Secure Gallery core development team.
 
 ## 7. Known Gaps and Limitations
@@ -220,4 +231,13 @@ of a base identity land in the same split (guaranteeing zero data leakage).
    shutter distortion, and lens chromatic aberrations that are approximated.
 3. **Roboflow Separation:** In accordance with SECURE_GALLERY.md §10.1, Roboflow PH ID data is
    strictly separated and never enters the benchmark test set.
+4. **Template accuracy:** the card layouts were drawn from public specimen images. Until
+   each is checked against a real card (#4, recorded in `templates/SOURCES.md`), field
+   positions may be off by a few percent of the card width.
+5. **Watermark only on cards:** negatives carry no watermark. A detector could learn the
+   watermark as a cue for "card"; compare results on cards with the watermark area masked
+   before relying on false-positive rates.
+6. **Card backs:** only the payment card has a back; PhilSys and LTO backs are not modelled.
+7. **Language and lighting:** text is English and Filipino in one font family, and lighting
+   comes from the condition generator, not real scenes.
 """
