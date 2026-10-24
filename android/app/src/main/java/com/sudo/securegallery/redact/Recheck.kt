@@ -21,13 +21,13 @@ import kotlin.math.abs
  * The original's numbers are read into memory for one item and dropped; they are never
  * stored, logged or put in an exception.
  */
-class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
+open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
 
     /**
      * Every 4-digit window of the numbers the rules find on [original], inside [region] (in
      * [original]'s pixels; the whole image if null). Memory only.
      */
-    suspend fun numberWindows(original: Bitmap, region: RectF? = null): Set<String> {
+    open suspend fun numberWindows(original: Bitmap, region: RectF? = null): Set<String> {
         val area = crop(original, region)
         try {
             return rules.numberValues(ocr.recognize(area)).flatMap { digitWindows(it) }.toSet()
@@ -40,7 +40,7 @@ class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
      * True if the saved [jpeg] passes both checks. [region] is the document area in
      * original-image pixels (the whole image if null); [windows] comes from [numberWindows].
      */
-    suspend fun passes(jpeg: ByteArray, boxes: List<RedactionBox>, region: RectF?, windows: Set<String>): Boolean {
+    open suspend fun passes(jpeg: ByteArray, boxes: List<RedactionBox>, region: RectF?, windows: Set<String>): Boolean {
         val full = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: return false
         val (width, height) = full.width to full.height
         val solid = try {
