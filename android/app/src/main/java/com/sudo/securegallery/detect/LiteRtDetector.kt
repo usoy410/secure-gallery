@@ -61,17 +61,29 @@ class LiteRtDetector private constructor(
             if (assets.openFd(MODEL).use { it.declaredLength } < MIN_MODEL_BYTES) return null
             val config = loadConfig(assets)
             val model = map(assets)
-            val compat = CompatibilityList()
-            if (compat.isDelegateSupportedOnThisDevice) {
-                val gpu = GpuDelegate(compat.bestOptionsForThisDevice)
-                try {
-                    return LiteRtDetector(Interpreter(model, Interpreter.Options().addDelegate(gpu)), gpu, config)
-                } catch (_: Exception) {
-                    // The GPU could not run every op: fall back to the CPU.
-                    gpu.close()
-                }
-            }
+            openOnGpu(model, config)?.let { return it }
             return LiteRtDetector(Interpreter(model, Interpreter.Options().setNumThreads(4)), null, config)
+        }
+
+        /**
+         * The detector on the GPU, or null to use the CPU. Checking for GPU support can itself
+         * fail on some phones (#65), so every GPU step sits inside the fallback.
+         */
+        private fun openOnGpu(model: MappedByteBuffer, config: DetectorConfig): LiteRtDetector? {
+            var gpu: GpuDelegate? = null
+            return try {
+                val compat = CompatibilityList()
+                if (!compat.isDelegateSupportedOnThisDevice) return null
+                gpu = GpuDelegate(compat.bestOptionsForThisDevice)
+                LiteRtDetector(Interpreter(model, Interpreter.Options().addDelegate(gpu)), gpu, config)
+            } catch (_: Exception) {
+                gpu?.close()
+                null
+            } catch (_: LinkageError) {
+                // The GPU library failed to load.
+                gpu?.close()
+                null
+            }
         }
 
         /** Memory-maps the model straight from the APK (it is stored uncompressed). */

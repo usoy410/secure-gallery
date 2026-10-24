@@ -87,6 +87,9 @@ cd android
 | `localize/NoPlaintextTest` | #17 | After a full scan with localization, the stored item, the database files on disk and the log hold none of the text OCR read. |
 | `scan/GalleryScannerTest` (localization) | #17 | Detected items are decoded at OCR size only (long side 2048) and get their boxes and level; the OCR bitmap is recycled. A failed localization keeps the item for the next scan. |
 | `localize/LocalizerInstrumentedTest` (instrumented) | #17 | On the emulator, the bundled detector and bundled ML Kit model find fields on at least 4 of the 5 synthetic photos, with every box inside the photo. It logs counts and timings, never text. |
+| `scan/ImageQueryTest` (no selection) | #65 | The MediaStore query sends no selection, so MediaProvider cannot drop rows for the app. GIFs, the app's own files, redacted copies and pending files are filtered in Kotlin, and a null column keeps the photo. |
+| `AppContainerTest` (fallback) | #65 | When the detector or the localizer throws while being built, both become null and the scan still indexes and hashes photos. |
+| `ui/ScanScreenshotTest` (failed, found and checked) | #65 | A failed scan shows "Scan failed" and "Try again", never "Scan complete". The done screen shows photos found and checked separately. |
 
 CI also checks the merged manifest and fails if `android.permission.INTERNET` appears (CLAUDE.md, fully offline). The emulator job runs nightly, and on pull requests that touch `vault/`, `scan/`, MediaStore code or `androidTest`.
 
