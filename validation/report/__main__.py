@@ -1,6 +1,8 @@
 """CLI: python -m validation.report rq4 [--config ...] [--data ...] [--out ...] [--limit N]
 
        python -m validation.report rq4-examples [--data ...] [--out ...]
+
+       python -m validation.report pipeline <export_dir> --labels <dir> [--out ...] [--no-leak]
 """
 
 from __future__ import annotations
@@ -28,7 +30,19 @@ def main(argv: list[str] | None = None) -> None:
                               help="rebuild the RQ4 example gallery from an earlier run (no OCR)")
     examples.add_argument("--data", type=Path, default=DEFAULT_DATA, help="benchmark folder")
     examples.add_argument("--out", type=Path, default=DEFAULT_OUT, help="report folder")
+    pipeline = sub.add_parser("pipeline", help="metrics from the on-device batch export (#30)")
+    pipeline.add_argument("export_dir", type=Path, help="folder pulled by scripts/batch_export.sh")
+    pipeline.add_argument("--labels", type=Path, required=True, help="labels from batch_subset")
+    pipeline.add_argument("--out", type=Path, default=Path("reports/pipeline"))
+    pipeline.add_argument("--no-leak", action="store_true", help="skip the PaddleOCR leak test")
     args = parser.parse_args(argv)
+
+    if args.report == "pipeline":
+        from validation.report.pipeline import run_pipeline
+
+        written = run_pipeline(args.export_dir, args.labels, args.out, leaks=not args.no_leak)
+        print("Wrote " + ", ".join(str(p) for p in written.values()))
+        return
 
     if args.report == "rq4-examples":
         written = write_examples(args.data, args.out)
