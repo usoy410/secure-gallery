@@ -176,4 +176,14 @@ class InboxScreenshotTest {
         }
         composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/viewer_delete_warning.png")
     }
+
+    @Test
+    fun viewer_notSensitiveConfirm() {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                ViewerScreen(ViewerState(vaulted, card(redacted = true)), true, ViewerActions(), restoreConfirm = true)
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/viewer_not_sensitive.png")
+    }
 }

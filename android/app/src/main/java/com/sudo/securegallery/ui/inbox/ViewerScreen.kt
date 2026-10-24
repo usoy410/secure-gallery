@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,13 +59,17 @@ class ViewerActions(
     val delete: () -> Unit = {},
     val confirmDelete: () -> Unit = {},
     val cancelDelete: () -> Unit = {},
+    val restore: () -> Unit = {},
+    val confirmRestore: () -> Unit = {},
+    val cancelRestore: () -> Unit = {},
 )
 
 /**
  * The viewer with the eye toggle (§8.3, #23): the redacted copy by default, the original after
  * a tap on the eye while the vault is unlocked. While locked the eye shows a lock and a tap asks
  * for an unlock. Pinch to zoom, drag to pan. `FLAG_SECURE` is set while the original is shown.
- * The delete button (#77) warns first that the photo cannot come back.
+ * The delete button (#77) warns first that the photo cannot come back. "Not sensitive" (#25)
+ * asks once, then puts the original back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,8 +79,10 @@ fun ViewerScreen(
     actions: ViewerActions,
     modifier: Modifier = Modifier,
     deleteWarning: Boolean = false,
+    restoreConfirm: Boolean = false,
 ) {
     if (deleteWarning) DeleteWarning(actions)
+    if (restoreConfirm) RestoreConfirm(actions)
     val showing = state.original?.takeIf { state.showOriginal && unlocked }
     if (showing != null) SecureWindow()
     val toggleLabel = stringResource(
@@ -136,6 +144,12 @@ fun ViewerScreen(
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 ZoomableImage(state, showing ?: state.redacted, stateLabel)
             }
+            OutlinedButton(
+                onClick = actions.restore,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 8.dp).heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.viewer_not_sensitive))
+            }
             if (state.item.state == ItemState.VAULTED) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -165,6 +179,17 @@ private fun DeleteWarning(actions: ViewerActions) {
             }
         },
         dismissButton = { TextButton(onClick = actions.cancelDelete) { Text(stringResource(R.string.editor_cancel)) } },
+    )
+}
+
+@Composable
+private fun RestoreConfirm(actions: ViewerActions) {
+    AlertDialog(
+        onDismissRequest = actions.cancelRestore,
+        title = { Text(stringResource(R.string.viewer_restore_title)) },
+        text = { Text(stringResource(R.string.viewer_restore_body)) },
+        confirmButton = { TextButton(onClick = actions.confirmRestore) { Text(stringResource(R.string.viewer_restore_confirm)) } },
+        dismissButton = { TextButton(onClick = actions.cancelRestore) { Text(stringResource(R.string.editor_cancel)) } },
     )
 }
 

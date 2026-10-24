@@ -35,6 +35,12 @@
     <string name="viewer_delete_confirm">Delete</string>
     <string name="inbox_deleted">Photo deleted.</string>
     <string name="inbox_delete_kept">Nothing was deleted.</string>
+    <string name="viewer_not_sensitive">Not sensitive</string>
+    <string name="viewer_restore_title">Put the original back?</string>
+    <string name="viewer_restore_body">The original returns to its album as it was. The redacted copy and the vault file are removed, and the app will not flag this photo again.</string>
+    <string name="viewer_restore_confirm">Put back</string>
+    <string name="inbox_restored">The original is back in your gallery.</string>
+    <string name="inbox_restore_failed">Could not put the original back. Nothing was changed.</string>
     <string name="gallery_title">Your photos</string>
     <string name="gallery_empty">Processed photos appear here.</string>
     <string name="gallery_thumbnail">Redacted photo</string>

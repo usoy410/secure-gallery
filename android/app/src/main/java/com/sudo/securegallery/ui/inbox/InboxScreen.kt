@@ -65,6 +65,7 @@ fun InboxRoute(
     val viewer by viewModel.viewer.collectAsStateWithLifecycle()
     val unlockRequested by viewModel.unlockRequested.collectAsStateWithLifecycle()
     val deleteWarning by viewModel.deleteWarning.collectAsStateWithLifecycle()
+    val restoreConfirm by viewModel.restoreConfirm.collectAsStateWithLifecycle()
     val resolver = LocalContext.current.contentResolver
     // Deleting a photo goes through Android's own dialog (#77).
     val deleteDialog = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -107,9 +108,13 @@ fun InboxRoute(
                     }
                 },
                 cancelDelete = viewModel::cancelDelete,
+                restore = viewModel::requestRestore,
+                confirmRestore = viewModel::confirmRestore,
+                cancelRestore = viewModel::cancelRestore,
             ),
             modifier = modifier,
             deleteWarning = deleteWarning,
+            restoreConfirm = restoreConfirm,
         )
         if (unlockRequested && !unlocked) unlockPrompt(viewModel::cancelUnlock)
     } else {
@@ -218,6 +223,8 @@ private val InboxMessage.text: Int
         InboxMessage.SAVE_FAILED -> R.string.inbox_save_failed
         InboxMessage.DELETED -> R.string.inbox_deleted
         InboxMessage.DELETE_KEPT -> R.string.inbox_delete_kept
+        InboxMessage.RESTORED -> R.string.inbox_restored
+        InboxMessage.RESTORE_FAILED -> R.string.inbox_restore_failed
     }
 
 /**
