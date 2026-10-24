@@ -85,7 +85,7 @@ The last cell downloads `detector_model.zip` to your computer. Send it in the ch
 
 ## After you send the zip
 
-The rest is done in the repo:
+The rest is done in the repo. `ml/MODEL_UPDATE_GUIDE.md` has every step, so anyone on the team can do it:
 
 1. Commit `detector.tflite` (Git LFS) and `detector.json` to `android/app/src/main/assets/`.
 2. Fill in `ml/MODEL_CARD.md` with the numbers from the zip.
