@@ -1,6 +1,5 @@
 package com.sudo.securegallery.secure
 
-import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.provider.MediaStore
@@ -28,23 +27,10 @@ import java.io.File
  */
 @RunWith(AndroidJUnit4::class)
 class RestoreInstrumentedTest {
-    private val instrumentation = InstrumentationRegistry.getInstrumentation()
-    private val app = instrumentation.targetContext
-    private val testAssets = instrumentation.context.assets
+    private val app = InstrumentationRegistry.getInstrumentation().targetContext
+    private val testAssets = InstrumentationRegistry.getInstrumentation().context.assets
     private val resolver = app.contentResolver
     private val album = "Pictures/SG restore test/"
-
-    private fun packagePermission(permission: String, action: String) {
-        instrumentation.uiAutomation.executeShellCommand(
-            "pm $action ${app.packageName} $permission",
-        ).close()
-    }
-
-    private fun mediaAppOp(op: String, mode: String) {
-        instrumentation.uiAutomation.executeShellCommand(
-            "cmd appops set ${app.packageName} $op $mode",
-        ).close()
-    }
 
     private fun insert(name: String, bytes: ByteArray): Long {
         val uri = resolver.insert(
@@ -60,12 +46,6 @@ class RestoreInstrumentedTest {
 
     @Test
     fun notSensitiveRestoresTheOriginal() = runBlocking {
-        // Grant the target package's runtime media permissions before accessing its
-        // MediaStore resolver; Android 14 otherwise rejects the synthetic URI.
-        packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "grant")
-        packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "grant")
-        mediaAppOp("android:read_media_images", "allow")
-        mediaAppOp("android:read_media_visual_user_selected", "allow")
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
         val vault = Vault(VaultStore(dir), KeystoreDeviceSecret("restore-test"), iterations = 10_000)
@@ -100,10 +80,6 @@ class RestoreInstrumentedTest {
             restoredId?.let(gallery::delete)
             db.close()
             dir.deleteRecursively()
-            packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "revoke")
-            packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "revoke")
-            mediaAppOp("android:read_media_images", "default")
-            mediaAppOp("android:read_media_visual_user_selected", "default")
         }
     }
 }
