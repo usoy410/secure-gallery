@@ -64,6 +64,15 @@ Reports per-class Precision, Recall, F1, mAP50, and Mean Corner Distance Error (
 python -m ml.export --model runs/pose/train/weights/best.pt --data data/yolo_pose/dataset.yaml --output runs/export
 ```
 
+Quantized export errors stop the command; they are never retried as FLOAT32 under an
+INT8 filename. Both static INT8 and `w8a16` need calibration data. Keep the held-out
+benchmark and device test photos out of that calibration set. The legacy `fp16`
+option selects `w8a16` (INT8 weights and INT16 activations), not FP16 weights.
+
+Before copying a quantized export, the exporter checks for scaled INT8 tensors.
+FLOAT32 input/output tensors are expected and do not mean the internal weights
+are FLOAT32. A filename or JSON quantization label alone is not verification.
+
 ---
 
 ## 4. Interim Model in the App (#16)
