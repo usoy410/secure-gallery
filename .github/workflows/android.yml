@@ -172,6 +172,15 @@ jobs:
             adb pull /sdcard/Download/sg-redaction-export android/redaction-export
             if [ -d data/batch_input/images ]; then scripts/batch_export.sh data/batch_input/images android/batch-export; fi
 
+      - name: Upload connected test reports
+        if: always() && steps.filter.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: connected-test-reports
+          path: |
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+
       - name: Upload redacted copies from the emulator
         if: steps.filter.outputs.should_run == 'true'
         uses: actions/upload-artifact@v4

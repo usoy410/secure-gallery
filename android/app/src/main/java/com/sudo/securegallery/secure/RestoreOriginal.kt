@@ -86,10 +86,10 @@ class MediaStoreGallery(private val resolver: ContentResolver) : RestoreOriginal
     private fun uri(id: Long) = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
     override fun locate(id: Long): Pair<String?, String>? = resolver.query(
-        uri(id),
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
         arrayOf(MediaStore.Images.Media.RELATIVE_PATH, MediaStore.Images.Media.DISPLAY_NAME),
-        null,
-        null,
+        "${MediaStore.Images.Media._ID} = ?",
+        arrayOf(id.toString()),
         null,
     )?.use { c -> if (c.moveToFirst()) c.getString(0) to (c.getString(1) ?: "image") else null }
 
@@ -120,6 +120,12 @@ class MediaStoreGallery(private val resolver: ContentResolver) : RestoreOriginal
     }
 
     override fun delete(id: Long) {
-        resolver.delete(uri(id), null, null)
+        // A deleted item URI can fail MediaProvider's access check before it checks
+        // whether the row exists. A collection selection makes repeated cleanup a no-op.
+        resolver.delete(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            "${MediaStore.Images.Media._ID} = ?",
+            arrayOf(id.toString()),
+        )
     }
 }
