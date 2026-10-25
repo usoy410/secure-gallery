@@ -137,6 +137,21 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
           df -h /
 
+      # Nightly (#29): 50 benchmark test images for the on-device batch export.
+      - name: Set up Python for the batch export
+        if: steps.filter.outputs.should_run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Generate the batch export input
+        if: steps.filter.outputs.should_run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        run: |
+          pip install -e .
+          python -m ml.generate dataset --config configs/dataset.yaml
+          python -m validation.batch_subset --count 50 --out data/batch_input
+
       - name: Run connected tests in Android Emulator
         if: steps.filter.outputs.should_run == 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -155,6 +170,7 @@ jobs:
           script: |
             cd android && ./gradlew connectedDebugAndroidTest
             adb pull /sdcard/Download/sg-redaction-export android/redaction-export
+            if [ -d data/batch_input/images ]; then scripts/batch_export.sh data/batch_input/images android/batch-export; fi
 
       - name: Upload redacted copies from the emulator
         if: steps.filter.outputs.should_run == 'true'
@@ -162,6 +178,14 @@ jobs:
         with:
           name: device-redactions
           path: android/redaction-export/
+          if-no-files-found: error
+
+      - name: Upload the batch export
+        if: steps.filter.outputs.should_run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-export
+          path: android/batch-export/
           if-no-files-found: error
 
   device-leak-test:

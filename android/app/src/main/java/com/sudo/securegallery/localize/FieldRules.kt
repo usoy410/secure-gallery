@@ -74,7 +74,22 @@ class FieldRules(val rules: List<Rule>, val excludeWords: Set<String>) {
         return found
     }
 
+    /**
+     * The text of every ID or card number the rules find on [lines] (§8.5 digit check). Held in
+     * memory by the caller for one recheck and never stored or logged.
+     */
+    fun numberValues(lines: List<OcrLine>): List<String> =
+        orderLines(lines).flatMap { line ->
+            val text = line.words.joinToString(" ") { it.text }.uppercase()
+            rules.filter { it.fieldType in NUMBER_FIELDS }.flatMap { rule ->
+                rule.pattern.findAll(text).map { it.value }.filter { !rule.luhn || isLuhnValid(it) }.toList()
+            }
+        }
+
     companion object {
+        /** Fields whose numbers count as leaked when 4 digits come back (§9.2). */
+        val NUMBER_FIELDS = setOf(FieldType.PCN, FieldType.CARD_NUMBER, FieldType.LICENSE_NUMBER)
+
         /** Pixels added around each OCR box, in the space OCR read (§9.3 tunes it on val). */
         const val OCR_PAD = 4f
         const val ASSET_PATH = "templates/rules/fields.json"
