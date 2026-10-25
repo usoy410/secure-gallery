@@ -1,0 +1,39 @@
+# Public release of the synthetic benchmark (#34).
+# Usage: python -m ml.fetch_photos && python -m ml.generate release --seed 20261024
+# The seed on the command line replaces dataset.seed below.
+
+dataset:
+  name: "Secure Gallery Synthetic PH ID Benchmark"
+  out_dir: "data/release"
+  seed: 0
+  splits:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+
+cards:
+  variants: "all"
+  count_per_variant: 40
+  composite: true
+  jitter: true
+  conditions: "all"
+
+negatives:
+  enabled: true
+  count_per_type: 40
+  types:
+    - receipt
+    - loyalty_card
+    - blank_card
+    - card_rectangle
+    - screenshot
+    - photo
+  photos_dir: "data/photos"
+
+failed_redactions:
+  enabled: true
+  types:
+    - complete
+    - partial
+    - misplaced
+    - ineffective
