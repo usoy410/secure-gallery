@@ -1,6 +1,6 @@
 # Secure Gallery
 
-Secure Gallery is an offline, privacy-first Android application developed for team SUDO's NCF BSIT-3B capstone. The app automatically scans device gallery photos for sensitive identity documents (Philippine PhilSys IDs, LTO driver's licenses) and payment cards.
+Secure Gallery is an offline, privacy-first Android application developed. The app automatically scans device gallery photos for sensitive identity documents (Philippine PhilSys IDs, LTO driver's licenses) and payment cards.
 
 When sensitive documents are detected, Secure Gallery:
 1. Generates and saves a solid-fill redacted copy in the photo's original gallery album.
