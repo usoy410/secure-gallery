@@ -1,0 +1,39 @@
+# Training data for the full detector run (#9). Not the benchmark: the benchmark
+# (configs/dataset.yaml, seed 42) stays the held-out evaluation set, and this set uses
+# its own seeds (from 500000) so no generated card appears in both. The emulator fixtures
+# use seeds 90001-90005 and 92001-92020, also outside this range.
+# Usage: python -m ml.generate dataset --config configs/detector_train.yaml
+
+dataset:
+  name: "Secure Gallery Detector Training Set"
+  out_dir: "data/detector_train"
+  seed: 500000
+  splits:
+    train: 0.80
+    val: 0.15
+    test: 0.05  # the split code keeps at least one identity per variant here
+
+# 40 identities per variant, each with every image condition: about 6,000 card images.
+cards:
+  variants: "all"
+  count_per_variant: 40
+  composite: true
+  jitter: true
+  conditions: "all"
+
+# Non-ID images so the detector learns what not to flag.
+negatives:
+  enabled: true
+  count_per_type: 30
+  types:
+    - receipt
+    - loyalty_card
+    - blank_card
+    - card_rectangle
+    - screenshot
+    - photo
+  photos_dir: "data/photos"
+
+# Redaction test cases are for the leak test, not for training.
+failed_redactions:
+  enabled: false

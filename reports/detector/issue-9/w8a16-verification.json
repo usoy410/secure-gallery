@@ -1,0 +1,11 @@
+{
+  "sha256": "f1d5637d50deedeb9194bfd4490e68175bd1b3b8215b9f5bc3d50bd9837fb7b4",
+  "size_bytes": 3242595,
+  "tensor_types": {
+    "float32": 2,
+    "int16": 476,
+    "int32": 42,
+    "int64": 97,
+    "int8": 97
+  }
+}

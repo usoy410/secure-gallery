@@ -8,7 +8,6 @@ in INT8 and float/FP16 precision variants, measures model disk size against the
 from __future__ import annotations
 
 import argparse
-import logging
 import shutil
 from pathlib import Path
 from typing import Any
@@ -19,8 +18,6 @@ from ml.metadata import (
     build_model_metadata,
     save_model_metadata,
 )
-
-logger = logging.getLogger(__name__)
 
 TARGET_MAX_SIZE_MB = 10.0
 
@@ -51,8 +48,6 @@ def export_single_precision(
     if prec in ("int8", "8"):
         export_kwargs["format"] = "litert"
         export_kwargs["quantize"] = 8
-        if dataset_yaml:
-            export_kwargs["data"] = str(dataset_yaml)
     elif prec in ("fp16", "half", "w8a16"):
         # Ultralytics LiteRT uses w8a16 or float32 (quantize=16 is unsupported in litert backend)
         export_kwargs["format"] = "litert"
@@ -61,15 +56,34 @@ def export_single_precision(
         export_kwargs["format"] = "litert"
         export_kwargs["quantize"] = None
 
-    try:
-        exported_path_str = model.export(**export_kwargs)
-        return Path(exported_path_str)
-    except Exception as exc:
-        logger.warning("LiteRT export failed with %s; attempting fallback", exc)
-        # Fallback to standard float litert
-        export_kwargs["quantize"] = None
-        exported_path_str = model.export(**export_kwargs)
-        return Path(exported_path_str)
+    if dataset_yaml and export_kwargs["quantize"] in (8, "w8a16"):
+        export_kwargs["data"] = str(dataset_yaml)
+
+    # A failed quantized export must fail visibly, rather than shipping a float
+    # retry under an INT8 filename and metadata label.
+    exported = Path(model.export(**export_kwargs))
+    if prec in ("int8", "8", "fp16", "half", "w8a16"):
+        verify_int8_tensors(exported)
+    return exported
+
+
+def verify_int8_tensors(model_path: str | Path) -> int:
+    """Reject float exports mislabeled as INT8 (float graph I/O is permitted)."""
+    import numpy as np
+    from ai_edge_litert.interpreter import Interpreter
+
+    interpreter = Interpreter(model_path=str(model_path))
+    interpreter.allocate_tensors()
+    quantized = sum(
+        tensor["dtype"] == np.int8 and len(tensor["quantization_parameters"]["scales"]) > 0
+        for tensor in interpreter.get_tensor_details()
+    )
+    if not quantized:
+        raise ValueError(
+            f"{model_path}: requested quantized export has no scaled INT8 tensors; "
+            "refusing to label it as INT8. Check the export and calibration errors."
+        )
+    return quantized
 
 
 def export_litert_models(
@@ -137,7 +151,13 @@ def export_litert_models(
         class_names=names,
         input_size=[imgsz, imgsz],
         keypoint_order=DEFAULT_KEYPOINT_ORDER,
-        quantization="int8" if "int8" in precisions else "fp16",
+        quantization=(
+            "int8"
+            if any(p in ("int8", "8") for p in precisions)
+            else "w8a16"
+            if any(p in ("fp16", "half", "w8a16") for p in precisions)
+            else "fp32"
+        ),
         extra={"target_budget_mb": target_max_mb},
     )
     meta_path = dest_dir / "metadata.json"
