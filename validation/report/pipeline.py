@@ -8,16 +8,20 @@ pairs every image with its ground-truth label, and writes one table per measure:
   detected card overlaps the true card with IoU >= 0.5. ``confusion.csv`` holds the class
   confusion matrix.
 - ``corners.csv``: corner error of correct detections, as a percent of the card width.
-- ``fields.csv``: field-level recall (a sensitive field fully covered, >= 99.5% of its area),
+- ``fields.csv``: matched-field detection precision, recall, and F1 (one-to-one IoU >= 0.5
+  matching), redaction coverage recall (a sensitive field fully covered, >= 99.5% of its area),
   box precision (a box that touches a sensitive field), coverage IoU and over-coverage.
 - ``pipeline.csv``: inconclusive (NEEDS_CHECK), retry, whole-image fallback and recheck-pass
   rates.
 - ``recheck.csv``: sensitivity, false-negative, false-positive and inconclusive rates of the
-  on-device recheck on D7 failed-redaction labels.
+  on-device recheck and direct verification on D7 failed and complete redaction labels.
 - ``leaks.csv``: the D11-D13 leak test on the exported copies, by the RQ4 rule.
 
-Every rate comes with its counts and a 95% Wilson interval, per class and condition, plus
-``ALL`` rows. Only test-split images are scored.
+Every binomial rate comes with its counts and a 95% Wilson interval, per class and condition, plus
+``ALL`` rows. Aggregate summary metrics (mAP50, F1) are macro-averaged or harmonic combinations
+across classes or measures rather than binomial trial counts; their Wilson intervals are
+undefined and omitted, while reporting evaluated class support under 'of' where applicable.
+Only test-split images are scored.
 """
 
 from __future__ import annotations
@@ -147,7 +151,6 @@ def detection_rows(pairs: list[tuple[dict, dict]]) -> tuple[list[dict], list[dic
             "metric": "map50",
             "class": "ALL",
             "condition": "ALL",
-            "count": len(ap_by_class),
             "of": len(CLASSES),
             "pct": round(100 * statistics.mean(ap_by_class), 2) if ap_by_class else 0.0,
         }
@@ -187,7 +190,9 @@ def field_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
         ious, over = [], []
         for r, lb in group:
             size = tuple(lb["image_size"])
-            scored_boxes = [b for b in r.get("boxes", []) if b.get("field_type") != "whole_document"]
+            scored_boxes = [
+                b for b in r.get("boxes", []) if b.get("field_type") != "whole_document"
+            ]
             polys = [b["polygon"] for b in scored_boxes]
             sensitive = [
                 f["polygon"] for f in lb["fields"] if f.get("sensitive") and f.get("polygon")
@@ -212,7 +217,7 @@ def field_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
                 if o is not None:
                     over.append(o)
         rows.append(rate("field_precision", cls, cond, matched_predictions, predicted_fields))
-        rows.append(rate("field_recall", cls, cond, covered, fields))
+        rows.append(rate("field_recall", cls, cond, matched_fields, fields))
         p = matched_predictions / predicted_fields if predicted_fields else 0.0
         r_ = matched_fields / fields if fields else 0.0
         f1 = 2 * p * r_ / (p + r_) if p + r_ else 0.0
@@ -221,11 +226,10 @@ def field_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
                 "metric": "field_f1",
                 "class": cls,
                 "condition": cond,
-                "count": matched_fields,
-                "of": fields,
                 "pct": round(100 * f1, 2),
             }
         )
+        rows.append(rate("coverage_recall", cls, cond, covered, fields))
         rows.append(rate("box_precision", cls, cond, useful, boxes))
         rows.append(median_row("coverage_iou_median", cls, cond, ious))
         rows.append(median_row("over_coverage_median", cls, cond, over))
@@ -275,10 +279,135 @@ def pipeline_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
     return rows
 
 
+def extract_recheck_decision(result: dict, label: dict | None = None) -> str:
+    """Extract explicit on-device or verification recheck decision.
+
+    Returns one of: 'clean', 'failed', 'inconclusive', 'skipped'.
+    """
+    outcome = (
+        result.get("recheck_outcome")
+        or result.get("recheck_decision")
+        or result.get("verification_outcome")
+    )
+    if outcome is not None:
+        outcome = str(outcome).strip().lower()
+        if outcome in ("passed", "clean", "ok"):
+            return "clean"
+        if outcome in ("failed", "bad", "rejected"):
+            return "failed"
+        if outcome in ("inconclusive", "needs_check"):
+            return "inconclusive"
+        if outcome in ("skipped", "unrun", "none"):
+            return "skipped"
+
+    if "verification_passed" in result and result["verification_passed"] is not None:
+        return "clean" if result["verification_passed"] else "failed"
+
+    state = result.get("state")
+    recheck_passed = result.get("recheck_passed")
+
+    if recheck_passed is None or state in ("FAILED", "NOT_DETECTED", "PENDING"):
+        return "skipped"
+    if recheck_passed is True:
+        return "clean"
+    if recheck_passed is False:
+        if state in ("REDACTED", "NEEDS_CHECK", "VERIFIED"):
+            return "failed"
+        return "skipped"
+    if state == "NEEDS_CHECK":
+        return "inconclusive"
+    return "skipped"
+
+
+def measure_d7_recheck(
+    image: Any,
+    label: dict,
+    reader: Any = None,
+    min_solid_share: float = FULLY_COVERED,
+    tolerance: int = 8,
+) -> str:
+    """Verification-only check of a supplied redacted image (§8.5, RQ6).
+
+    Directly evaluates whether the supplied redacted image passes the on-device recheck
+    decision rules without re-running detection or redactor:
+    1. Solid fill: all applied redaction boxes must have >= 99.5% solid dark pixels.
+    2. Text absence: no sensitive field value or rule-matching text remains readable.
+
+    Returns:
+        'clean' if recheck passes, 'failed' if failure is detected, or 'inconclusive'.
+    """
+    from PIL import Image
+
+    if not isinstance(image, Image.Image):
+        img = Image.open(image).convert("RGB")
+    else:
+        img = image.convert("RGB")
+
+    redaction = label.get("redaction", {})
+    boxes = redaction.get("redaction_boxes") or []
+    if label.get("redaction_type") == "ineffective" or (
+        label.get("is_failed_redaction") and not boxes
+    ):
+        return "failed"
+
+    w, h = img.size
+    for poly in boxes:
+        xs = [pt[0] for pt in poly]
+        ys = [pt[1] for pt in poly]
+        min_x, max_x = max(0, int(min(xs)) + 3), min(w, int(max(xs)) - 3)
+        min_y, max_y = max(0, int(min(ys)) + 3), min(h, int(max(ys)) - 3)
+        if min_x >= max_x or min_y >= max_y:
+            continue
+        crop = img.crop((min_x, min_y, max_x, max_y))
+        getter = getattr(crop, "get_flattened_data", crop.getdata)
+        pixels = list(getter())
+        solid_count = sum(
+            1 for p in pixels if p[0] <= tolerance and p[1] <= tolerance and p[2] <= tolerance
+        )
+        if not pixels or (solid_count / len(pixels)) < min_solid_share:
+            return "failed"
+
+    if reader is not None:
+        card = label.get("card_corners")
+        if card:
+            xs = [pt[0] for pt in card]
+            ys = [pt[1] for pt in card]
+            crop_card = img.crop(
+                (
+                    max(0, int(min(xs))),
+                    max(0, int(min(ys))),
+                    min(w, int(max(xs))),
+                    min(h, int(max(ys))),
+                )
+            )
+            read_text = reader(crop_card)
+        else:
+            read_text = reader(img)
+        if read_text and any(char.isalnum() for char in str(read_text)):
+            return "failed"
+
+    if label.get("redaction_type") in ("partial", "misplaced") and label.get("is_failed_redaction"):
+        sensitive = [
+            f["polygon"]
+            for f in label.get("fields", [])
+            if f.get("sensitive") and f.get("polygon")
+        ]
+        for s_poly in sensitive:
+            if covered_share(s_poly, boxes, (w, h)) < FULLY_COVERED:
+                return "failed"
+
+    return "clean"
+
+
 def recheck_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
     """D7 failed-redaction detection quality of the on-device recheck."""
     rows = []
-    d7 = [(r, lb) for r, lb in pairs if lb.get("redaction_type") in ("complete", "partial", "misplaced", "ineffective")]
+    d7 = [
+        (r, lb)
+        for r, lb in pairs
+        if lb.get("redaction_type") in ("complete", "partial", "misplaced", "ineffective")
+        or lb.get("is_failed_redaction") is not None
+    ]
     if not d7:
         for metric in (
             "recheck_sensitivity",
@@ -289,28 +418,28 @@ def recheck_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
             rows.append(rate(metric, "ALL", "ALL", 0, 0))
         return rows
     for (cls, cond), group in sorted(grouped(d7).items()):
-        positives = negatives = tp = fn = fp = inconclusive = 0
+        positives = negatives = tp = fn = fp = tn = inconclusive = 0
         for result, label in group:
             actual_failed = bool(label.get("is_failed_redaction"))
-            state = result.get("state")
-            recheck_passed = bool(result.get("recheck_passed"))
-            if state == "NEEDS_CHECK" or not recheck_passed:
-                predicted = "failed"
-            elif state == "REDACTED" and recheck_passed:
-                predicted = "clean"
-            else:
-                predicted = "inconclusive"
-            positives += int(actual_failed)
-            negatives += int(not actual_failed)
-            if predicted == "inconclusive":
+            decision = extract_recheck_decision(result, label)
+
+            if decision in ("inconclusive", "skipped", "unrun"):
                 inconclusive += 1
                 continue
-            if actual_failed and predicted == "failed":
-                tp += 1
-            elif actual_failed and predicted == "clean":
-                fn += 1
-            elif (not actual_failed) and predicted == "failed":
-                fp += 1
+
+            if actual_failed:
+                positives += 1
+                if decision == "failed":
+                    tp += 1
+                elif decision == "clean":
+                    fn += 1
+            else:
+                negatives += 1
+                if decision == "failed":
+                    fp += 1
+                elif decision == "clean":
+                    tn += 1
+
         rows.append(rate("recheck_sensitivity", cls, cond, tp, positives))
         rows.append(rate("recheck_false_negative_rate", cls, cond, fn, positives))
         rows.append(rate("recheck_false_positive_rate", cls, cond, fp, negatives))
