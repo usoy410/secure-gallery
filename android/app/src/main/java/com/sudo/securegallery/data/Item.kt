@@ -20,6 +20,8 @@ import androidx.room.PrimaryKey
  *   is saved (#18).
  * @property recheckPassed true once the saved copy passed the on-device recheck (§8.5, #19).
  *   Only such items may have their original deleted (#22).
+ * @property corrections how often the user corrected this item (a box changed, or "not
+ *   sensitive"), for the correction-rate metric (§8.4). A count only, no content.
  * @property retryCount failed attempts while no copy exists; once a copy is saved, the number
  *   of recheck retries with larger boxes (0 to 2, 3 when it ended in a whole-image fill).
  */
@@ -38,6 +40,7 @@ data class Item(
     @ColumnInfo(name = "card_corners") val cardCorners: CardCorners? = null,
     @ColumnInfo(name = "redacted_media_store_id") val redactedMediaStoreId: Long? = null,
     @ColumnInfo(name = "recheck_passed", defaultValue = "0") val recheckPassed: Boolean = false,
+    @ColumnInfo(name = "corrections", defaultValue = "0") val corrections: Int = 0,
 ) {
     /** Move to [next], or throw if §8.4 does not allow that step. */
     fun moveTo(next: ItemState): Item {
