@@ -31,6 +31,7 @@ To run one group, give its folder, for example `pytest validation/leaktest`. Set
 | `ml/tests/test_conditions.py` | #6 | §9.1, §10.1 | Eight image conditions, each with 3 severities. Field polygons follow rotation, perspective and crop (checked by mask IoU). Layout jitter stays within its limits. |
 | `ml/tests/test_negatives.py`, `test_failed_redactions.py`, `test_splits.py`, `test_dataset_cli.py` | #7 | §9.2, §10.1 | Negatives have no fields. Each failed-redaction type (complete, partial, misplaced, ineffective) covers what it claims. All variants of one identity land in the same split. One command builds the dataset and its manifest. |
 | `ml/tests/test_converter.py`, `test_train.py`, `test_eval.py`, `test_metrics.py`, `test_export.py` | #8 | §8.6, §8.7 | Labels convert to YOLO pose format. Training, corner-error evaluation and LiteRT export run end to end (with the model mocked). Metrics match hand-computed values. |
+| `ml/tests/test_eval.py` (corner error in % of card width) | #9 | §8.6, §9.1 | Each image's worst corner is measured against the card width, summarised as median, p95 and max. Labeled photos are read upright (EXIF rotation applied), the most confident detection counts, and a photo with no detection is a miss. `--max-corner-pct` fails on the split's p95 or on any single photo. |
 | `validation/localize/tests/` | #10 | §5.1, §8.2 | layout_only covers every sensitive field on a rotated card. ocr_first reads a card with no template. hybrid is the union of both. A missing corner is inferred. The whole document is blacked out only when nothing else works. Redactions are solid fills saved as JPEG q95. No OCR text is written to disk. |
 | `validation/leaktest/tests/test_leaktest.py` (`--fail-on-leak`) | #18 | §9.5 | `has_leak` follows the RQ4 rule: a text field leaks when its text comes back, a picture field when it is not fully covered, a file when it keeps a thumbnail or identifying metadata. Opacity alone on a text field (the strict reading) and a mosaic risk flag do not fail the CLI. |
 | `validation/localize/tests/test_rule_parity.py` | #17 | §8.2 | The field rules find the same boxes in the shared `rule_cases.json` as the app's Kotlin port. Runs without Tesseract. |
@@ -38,6 +39,7 @@ To run one group, give its folder, for example `pytest validation/leaktest`. Set
 | `validation/leaktest/tests/test_channels.py` | #12 | §9.5 | Each recovery channel (clipped characters at a box edge, a see-through fill, mosaic or blur) flags its positive fixture and passes its negative one. Mosaic is a risk flag, not a leak. |
 | `validation/leaktest/tests/test_filemeta.py` | #13 | §9.5 | An unredacted EXIF thumbnail leaks and a redacted one does not. Metadata reports tag names, never values. The card-number check counts Luhn candidates correctly. |
 | `validation/report/tests/` | #14 | §6 (RQ4), §9.1 | Wilson intervals match published values. Over-redaction counts only non-sensitive card area. The leak rule treats text and pictures as agreed. The OCR pad is tuned on val and the report scores the test split only. The example gallery stays under its size limit. |
+| `validation/report/tests/test_pipeline.py` | #30 | §9.1 | On a hand-built export: detection precision, recall, F1, AP50, the false-positive rate on non-ID images and the confusion matrix; corner error; field recall (99.5% covered), box precision; inconclusive, retry, fallback and recheck rates; the leak table through the leak test with a stub reader. Validation-split images are never scored, and every rate carries its counts and a Wilson interval. |
 
 ## Run the Android tests
 
@@ -113,6 +115,7 @@ Some results are too slow to compute in unit tests, so they live in `reports/` a
 |---|---|---|---|
 | `reports/rq4/` | `python -m validation.report rq4` | About 1 hour on CPU | Leak rate per strategy, condition and severity, with 95% intervals. Also 8 charts, a README for each column, and `examples/`. |
 | `reports/rq4/examples/` | `python -m validation.report rq4-examples` | Seconds, no OCR | 11 synthetic test images. Each shows the original next to the copy each strategy saved. Red outlines mark text the leak test recovered. Orange outlines mark pictures that are not fully covered. |
+| `ml/tests/test_release.py` | #34 | A release bundle holds the data, templates, datasheet, CC BY 4.0 data license with every third-party input, `release.json` and `SHA256SUMS`. Rebuilding from its seed matches every checksum, an edited image is reported, every card image has a watermark contrast of at least 20 (on light and dark cards), and a release with photo negatives refuses to build without the five curated photos. |
 
 `rq4-examples` reads the files an earlier `rq4` run left in `data/benchmark/rq4_work`. Run `rq4` first on a fresh clone.
 
