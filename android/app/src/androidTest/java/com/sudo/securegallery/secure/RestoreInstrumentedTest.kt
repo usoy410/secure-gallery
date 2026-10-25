@@ -40,6 +40,12 @@ class RestoreInstrumentedTest {
         ).close()
     }
 
+    private fun mediaAppOp(op: String, mode: String) {
+        instrumentation.uiAutomation.executeShellCommand(
+            "cmd appops set ${app.packageName} $op $mode",
+        ).close()
+    }
+
     private fun insert(name: String, bytes: ByteArray): Long {
         val uri = resolver.insert(
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
@@ -58,6 +64,8 @@ class RestoreInstrumentedTest {
         // MediaStore resolver; Android 14 otherwise rejects the synthetic URI.
         packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "grant")
         packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "grant")
+        mediaAppOp("android:read_media_images", "allow")
+        mediaAppOp("android:read_media_visual_user_selected", "allow")
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
         val vault = Vault(VaultStore(dir), KeystoreDeviceSecret("restore-test"), iterations = 10_000)
@@ -94,6 +102,8 @@ class RestoreInstrumentedTest {
             dir.deleteRecursively()
             packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "revoke")
             packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "revoke")
+            mediaAppOp("android:read_media_images", "default")
+            mediaAppOp("android:read_media_visual_user_selected", "default")
         }
     }
 }
