@@ -27,6 +27,18 @@
     <string name="scan_failed_body">Something went wrong while checking your photos. Try again.</string>
     <string name="scan_retry_button">Try again</string>
     <string name="scan_now_button">Scan now</string>
+    <plurals name="secure_ready">
+        <item quantity="one">%1$d photo ready to secure</item>
+        <item quantity="other">%1$d photos ready to secure</item>
+    </plurals>
+    <string name="secure_body">Their redacted copies are saved and checked. Securing moves each original into the vault, checks it, then asks to delete it from the gallery.</string>
+    <string name="secure_button">Secure now</string>
+    <string name="secure_channel">Photos ready to secure</string>
+    <string name="secure_notification_body">Open Secure Gallery to move the originals into the vault.</string>
+    <string name="secure_vault_locked">Unlock the vault first, then tap Secure now.</string>
+    <string name="secure_nothing_verified">No original could be stored safely in the vault, so nothing was deleted.</string>
+    <string name="secure_done">Originals are in the vault and removed from the gallery.</string>
+    <string name="secure_denied">The originals stay in the gallery. Tap Secure now to try again.</string>
     <string name="scan_selected_body">You shared selected photos only. Secure Gallery checks just those.</string>
     <string name="scan_selected_button">Select more photos</string>
 

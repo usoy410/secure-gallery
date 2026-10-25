@@ -1,8 +1,12 @@
 package com.sudo.securegallery.ui.scan
 
+import android.app.Activity
+import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,12 +79,25 @@ fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
         onPauseOrDispose { }
     }
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val secure by viewModel.secureState.collectAsStateWithLifecycle()
+    // The only way originals are deleted: one system dialog for the whole batch (#22).
+    val deleteDialog = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        viewModel.onDeleteResult(it.resultCode == Activity.RESULT_OK)
+    }
     ScanScreen(
         access = access,
         progress = progress,
         onRequestAccess = { launcher.launch(PhotoAccess.permissionsFor(sdk)) },
         onScanNow = viewModel::scanNow,
         modifier = modifier,
+        secure = secure,
+        onSecure = {
+            viewModel.secureNow { items ->
+                val uris = items.map { ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it.mediaStoreId) }
+                val request = MediaStore.createDeleteRequest(context.contentResolver, uris)
+                deleteDialog.launch(IntentSenderRequest.Builder(request.intentSender).build())
+            }
+        },
     )
 }
 
@@ -93,6 +110,8 @@ fun ScanScreen(
     onRequestAccess: () -> Unit,
     onScanNow: () -> Unit,
     modifier: Modifier = Modifier,
+    secure: SecureState = SecureState(),
+    onSecure: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -115,6 +134,9 @@ fun ScanScreen(
         ) {
             if (access == PhotoAccess.SELECTED) {
                 SelectedPhotosNote(onSelectMore = onRequestAccess)
+            }
+            if (secure.ready > 0 || secure.message != null) {
+                SecureCard(secure, onSecure)
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
@@ -193,6 +215,41 @@ private fun Failed(progress: ScanProgress, onScanNow: () -> Unit) = Message(
         pluralStringResource(R.plurals.scan_done_body, progress.found, progress.found, progress.processed),
     action = { Button(onClick = onScanNow) { Text(stringResource(R.string.scan_retry_button)) } },
 )
+
+@Composable
+private fun SecureCard(state: SecureState, onSecure: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            if (state.ready > 0) {
+                Text(
+                    pluralStringResource(R.plurals.secure_ready, state.ready, state.ready),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(R.string.secure_body), style = MaterialTheme.typography.bodyMedium)
+            }
+            state.message?.let { message ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(
+                        when (message) {
+                            SecureMessage.VAULT_LOCKED -> R.string.secure_vault_locked
+                            SecureMessage.NOTHING_VERIFIED -> R.string.secure_nothing_verified
+                            SecureMessage.SECURED -> R.string.secure_done
+                            SecureMessage.DENIED -> R.string.secure_denied
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (state.ready > 0) {
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = onSecure, enabled = !state.busy) { Text(stringResource(R.string.secure_button)) }
+            }
+        }
+    }
+}
 
 @Composable
 private fun SelectedPhotosNote(onSelectMore: () -> Unit) {
