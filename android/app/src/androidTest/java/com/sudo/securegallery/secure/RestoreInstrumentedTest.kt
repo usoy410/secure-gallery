@@ -31,8 +31,14 @@ class RestoreInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
     private val testAssets = instrumentation.context.assets
-    private val resolver = instrumentation.context.contentResolver
+    private val resolver = app.contentResolver
     private val album = "Pictures/SG restore test/"
+
+    private fun packagePermission(permission: String, action: String) {
+        instrumentation.uiAutomation.executeShellCommand(
+            "pm $action ${app.packageName} $permission",
+        ).close()
+    }
 
     private fun insert(name: String, bytes: ByteArray): Long {
         val uri = resolver.insert(
@@ -48,12 +54,10 @@ class RestoreInstrumentedTest {
 
     @Test
     fun notSensitiveRestoresTheOriginal() = runBlocking {
-        // The test accesses MediaStore directly; use the instrumentation UID with
-        // shell media permissions so Android 14 does not reject the synthetic URI.
-        instrumentation.uiAutomation.adoptShellPermissionIdentity(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
-        )
+        // Grant the target package's runtime media permissions before accessing its
+        // MediaStore resolver; Android 14 otherwise rejects the synthetic URI.
+        packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "grant")
+        packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "grant")
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
         val vault = Vault(VaultStore(dir), KeystoreDeviceSecret("restore-test"), iterations = 10_000)
@@ -88,7 +92,8 @@ class RestoreInstrumentedTest {
             restoredId?.let(gallery::delete)
             db.close()
             dir.deleteRecursively()
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            packagePermission(Manifest.permission.READ_MEDIA_IMAGES, "revoke")
+            packagePermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED, "revoke")
         }
     }
 }
