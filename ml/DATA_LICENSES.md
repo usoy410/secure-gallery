@@ -14,7 +14,7 @@ This document records the provenance, licensing terms, and usage constraints for
 
 ### 2.1 Synthetic Benchmark Dataset (D7)
 - **Source**: Secure Gallery procedural generator (`ml.generate dataset`)
-- **License**: AGPL-3.0 (Repository license)
+- **License**: CC BY 4.0 for the generated data (images, labels, manifest, datasheet); the generator code stays AGPL-3.0 (repository license). A release bundle (`python -m ml.generate release`) carries both notices and every third-party input in `LICENSE-DATA.md` (#34).
 - **PII Status**: 100% fictional / synthetic (Faker `fil_PH` locale, synthesized avatars, procedural card backgrounds)
 - **Allowed Splits**: `train`, `val`, `test`
 - **Verification Status**: Verified. Generated purely in memory with deterministic seeds.

@@ -1,0 +1,37 @@
+{
+  "split": "test",
+  "overall": {
+    "map50": 0.9948,
+    "map50_95": 0.9914,
+    "mean_corner_error_px": 9.12,
+    "corner_error_pct": {
+      "count": 174,
+      "median_pct": 1.39,
+      "p95_pct": 4.77,
+      "max_pct": 17.72
+    }
+  },
+  "per_class": {
+    "philsys": {
+      "precision": 0.9831,
+      "recall": 1.0,
+      "f1": 0.9915,
+      "map50": 0.9945,
+      "corner_error_px": 10.28
+    },
+    "lto": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "map50": 0.995,
+      "corner_error_px": 8.9
+    },
+    "payment_card": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "map50": 0.995,
+      "corner_error_px": 8.17
+    }
+  }
+}
