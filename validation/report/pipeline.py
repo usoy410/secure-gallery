@@ -3,21 +3,21 @@
 Reads ``results.json`` and the redacted copies written by ``scripts/batch_export.sh`` (#29),
 pairs every image with its ground-truth label, and writes one table per measure:
 
-- ``detection.csv``: per class precision, recall, F1 and AP50, plus the false-positive rate on
-  non-ID images. A detection is correct when the class matches and the detected card overlaps
-  the true card with IoU >= 0.5. ``confusion.csv`` holds the class confusion matrix.
+- ``detection.csv``: per class precision, recall, F1 and AP50, plus mAP50 and the
+  false-positive rate on non-ID images. A detection is correct when the class matches and the
+  detected card overlaps the true card with IoU >= 0.5. ``confusion.csv`` holds the class
+  confusion matrix.
 - ``corners.csv``: corner error of correct detections, as a percent of the card width.
 - ``fields.csv``: field-level recall (a sensitive field fully covered, >= 99.5% of its area),
   box precision (a box that touches a sensitive field), coverage IoU and over-coverage.
 - ``pipeline.csv``: inconclusive (NEEDS_CHECK), retry, whole-image fallback and recheck-pass
   rates.
+- ``recheck.csv``: sensitivity, false-negative, false-positive and inconclusive rates of the
+  on-device recheck on D7 failed-redaction labels.
 - ``leaks.csv``: the D11-D13 leak test on the exported copies, by the RQ4 rule.
 
 Every rate comes with its counts and a 95% Wilson interval, per class and condition, plus
 ``ALL`` rows. Only test-split images are scored.
-
-Not covered here: recheck sensitivity on the D7 failed-redaction cases, which needs an export
-mode that rechecks already-redacted images instead of redacting them again.
 """
 
 from __future__ import annotations
@@ -126,6 +126,7 @@ def grouped(pairs: Iterable[tuple[dict, dict]]) -> dict[tuple[str, str], list[tu
 
 def detection_rows(pairs: list[tuple[dict, dict]]) -> tuple[list[dict], list[dict]]:
     rows, confusion = [], []
+    ap_by_class: list[float] = []
     for cls in CLASSES:
         predicted = [(r, lb) for r, lb in pairs if r.get("document_class") == cls]
         actual = [(r, lb) for r, lb in pairs if truth_class(lb) == cls]
@@ -139,6 +140,18 @@ def detection_rows(pairs: list[tuple[dict, dict]]) -> tuple[list[dict], list[dic
         rows.append({"metric": "f1", "class": cls, "condition": "ALL", "pct": round(100 * f1, 2)})
         ap = average_precision(scored, len(actual))
         rows.append({"metric": "ap50", "class": cls, "condition": "ALL", "pct": round(100 * ap, 2)})
+        if actual:
+            ap_by_class.append(ap)
+    rows.append(
+        {
+            "metric": "map50",
+            "class": "ALL",
+            "condition": "ALL",
+            "count": len(ap_by_class),
+            "of": len(CLASSES),
+            "pct": round(100 * statistics.mean(ap_by_class), 2) if ap_by_class else 0.0,
+        }
+    )
     negatives = [(r, lb) for r, lb in pairs if truth_class(lb) is None]
     flagged = sum(r.get("document_class") is not None for r, _ in negatives)
     rows.append(rate("false_positive_rate", "negative", "ALL", flagged, len(negatives)))
@@ -170,13 +183,19 @@ def field_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
     rows = []
     for (cls, cond), group in sorted(grouped(pairs).items()):
         fields = covered = boxes = useful = 0
+        predicted_fields = matched_fields = matched_predictions = 0
         ious, over = [], []
         for r, lb in group:
             size = tuple(lb["image_size"])
-            polys = [b["polygon"] for b in r.get("boxes", [])]
+            scored_boxes = [b for b in r.get("boxes", []) if b.get("field_type") != "whole_document"]
+            polys = [b["polygon"] for b in scored_boxes]
             sensitive = [
                 f["polygon"] for f in lb["fields"] if f.get("sensitive") and f.get("polygon")
             ]
+            p_match, f_match = match_fields(polys, sensitive, size)
+            predicted_fields += len(polys)
+            matched_predictions += p_match
+            matched_fields += f_match
             for poly in sensitive:
                 fields += 1
                 covered += covered_share(poly, polys, size) >= FULLY_COVERED
@@ -192,11 +211,44 @@ def field_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
                 o = over_redaction(lb, polys, size)
                 if o is not None:
                     over.append(o)
+        rows.append(rate("field_precision", cls, cond, matched_predictions, predicted_fields))
         rows.append(rate("field_recall", cls, cond, covered, fields))
+        p = matched_predictions / predicted_fields if predicted_fields else 0.0
+        r_ = matched_fields / fields if fields else 0.0
+        f1 = 2 * p * r_ / (p + r_) if p + r_ else 0.0
+        rows.append(
+            {
+                "metric": "field_f1",
+                "class": cls,
+                "condition": cond,
+                "count": matched_fields,
+                "of": fields,
+                "pct": round(100 * f1, 2),
+            }
+        )
         rows.append(rate("box_precision", cls, cond, useful, boxes))
         rows.append(median_row("coverage_iou_median", cls, cond, ious))
         rows.append(median_row("over_coverage_median", cls, cond, over))
     return rows
+
+
+def match_fields(
+    predicted: list[list], sensitive: list[list], size: tuple[int, int], min_iou: float = MATCH_IOU
+) -> tuple[int, int]:
+    """Best one-to-one IoU matching between predicted boxes and sensitive fields."""
+    candidates: list[tuple[float, int, int]] = []
+    for p_index, p in enumerate(predicted):
+        for f_index, f in enumerate(sensitive):
+            iou = polygon_iou(p, f, size)
+            if iou >= min_iou:
+                candidates.append((iou, p_index, f_index))
+    used_p, used_f = set(), set()
+    for _, p_index, f_index in sorted(candidates, reverse=True):
+        if p_index in used_p or f_index in used_f:
+            continue
+        used_p.add(p_index)
+        used_f.add(f_index)
+    return len(used_p), len(used_f)
 
 
 def median_row(metric: str, cls: str, cond: str, values: list[float]) -> dict[str, Any]:
@@ -220,6 +272,49 @@ def pipeline_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
         rows.append(
             rate("recheck_passed", cls, cond, sum(bool(r["recheck_passed"]) for r in handled), n)
         )
+    return rows
+
+
+def recheck_rows(pairs: list[tuple[dict, dict]]) -> list[dict]:
+    """D7 failed-redaction detection quality of the on-device recheck."""
+    rows = []
+    d7 = [(r, lb) for r, lb in pairs if lb.get("redaction_type") in ("complete", "partial", "misplaced", "ineffective")]
+    if not d7:
+        for metric in (
+            "recheck_sensitivity",
+            "recheck_false_negative_rate",
+            "recheck_false_positive_rate",
+            "recheck_inconclusive_rate",
+        ):
+            rows.append(rate(metric, "ALL", "ALL", 0, 0))
+        return rows
+    for (cls, cond), group in sorted(grouped(d7).items()):
+        positives = negatives = tp = fn = fp = inconclusive = 0
+        for result, label in group:
+            actual_failed = bool(label.get("is_failed_redaction"))
+            state = result.get("state")
+            recheck_passed = bool(result.get("recheck_passed"))
+            if state == "NEEDS_CHECK" or not recheck_passed:
+                predicted = "failed"
+            elif state == "REDACTED" and recheck_passed:
+                predicted = "clean"
+            else:
+                predicted = "inconclusive"
+            positives += int(actual_failed)
+            negatives += int(not actual_failed)
+            if predicted == "inconclusive":
+                inconclusive += 1
+                continue
+            if actual_failed and predicted == "failed":
+                tp += 1
+            elif actual_failed and predicted == "clean":
+                fn += 1
+            elif (not actual_failed) and predicted == "failed":
+                fp += 1
+        rows.append(rate("recheck_sensitivity", cls, cond, tp, positives))
+        rows.append(rate("recheck_false_negative_rate", cls, cond, fn, positives))
+        rows.append(rate("recheck_false_positive_rate", cls, cond, fp, negatives))
+        rows.append(rate("recheck_inconclusive_rate", cls, cond, inconclusive, len(group)))
     return rows
 
 
@@ -276,6 +371,7 @@ def run_pipeline(
         "corners": corner_rows(pairs),
         "fields": field_rows(pairs),
         "pipeline": pipeline_rows(pairs),
+        "recheck": recheck_rows(pairs),
     }
     if leaks:
         tables["leaks"] = leak_rows(pairs, export_dir, labels_dir, reader)

@@ -1,7 +1,7 @@
 """Pipeline metrics from an on-device batch export (issue #30).
 
-A hand-built export of four images checks every table: detection P/R/F1, AP50 and the
-false-positive rate on negatives, the confusion matrix, corner error, field recall, box
+A hand-built export of four images checks every table: detection P/R/F1, AP50, mAP50 and the
+false-positive rate on negatives, the confusion matrix, corner error, field recall, field/box
 precision, and the inconclusive, retry, fallback and recheck rates. The leak test needs
 PaddleOCR and is covered by validation/leaktest.
 """
@@ -90,6 +90,7 @@ def test_detection_counts_and_confusion(export: tuple[Path, Path], tmp_path: Pat
     fp = _find(det, metric="false_positive_rate")
     assert (fp["count"], fp["of"], fp["pct"]) == ("1", "1", "100.0")
     assert float(fp["ci_low"]) > 0  # Wilson interval next to the rate
+    assert _find(det, metric="map50", **{"class": "ALL"})["count"] == "2"
     confusion = {r["truth"]: r for r in _rows(written["confusion"])}
     assert confusion["lto"]["pred_philsys"] == "1"
     assert confusion["none"]["pred_payment_card"] == "1"
@@ -98,8 +99,12 @@ def test_detection_counts_and_confusion(export: tuple[Path, Path], tmp_path: Pat
 def test_fields_and_pipeline_rates(export: tuple[Path, Path], tmp_path: Path) -> None:
     written = run_pipeline(*export, tmp_path / "out", leaks=False)
     fields = _rows(written["fields"])
+    field_precision = _find(fields, metric="field_precision", **{"class": "ALL", "condition": "ALL"})
+    assert (field_precision["count"], field_precision["of"]) == ("2", "3")
     recall = _find(fields, metric="field_recall", **{"class": "ALL", "condition": "ALL"})
     assert (recall["count"], recall["of"]) == ("1", "2")  # only image a's field is covered
+    field_f1 = _find(fields, metric="field_f1", **{"class": "ALL", "condition": "ALL"})
+    assert field_f1["pct"] == "80.0"
     precision = _find(fields, metric="box_precision", **{"class": "philsys", "condition": "ALL"})
     assert (precision["count"], precision["of"]) == ("1", "2")
     pipe = _rows(written["pipeline"])
@@ -107,6 +112,8 @@ def test_fields_and_pipeline_rates(export: tuple[Path, Path], tmp_path: Path) ->
     assert _find(pipe, metric="inconclusive", **every)["count"] == "1"
     assert _find(pipe, metric="retried", **every)["count"] == "1"
     assert _find(pipe, metric="whole_image_fallback", **every)["count"] == "1"
+    recheck = _rows(written["recheck"])
+    assert _find(recheck, metric="recheck_sensitivity", **every)["of"] == "0"
     corners = _rows(written["corners"])
     assert _find(corners, **{"class": "philsys"})["max_pct"] == "0.0"
 
@@ -131,6 +138,7 @@ def test_cli(export: tuple[Path, Path], tmp_path: Path) -> None:
         ]
     )
     assert (tmp_path / "r" / "pipeline.csv").exists()
+    assert (tmp_path / "r" / "recheck.csv").exists()
 
 
 def test_an_export_without_a_label_is_an_error(export: tuple[Path, Path], tmp_path: Path) -> None:
@@ -157,3 +165,42 @@ def test_leaks_judge_the_exported_copies(export: tuple[Path, Path], tmp_path: Pa
     leaks = _rows(written["leaks"])
     text = _find(leaks, metric="text_leaked", **{"class": "ALL", "condition": "ALL"})
     assert text["of"] == "2"
+
+
+def test_recheck_sensitivity_on_failed_redaction_cases(tmp_path: Path) -> None:
+    out, labels = tmp_path / "export", tmp_path / "labels"
+    out.mkdir()
+    labels.mkdir()
+    cases = {
+        "ok": (
+            {
+                **_label("philsys"),
+                "is_failed_redaction": False,
+                "redaction_type": "complete",
+                "redaction": {"target_field_types": ["pcn"], "redaction_boxes": [FIELD]},
+            },
+            _result("ok", "philsys", "REDACTED", [("pcn", FIELD)], retries=0, recheck_passed=True),
+        ),
+        "bad": (
+            {
+                **_label("philsys"),
+                "is_failed_redaction": True,
+                "redaction_type": "partial",
+                "redaction": {"target_field_types": ["pcn"], "redaction_boxes": [FIELD]},
+            },
+            _result("bad", "philsys", "NEEDS_CHECK", [("pcn", FIELD)], retries=2, recheck_passed=False),
+        ),
+    }
+    for id_, (label, result) in cases.items():
+        (labels / f"{id_}.json").write_text(json.dumps(label), encoding="utf-8")
+    (out / "results.json").write_text(
+        json.dumps({"images": [result for _, result in cases.values()]}),
+        encoding="utf-8",
+    )
+    written = run_pipeline(out, labels, tmp_path / "out", leaks=False)
+    rows = _rows(written["recheck"])
+    overall = {"class": "ALL", "condition": "ALL"}
+    assert _find(rows, metric="recheck_sensitivity", **overall)["pct"] == "100.0"
+    assert _find(rows, metric="recheck_false_negative_rate", **overall)["pct"] == "0.0"
+    assert _find(rows, metric="recheck_false_positive_rate", **overall)["pct"] == "0.0"
+    assert _find(rows, metric="recheck_inconclusive_rate", **overall)["pct"] == "0.0"
