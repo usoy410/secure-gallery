@@ -1,0 +1,78 @@
+name: Debug APK Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debug-apk-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish debug APK
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: gradle
+
+      - name: Build, unit tests and lint
+        working-directory: android
+        run: bash ./gradlew assembleDebug testDebugUnitTest lint -Proborazzi.test.record=true
+
+      - name: Check offline manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=$(find android/app/build/intermediates/merged_manifest* -name AndroidManifest.xml | head -n 1)
+          test -n "$manifest"
+          if perl -0pe 's/<!--.*?-->//gs' "$manifest" | grep -qi android.permission.INTERNET; then
+            echo '::error::Merged manifest requests INTERNET permission'
+            exit 1
+          fi
+
+      - name: Package APK and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/secure-gallery-debug.apk
+          cd dist
+          sha256sum secure-gallery-debug.apk > SHA256SUMS
+          printf 'Repository: %s\nCommit: %s\nBuild: %s/%s/actions/runs/%s\nVariant: debug\nMinimum Android: 11 (API 30)\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > build-info.txt
+
+      # Keep a downloadable Actions artifact even if publishing the release fails.
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure-gallery-debug-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="debug-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+          printf 'Debug APK built by GitHub Actions from commit %s.\n\nAndroid build, unit tests, lint and offline manifest checks passed. Download secure-gallery-debug.apk; SHA256SUMS and build-info.txt provide verification and source details.\n\nThis is a debug-signed prerelease for testing on Android 11 or newer.\n' "$GITHUB_SHA" > release-notes.txt
+          gh release create "$tag" dist/secure-gallery-debug.apk dist/SHA256SUMS dist/build-info.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Secure Gallery debug ${GITHUB_RUN_NUMBER}" --notes-file release-notes.txt
+          printf '### Debug APK\n\n[Download release](%s/%s/releases/tag/%s)\n' \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$tag" >> "$GITHUB_STEP_SUMMARY"
