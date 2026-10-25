@@ -147,6 +147,12 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=None, help="Batch size")
     parser.add_argument("--device", default="cpu", help="Device (cpu or cuda)")
     parser.add_argument("--no-export", action="store_true", help="Skip LiteRT export step")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=2,
+        help="Data loader processes; 0 makes the GPU wait on one CPU thread (Colab has 2 CPUs)",
+    )
     args = parser.parse_args()
 
     if args.smoke:
@@ -168,6 +174,7 @@ def main() -> None:
         device=args.device,
         name=exp_name,
         export_after_training=not args.no_export,
+        workers=args.workers,
     )
     print(f"Training completed in {res['elapsed_seconds']}s. Weights: {res['weights_path']}")
 

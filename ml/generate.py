@@ -96,6 +96,8 @@ def generate_single_sample(
         "image_size": [final_img.width, final_img.height],
         "fields": fields,
         "layout_jitter": jitter,
+        # How strongly the SPECIMEN watermark shows on the clean card (#34).
+        "watermark_contrast": clean_img.info.get("watermark_contrast"),
     }
 
     return final_img, label_data
@@ -239,6 +241,22 @@ def main() -> None:
         help="Optional destination directory overriding YAML config.",
     )
 
+    # Public release bundle (#34)
+    release_parser = subparsers.add_parser(
+        "release",
+        help="Build the public release bundle (dataset, datasheet, licenses, checksums).",
+    )
+    release_parser.add_argument("--seed", type=int, help="Release seed (needed unless --verify).")
+    release_parser.add_argument(
+        "--out", type=str, default=None, help="Bundle folder (default data/release-<seed>)."
+    )
+    release_parser.add_argument(
+        "--config", type=str, default=None, help="Config (default configs/release.yaml)."
+    )
+    release_parser.add_argument(
+        "--verify", type=str, default=None, help="Rebuild this bundle and compare checksums."
+    )
+
     # Variant-level options for backward compatibility
     parser.add_argument(
         "--variant",
@@ -284,7 +302,21 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        if args.subcommand == "dataset":
+        if args.subcommand == "release":
+            from ml.release import RELEASE_CONFIG, build_release, verify_release
+
+            if args.verify:
+                diff = verify_release(args.verify)
+                if diff:
+                    print(f"{len(diff)} files differ, first: {diff[:5]}", file=sys.stderr)
+                    sys.exit(1)
+                print(f"Verified {args.verify}: every checksum matches")
+                return
+            if args.seed is None:
+                release_parser.error("--seed is required")
+            out = build_release(args.seed, args.out, args.config or RELEASE_CONFIG)
+            print(f"Release bundle in {out}")
+        elif args.subcommand == "dataset":
             from ml.dataset import build_full_dataset
 
             res = build_full_dataset(
