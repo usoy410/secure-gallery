@@ -1,5 +1,6 @@
 package com.sudo.securegallery.secure
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.provider.MediaStore
@@ -27,8 +28,9 @@ import java.io.File
  */
 @RunWith(AndroidJUnit4::class)
 class RestoreInstrumentedTest {
-    private val app = InstrumentationRegistry.getInstrumentation().targetContext
-    private val testAssets = InstrumentationRegistry.getInstrumentation().context.assets
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val app = instrumentation.targetContext
+    private val testAssets = instrumentation.context.assets
     private val resolver = app.contentResolver
     private val album = "Pictures/SG restore test/"
 
@@ -46,6 +48,12 @@ class RestoreInstrumentedTest {
 
     @Test
     fun notSensitiveRestoresTheOriginal() = runBlocking {
+        // The test writes and reads MediaStore directly; grant the instrumentation
+        // process media access so Android 14 does not reject the synthetic URI.
+        instrumentation.uiAutomation.adoptShellPermissionIdentity(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        )
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
         val vault = Vault(VaultStore(dir), KeystoreDeviceSecret("restore-test"), iterations = 10_000)
@@ -80,6 +88,7 @@ class RestoreInstrumentedTest {
             restoredId?.let(gallery::delete)
             db.close()
             dir.deleteRecursively()
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
         }
     }
 }
