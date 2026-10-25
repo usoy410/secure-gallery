@@ -8,12 +8,18 @@ import android.provider.MediaStore
 import com.sudo.securegallery.scan.ImageQuery
 
 /** Where redacted copies go: MediaStore in the app, a fake in tests. */
-fun interface RedactedCopyStore {
+interface RedactedCopyStore {
     /**
      * Saves [jpeg] as the redacted copy of the original [originalId] and returns the copy's
      * MediaStore ID, or null if the original no longer exists.
      */
     fun save(originalId: Long, jpeg: ByteArray): Long?
+
+    /** The saved copy's bytes as they are on disk, for the recheck (§8.5). */
+    fun read(copyId: Long): ByteArray?
+
+    /** Replaces the copy's bytes, for a retry with larger boxes (#19). */
+    fun overwrite(copyId: Long, jpeg: ByteArray)
 }
 
 /**
@@ -53,6 +59,19 @@ class MediaStoreCopyStore(private val resolver: ContentResolver) : RedactedCopyS
         }
         return ContentUris.parseId(uri)
     }
+
+    override fun read(copyId: Long): ByteArray? = try {
+        resolver.openInputStream(copyUri(copyId))?.use { it.readBytes() }
+    } catch (_: java.io.FileNotFoundException) {
+        null
+    }
+
+    override fun overwrite(copyId: Long, jpeg: ByteArray) {
+        // "wt" truncates, so no bytes of the earlier attempt remain past the new end.
+        resolver.openOutputStream(copyUri(copyId), "wt").use { out -> checkNotNull(out).write(jpeg) }
+    }
+
+    private fun copyUri(copyId: Long) = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, copyId)
 
     private fun insertPending(collection: Uri, displayName: String, relativePath: String?): Uri? =
         resolver.insert(
