@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,16 +54,27 @@ class ViewerActions(
     val toggle: () -> Unit = {},
     val edit: () -> Unit = {},
     val close: () -> Unit = {},
+    val delete: () -> Unit = {},
+    val confirmDelete: () -> Unit = {},
+    val cancelDelete: () -> Unit = {},
 )
 
 /**
  * The viewer with the eye toggle (§8.3, #23): the redacted copy by default, the original after
  * a tap on the eye while the vault is unlocked. While locked the eye shows a lock and a tap asks
  * for an unlock. Pinch to zoom, drag to pan. `FLAG_SECURE` is set while the original is shown.
+ * The delete button (#77) warns first that the photo cannot come back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ViewerScreen(state: ViewerState, unlocked: Boolean, actions: ViewerActions, modifier: Modifier = Modifier) {
+fun ViewerScreen(
+    state: ViewerState,
+    unlocked: Boolean,
+    actions: ViewerActions,
+    modifier: Modifier = Modifier,
+    deleteWarning: Boolean = false,
+) {
+    if (deleteWarning) DeleteWarning(actions)
     val showing = state.original?.takeIf { state.showOriginal && unlocked }
     if (showing != null) SecureWindow()
     val toggleLabel = stringResource(
@@ -105,6 +119,9 @@ fun ViewerScreen(state: ViewerState, unlocked: Boolean, actions: ViewerActions, 
                     IconButton(onClick = actions.edit) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.viewer_edit_boxes))
                     }
+                    IconButton(onClick = actions.delete) {
+                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.viewer_delete))
+                    }
                 },
             )
         },
@@ -133,6 +150,22 @@ fun ViewerScreen(state: ViewerState, unlocked: Boolean, actions: ViewerActions, 
             }
         }
     }
+}
+
+@Composable
+private fun DeleteWarning(actions: ViewerActions) {
+    AlertDialog(
+        onDismissRequest = actions.cancelDelete,
+        icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+        title = { Text(stringResource(R.string.viewer_delete_title)) },
+        text = { Text(stringResource(R.string.viewer_delete_body)) },
+        confirmButton = {
+            TextButton(onClick = actions.confirmDelete) {
+                Text(stringResource(R.string.viewer_delete_confirm), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = actions.cancelDelete) { Text(stringResource(R.string.editor_cancel)) } },
+    )
 }
 
 /** Pinch to zoom (1x to 5x) and pan; the zoom stays when the eye toggle switches images. */

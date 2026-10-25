@@ -58,7 +58,7 @@ import com.sudo.securegallery.scan.PhotoAccess
  * granted, and shows how many images were found and processed.
  */
 @Composable
-fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
+fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier, gallery: (@Composable (Modifier) -> Unit)? = null) {
     val context = LocalContext.current
     val sdk = Build.VERSION.SDK_INT
     fun currentAccess() = PhotoAccess.from(sdk) {
@@ -93,6 +93,7 @@ fun ScanRoute(viewModel: ScanViewModel, modifier: Modifier = Modifier) {
         onRequestAccess = { launcher.launch(PhotoAccess.permissionsFor(sdk)) },
         onScanNow = viewModel::scanNow,
         modifier = modifier,
+        gallery = gallery,
         secure = secure,
         chargingOnly = chargingOnly,
         onChargingOnly = viewModel::setChargingOnly,
@@ -115,6 +116,8 @@ fun ScanScreen(
     onRequestAccess: () -> Unit,
     onScanNow: () -> Unit,
     modifier: Modifier = Modifier,
+    /** The photo grid (#77), shown under a one-line status once a scan is done. */
+    gallery: (@Composable (Modifier) -> Unit)? = null,
     secure: SecureState = SecureState(),
     onSecure: () -> Unit = {},
     chargingOnly: Boolean = false,
@@ -145,7 +148,18 @@ fun ScanScreen(
             if (secure.ready > 0 || secure.message != null) {
                 SecureCard(secure, onSecure)
             }
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            val done = access != PhotoAccess.NONE && !progress.running && !progress.failed
+            if (gallery != null && done) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        pluralStringResource(R.plurals.scan_done_body, progress.found, progress.found, progress.processed),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedButton(onClick = onScanNow) { Text(stringResource(R.string.scan_now_button)) }
+                }
+                gallery(Modifier.weight(1f).fillMaxWidth())
+            } else Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
                     access == PhotoAccess.NONE -> NoAccess(onRequestAccess)
                     progress.running -> Scanning(progress)

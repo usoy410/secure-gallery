@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +29,10 @@ import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sudo.securegallery.ui.inbox.GalleryGrid
 import com.sudo.securegallery.ui.inbox.InboxRoute
 import com.sudo.securegallery.ui.inbox.InboxViewModel
+import com.sudo.securegallery.ui.inbox.redactedThumbnail
 import com.sudo.securegallery.ui.scan.ScanRoute
 import com.sudo.securegallery.ui.setup.SetupRoute
 import com.sudo.securegallery.ui.setup.SetupViewModel
@@ -71,24 +74,21 @@ class MainActivity : FragmentActivity() {
                 var tab by rememberSaveable { mutableIntStateOf(0) }
                 Column(Modifier.fillMaxSize()) {
                     when (tab) {
-                        0 -> ScanRoute(viewModel(factory = ScanViewModel.factory(container)), Modifier.weight(1f))
-                        1 -> {
-                            val unlocked by container.vaultSession.unlocked.collectAsStateWithLifecycle()
-                            InboxRoute(
-                                viewModel(factory = InboxViewModel.factory(container)),
-                                Modifier.weight(1f),
-                                unlocked = unlocked,
-                                // The eye toggle's unlock prompt is the vault's own lock screen (#23).
-                                unlockPrompt = { onDismiss ->
-                                    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, securePolicy = SecureFlagPolicy.SecureOn)) {
-                                        VaultRoute(
-                                            viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
-                                            Modifier.fillMaxSize(),
-                                        )
-                                    }
-                                },
-                            )
+                        0 -> {
+                            // The photo grid (#77): tapping a photo opens the same viewer as the inbox.
+                            val photos = viewModel<InboxViewModel>(factory = InboxViewModel.factory(container))
+                            val viewing by photos.viewer.collectAsStateWithLifecycle()
+                            val editing by photos.editor.collectAsStateWithLifecycle()
+                            if (viewing != null || editing != null) {
+                                PhotoRoute(container, photos, Modifier.weight(1f))
+                            } else {
+                                val items by photos.galleryItems.collectAsStateWithLifecycle()
+                                ScanRoute(viewModel(factory = ScanViewModel.factory(container)), Modifier.weight(1f)) { m ->
+                                    GalleryGrid(items, photos::open, { redactedThumbnail(contentResolver, it) }, m)
+                                }
+                            }
                         }
+                        1 -> PhotoRoute(container, viewModel(factory = InboxViewModel.factory(container)), Modifier.weight(1f))
                         else -> VaultRoute(
                             viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
                             Modifier.weight(1f),
@@ -118,4 +118,23 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+}
+
+/** The inbox, viewer and editor (#23, #24); the viewer's unlock prompt is the vault's own lock screen. */
+@Composable
+private fun FragmentActivity.PhotoRoute(container: AppContainer, photos: InboxViewModel, modifier: Modifier) {
+    val unlocked by container.vaultSession.unlocked.collectAsStateWithLifecycle()
+    InboxRoute(
+        photos,
+        modifier,
+        unlocked = unlocked,
+        unlockPrompt = { onDismiss ->
+            Dialog(
+                onDismissRequest = onDismiss,
+                properties = DialogProperties(usePlatformDefaultWidth = false, securePolicy = SecureFlagPolicy.SecureOn),
+            ) {
+                VaultRoute(viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@PhotoRoute))), Modifier.fillMaxSize())
+            }
+        },
+    )
 }

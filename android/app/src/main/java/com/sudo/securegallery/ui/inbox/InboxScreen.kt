@@ -1,6 +1,12 @@
 package com.sudo.securegallery.ui.inbox
 
+import android.app.Activity
+import android.content.ContentUris
+import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +64,12 @@ fun InboxRoute(
     val editor by viewModel.editor.collectAsStateWithLifecycle()
     val viewer by viewModel.viewer.collectAsStateWithLifecycle()
     val unlockRequested by viewModel.unlockRequested.collectAsStateWithLifecycle()
+    val deleteWarning by viewModel.deleteWarning.collectAsStateWithLifecycle()
+    val resolver = LocalContext.current.contentResolver
+    // Deleting a photo goes through Android's own dialog (#77).
+    val deleteDialog = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        viewModel.onDeleteResult(it.resultCode == Activity.RESULT_OK)
+    }
     val message by viewModel.message.collectAsStateWithLifecycle()
     val state = editor
     val viewing = viewer
@@ -85,8 +98,18 @@ fun InboxRoute(
                 toggle = viewModel::toggleOriginal,
                 edit = { viewModel.openEditor(viewing.item) },
                 close = viewModel::closeViewer,
+                delete = viewModel::requestDelete,
+                confirmDelete = {
+                    viewModel.confirmDelete { ids ->
+                        val uris = ids.map { ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it) }
+                        val request = MediaStore.createDeleteRequest(resolver, uris)
+                        deleteDialog.launch(IntentSenderRequest.Builder(request.intentSender).build())
+                    }
+                },
+                cancelDelete = viewModel::cancelDelete,
             ),
             modifier = modifier,
+            deleteWarning = deleteWarning,
         )
         if (unlockRequested && !unlocked) unlockPrompt(viewModel::cancelUnlock)
     } else {
@@ -193,6 +216,8 @@ private val InboxMessage.text: Int
         InboxMessage.SAVED -> R.string.inbox_saved
         InboxMessage.SAVED_NEEDS_CHECK -> R.string.inbox_saved_needs_check
         InboxMessage.SAVE_FAILED -> R.string.inbox_save_failed
+        InboxMessage.DELETED -> R.string.inbox_deleted
+        InboxMessage.DELETE_KEPT -> R.string.inbox_delete_kept
     }
 
 /**
