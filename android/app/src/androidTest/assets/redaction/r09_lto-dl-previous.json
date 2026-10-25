@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-previous",
+ "card_corners": [
+  [
+   712,
+   440
+  ],
+  [
+   1402,
+   580
+  ],
+  [
+   1314,
+   1015
+  ],
+  [
+   624,
+   875
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     737,
+     458
+    ],
+    [
+     1373,
+     587
+    ],
+    [
+     1359,
+     653
+    ],
+    [
+     723,
+     523
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     1117,
+     784
+    ],
+    [
+     1199,
+     801
+    ],
+    [
+     1191,
+     840
+    ],
+    [
+     1109,
+     823
+    ]
+   ],
+   "value": "F"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     1213,
+     804
+    ],
+    [
+     1316,
+     825
+    ],
+    [
+     1309,
+     864
+    ],
+    [
+     1206,
+     843
+    ]
+   ],
+   "value": "1.84 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     1204,
+     852
+    ],
+    [
+     1307,
+     873
+    ],
+    [
+     1299,
+     912
+    ],
+    [
+     1196,
+     891
+    ]
+   ],
+   "value": "77 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     727,
+     542
+    ],
+    [
+     900,
+     577
+    ],
+    [
+     854,
+     804
+    ],
+    [
+     682,
+     769
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     680,
+     777
+    ],
+    [
+     852,
+     812
+    ],
+    [
+     836,
+     891
+    ],
+    [
+     664,
+     856
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     935,
+     580
+    ],
+    [
+     1349,
+     664
+    ],
+    [
+     1340,
+     708
+    ],
+    [
+     926,
+     624
+    ]
+   ],
+   "value": "B73-11-541110"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     924,
+     632
+    ],
+    [
+     1338,
+     717
+    ],
+    [
+     1327,
+     772
+    ],
+    [
+     913,
+     688
+    ]
+   ],
+   "value": "TUCKER, ERICA WATSON"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     902,
+     741
+    ],
+    [
+     1096,
+     780
+    ],
+    [
+     1088,
+     819
+    ],
+    [
+     894,
+     780
+    ]
+   ],
+   "value": "1972/08/06"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     883,
+     836
+    ],
+    [
+     1297,
+     920
+    ],
+    [
+     1285,
+     982
+    ],
+    [
+     870,
+     898
+    ]
+   ],
+   "value": "391 MILFLOWER EXTENSION\nAMY VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92009,
+ "stored_rotated": false
+}

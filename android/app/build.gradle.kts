@@ -131,6 +131,7 @@ dependencies {
     implementation(libs.litert.gpu)
     // Bundled Latin model: no download at runtime (§8.6, §20.1).
     implementation(libs.mlkit.text.recognition)
+    implementation(libs.androidx.exifinterface)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

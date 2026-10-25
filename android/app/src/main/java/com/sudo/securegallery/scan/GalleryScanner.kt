@@ -9,6 +9,7 @@ import com.sudo.securegallery.detect.Corner
 import com.sudo.securegallery.detect.DocumentDetector
 import com.sudo.securegallery.localize.FieldLocalizer
 import com.sudo.securegallery.localize.HybridLocalizer
+import com.sudo.securegallery.redact.Redactor
 import kotlinx.coroutines.CancellationException
 import java.io.InputStream
 import java.security.MessageDigest
@@ -20,7 +21,8 @@ import java.security.MessageDigest
  * the detector on a copy decoded at detection size (#16). An image with no detection at or
  * above the threshold becomes NOT_DETECTED; a detected one keeps its class, confidence and
  * corners. Field localization (#17) then decodes it at OCR size, stores the boxes to redact
- * (never the text read) and sets REDACTED or NEEDS_CHECK by the §8.2 confidence level.
+ * (never the text read) and sets REDACTED or NEEDS_CHECK by the §8.2 confidence level. Last,
+ * the redactor saves each localized item's redacted copy next to the original (#18).
  */
 class GalleryScanner(
     private val source: ImageSource,
@@ -28,6 +30,7 @@ class GalleryScanner(
     private val detector: DocumentDetector? = null,
     private val detectorConfig: DetectorConfig = DetectorConfig(),
     private val localizer: FieldLocalizer? = null,
+    private val redactor: Redactor? = null,
 ) {
     data class Result(val found: Int, val processed: Int, val missing: Int)
 
@@ -55,6 +58,9 @@ class GalleryScanner(
         }
         if (localizer != null) {
             for (item in dao.awaitingLocalization()) dao.update(localize(localizer, item))
+        }
+        if (redactor != null) {
+            for (item in dao.awaitingRedaction()) dao.update(redactor.redact(item))
         }
         return Result(found = images.size, processed = processed, missing = missing)
     }

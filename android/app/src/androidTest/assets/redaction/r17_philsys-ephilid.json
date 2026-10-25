@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-ephilid",
+ "card_corners": [
+  [
+   508,
+   354
+  ],
+  [
+   1298,
+   128
+  ],
+  [
+   1440,
+   626
+  ],
+  [
+   650,
+   852
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and ePhilID Banner",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     543,
+     360
+    ],
+    [
+     1271,
+     152
+    ],
+    [
+     1290,
+     217
+    ],
+    [
+     562,
+     424
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nEPHILID"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     576,
+     442
+    ],
+    [
+     757,
+     391
+    ],
+    [
+     826,
+     629
+    ],
+    [
+     644,
+     681
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     774,
+     386
+    ],
+    [
+     1010,
+     318
+    ],
+    [
+     1022,
+     358
+    ],
+    [
+     785,
+     426
+    ]
+   ],
+   "value": "2857-3455-7636-7643"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     788,
+     435
+    ],
+    [
+     1024,
+     367
+    ],
+    [
+     1050,
+     457
+    ],
+    [
+     813,
+     525
+    ]
+   ],
+   "value": "LUTZ, JOSE, GRAY"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     816,
+     535
+    ],
+    [
+     1053,
+     467
+    ],
+    [
+     1067,
+     517
+    ],
+    [
+     831,
+     585
+    ]
+   ],
+   "value": "1981/02/10"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     650,
+     701
+    ],
+    [
+     1084,
+     577
+    ],
+    [
+     1116,
+     687
+    ],
+    [
+     681,
+     811
+    ]
+   ],
+   "value": "397 COMET ROAD, DANIEL VILLE"
+  },
+  {
+   "name": "PhilSys Check QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     1042,
+     309
+    ],
+    [
+     1295,
+     237
+    ],
+    [
+     1373,
+     510
+    ],
+    [
+     1120,
+     582
+    ]
+   ],
+   "value": "PHILSYS-CHECK:2857-3455-7636-7643:LUTZ"
+  },
+  {
+   "name": "Digital Validation / Specimen Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     1125,
+     598
+    ],
+    [
+     1378,
+     526
+    ],
+    [
+     1401,
+     605
+    ],
+    [
+     1148,
+     678
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92017,
+ "stored_rotated": false
+}

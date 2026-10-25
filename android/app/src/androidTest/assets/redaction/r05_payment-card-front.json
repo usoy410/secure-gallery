@@ -1,0 +1,152 @@
+{
+ "class": "payment_card",
+ "document_class": "payment_card",
+ "variant": "payment-card-front",
+ "card_corners": [
+  [
+   329,
+   356
+  ],
+  [
+   1147,
+   377
+  ],
+  [
+   1133,
+   892
+  ],
+  [
+   315,
+   871
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Issuing Bank Logo",
+   "type": "bank_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     377,
+     388
+    ],
+    [
+     671,
+     395
+    ],
+    [
+     669,
+     488
+    ],
+    [
+     375,
+     480
+    ]
+   ],
+   "value": "METROBANK"
+  },
+  {
+   "name": "Card Network Logo",
+   "type": "card_network_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     924,
+     753
+    ],
+    [
+     1087,
+     757
+    ],
+    [
+     1085,
+     850
+    ],
+    [
+     922,
+     846
+    ]
+   ],
+   "value": "VISA"
+  },
+  {
+   "name": "Primary Account Number (PAN)",
+   "type": "card_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     388,
+     615
+    ],
+    [
+     1074,
+     633
+    ],
+    [
+     1073,
+     705
+    ],
+    [
+     386,
+     687
+    ]
+   ],
+   "value": "4111 1111 1111 1111"
+  },
+  {
+   "name": "Expiration Date",
+   "type": "expiry_date",
+   "sensitive": true,
+   "polygon": [
+    [
+     631,
+     704
+    ],
+    [
+     876,
+     710
+    ],
+    [
+     875,
+     756
+    ],
+    [
+     630,
+     750
+    ]
+   ],
+   "value": "05/29"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "cardholder_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     384,
+     760
+    ],
+    [
+     874,
+     772
+    ],
+    [
+     873,
+     834
+    ],
+    [
+     382,
+     821
+    ]
+   ],
+   "value": "ERIC MANN"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92005,
+ "stored_rotated": false
+}

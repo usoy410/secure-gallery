@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-current",
+ "card_corners": [
+  [
+   693,
+   368
+  ],
+  [
+   1408,
+   140
+  ],
+  [
+   1552,
+   591
+  ],
+  [
+   837,
+   819
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     726,
+     373
+    ],
+    [
+     1384,
+     162
+    ],
+    [
+     1406,
+     230
+    ],
+    [
+     747,
+     440
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     1248,
+     479
+    ],
+    [
+     1334,
+     452
+    ],
+    [
+     1347,
+     492
+    ],
+    [
+     1261,
+     519
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     1349,
+     447
+    ],
+    [
+     1455,
+     413
+    ],
+    [
+     1468,
+     453
+    ],
+    [
+     1362,
+     487
+    ]
+   ],
+   "value": "1.64 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     1365,
+     496
+    ],
+    [
+     1471,
+     462
+    ],
+    [
+     1484,
+     503
+    ],
+    [
+     1378,
+     537
+    ]
+   ],
+   "value": "78 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     761,
+     456
+    ],
+    [
+     939,
+     399
+    ],
+    [
+     1014,
+     633
+    ],
+    [
+     835,
+     690
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     838,
+     699
+    ],
+    [
+     1017,
+     642
+    ],
+    [
+     1043,
+     724
+    ],
+    [
+     864,
+     781
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     973,
+     383
+    ],
+    [
+     1402,
+     246
+    ],
+    [
+     1417,
+     291
+    ],
+    [
+     988,
+     428
+    ]
+   ],
+   "value": "G14-62-311587"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     991,
+     437
+    ],
+    [
+     1420,
+     301
+    ],
+    [
+     1438,
+     358
+    ],
+    [
+     1009,
+     495
+    ]
+   ],
+   "value": "BROWN, GARY HUGHES"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     1027,
+     550
+    ],
+    [
+     1227,
+     486
+    ],
+    [
+     1240,
+     526
+    ],
+    [
+     1039,
+     590
+    ]
+   ],
+   "value": "1975/02/02"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     1058,
+     649
+    ],
+    [
+     1487,
+     512
+    ],
+    [
+     1507,
+     575
+    ],
+    [
+     1078,
+     712
+    ]
+   ],
+   "value": "406 CABBAGE ROAD\nGEORGE VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92013,
+ "stored_rotated": false
+}

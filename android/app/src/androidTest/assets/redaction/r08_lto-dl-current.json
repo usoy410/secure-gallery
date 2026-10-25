@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-current",
+ "card_corners": [
+  [
+   813,
+   112
+  ],
+  [
+   1551,
+   241
+  ],
+  [
+   1470,
+   706
+  ],
+  [
+   732,
+   578
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     840,
+     131
+    ],
+    [
+     1519,
+     249
+    ],
+    [
+     1507,
+     320
+    ],
+    [
+     827,
+     201
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     1253,
+     467
+    ],
+    [
+     1341,
+     482
+    ],
+    [
+     1334,
+     524
+    ],
+    [
+     1246,
+     508
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     1357,
+     485
+    ],
+    [
+     1467,
+     504
+    ],
+    [
+     1459,
+     546
+    ],
+    [
+     1349,
+     526
+    ]
+   ],
+   "value": "1.69 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     1348,
+     536
+    ],
+    [
+     1458,
+     555
+    ],
+    [
+     1450,
+     597
+    ],
+    [
+     1340,
+     578
+    ]
+   ],
+   "value": "67 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     832,
+     221
+    ],
+    [
+     1017,
+     253
+    ],
+    [
+     975,
+     495
+    ],
+    [
+     790,
+     463
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     789,
+     473
+    ],
+    [
+     973,
+     505
+    ],
+    [
+     958,
+     588
+    ],
+    [
+     774,
+     556
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     1054,
+     255
+    ],
+    [
+     1497,
+     332
+    ],
+    [
+     1489,
+     379
+    ],
+    [
+     1046,
+     302
+    ]
+   ],
+   "value": "A44-51-965192"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     1044,
+     311
+    ],
+    [
+     1487,
+     388
+    ],
+    [
+     1476,
+     448
+    ],
+    [
+     1034,
+     371
+    ]
+   ],
+   "value": "SCHNEIDER, KEVIN THOMPSON"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     1024,
+     427
+    ],
+    [
+     1231,
+     463
+    ],
+    [
+     1224,
+     505
+    ],
+    [
+     1017,
+     469
+    ]
+   ],
+   "value": "1984/08/21"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     1006,
+     529
+    ],
+    [
+     1449,
+     606
+    ],
+    [
+     1438,
+     672
+    ],
+    [
+     995,
+     595
+    ]
+   ],
+   "value": "929 JASPER STREET\nSTEPHANIE VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92008,
+ "stored_rotated": true
+}

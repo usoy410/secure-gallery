@@ -1,0 +1,152 @@
+{
+ "class": "payment_card",
+ "document_class": "payment_card",
+ "variant": "payment-card-front",
+ "card_corners": [
+  [
+   501,
+   564
+  ],
+  [
+   1240,
+   366
+  ],
+  [
+   1365,
+   833
+  ],
+  [
+   625,
+   1030
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Issuing Bank Logo",
+   "type": "bank_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     553,
+     579
+    ],
+    [
+     819,
+     508
+    ],
+    [
+     841,
+     593
+    ],
+    [
+     575,
+     663
+    ]
+   ],
+   "value": "METROBANK"
+  },
+  {
+   "name": "Card Network Logo",
+   "type": "card_network_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     1140,
+     763
+    ],
+    [
+     1288,
+     723
+    ],
+    [
+     1310,
+     807
+    ],
+    [
+     1163,
+     847
+    ]
+   ],
+   "value": "VISA"
+  },
+  {
+   "name": "Primary Account Number (PAN)",
+   "type": "card_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     622,
+     781
+    ],
+    [
+     1243,
+     615
+    ],
+    [
+     1261,
+     680
+    ],
+    [
+     639,
+     846
+    ]
+   ],
+   "value": "6011 1111 1111 1117"
+  },
+  {
+   "name": "Expiration Date",
+   "type": "expiry_date",
+   "sensitive": true,
+   "polygon": [
+    [
+     864,
+     796
+    ],
+    [
+     1086,
+     737
+    ],
+    [
+     1097,
+     779
+    ],
+    [
+     875,
+     838
+    ]
+   ],
+   "value": "02/30"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "cardholder_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     657,
+     912
+    ],
+    [
+     1101,
+     793
+    ],
+    [
+     1115,
+     849
+    ],
+    [
+     672,
+     967
+    ]
+   ],
+   "value": "ASHLEY AYALA"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92015,
+ "stored_rotated": false
+}

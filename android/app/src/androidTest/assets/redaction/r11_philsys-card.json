@@ -1,0 +1,224 @@
+{
+ "class": "philsys",
+ "document_class": "philsys",
+ "variant": "philsys-card",
+ "card_corners": [
+  [
+   332,
+   81
+  ],
+  [
+   1039,
+   184
+  ],
+  [
+   974,
+   630
+  ],
+  [
+   267,
+   527
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and National Emblems",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     358,
+     98
+    ],
+    [
+     1009,
+     193
+    ],
+    [
+     1001,
+     251
+    ],
+    [
+     350,
+     156
+    ]
+   ],
+   "value": "REPUBLIKA NG PILIPINAS\nPAMBANSANG PAGKAKAKILANLAN"
+  },
+  {
+   "name": "Cardholder Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     353,
+     184
+    ],
+    [
+     544,
+     212
+    ],
+    [
+     503,
+     498
+    ],
+    [
+     312,
+     470
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "PhilSys Card Number (PCN)",
+   "type": "pcn",
+   "sensitive": true,
+   "polygon": [
+    [
+     573,
+     207
+    ],
+    [
+     983,
+     267
+    ],
+    [
+     978,
+     307
+    ],
+    [
+     568,
+     247
+    ]
+   ],
+   "value": "6123-6123-2074-6214"
+  },
+  {
+   "name": "Full Name",
+   "type": "full_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     566,
+     261
+    ],
+    [
+     976,
+     320
+    ],
+    [
+     963,
+     410
+    ],
+    [
+     553,
+     350
+    ]
+   ],
+   "value": "FREEMAN, EVAN, BARNES"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     551,
+     363
+    ],
+    [
+     791,
+     398
+    ],
+    [
+     785,
+     443
+    ],
+    [
+     544,
+     408
+    ]
+   ],
+   "value": "1975/07/16"
+  },
+  {
+   "name": "Signature / Ghost Image",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     820,
+     398
+    ],
+    [
+     961,
+     419
+    ],
+    [
+     954,
+     472
+    ],
+    [
+     813,
+     451
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     542,
+     421
+    ],
+    [
+     783,
+     456
+    ],
+    [
+     770,
+     545
+    ],
+    [
+     529,
+     510
+    ]
+   ],
+   "value": "235 DIAMOND STREET\nSUSAN VILLE"
+  },
+  {
+   "name": "PhilSys QR Code",
+   "type": "qr_code",
+   "sensitive": true,
+   "polygon": [
+    [
+     811,
+     460
+    ],
+    [
+     952,
+     481
+    ],
+    [
+     939,
+     570
+    ],
+    [
+     798,
+     549
+    ]
+   ],
+   "value": "PHILSYS-CHECK:6123-6123-2074-6214:FREEMAN"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92011,
+ "stored_rotated": false
+}

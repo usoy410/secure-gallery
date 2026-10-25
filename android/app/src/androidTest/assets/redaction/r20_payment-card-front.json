@@ -1,0 +1,152 @@
+{
+ "class": "payment_card",
+ "document_class": "payment_card",
+ "variant": "payment-card-front",
+ "card_corners": [
+  [
+   194,
+   390
+  ],
+  [
+   1015,
+   419
+  ],
+  [
+   997,
+   936
+  ],
+  [
+   176,
+   907
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Issuing Bank Logo",
+   "type": "bank_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     243,
+     422
+    ],
+    [
+     538,
+     433
+    ],
+    [
+     535,
+     526
+    ],
+    [
+     239,
+     515
+    ]
+   ],
+   "value": "LANDBANK"
+  },
+  {
+   "name": "Card Network Logo",
+   "type": "card_network_logo",
+   "sensitive": false,
+   "polygon": [
+    [
+     788,
+     794
+    ],
+    [
+     952,
+     800
+    ],
+    [
+     949,
+     893
+    ],
+    [
+     785,
+     887
+    ]
+   ],
+   "value": "MASTERCARD"
+  },
+  {
+   "name": "Primary Account Number (PAN)",
+   "type": "card_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     251,
+     651
+    ],
+    [
+     940,
+     675
+    ],
+    [
+     938,
+     747
+    ],
+    [
+     248,
+     723
+    ]
+   ],
+   "value": "6011 1111 1111 1117"
+  },
+  {
+   "name": "Expiration Date",
+   "type": "expiry_date",
+   "sensitive": true,
+   "polygon": [
+    [
+     495,
+     742
+    ],
+    [
+     740,
+     751
+    ],
+    [
+     739,
+     797
+    ],
+    [
+     493,
+     788
+    ]
+   ],
+   "value": "09/28"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "cardholder_name",
+   "sensitive": true,
+   "polygon": [
+    [
+     246,
+     796
+    ],
+    [
+     738,
+     813
+    ],
+    [
+     736,
+     875
+    ],
+    [
+     244,
+     857
+    ]
+   ],
+   "value": "AMBER GRANT"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92020,
+ "stored_rotated": true
+}

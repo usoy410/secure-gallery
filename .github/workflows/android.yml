@@ -6,12 +6,16 @@ on:
       - master
     paths:
       - 'android/**'
+      # The device leak-test job runs this code on the emulator's output (#18).
+      - 'validation/leaktest/**'
       - '.github/workflows/android.yml'
   pull_request:
     branches:
       - master
     paths:
       - 'android/**'
+      # The device leak-test job runs this code on the emulator's output (#18).
+      - 'validation/leaktest/**'
       - '.github/workflows/android.yml'
   schedule:
     # Run nightly at 02:00 UTC
@@ -72,6 +76,8 @@ jobs:
   emulator-test:
     name: Connected Emulator Tests (API 34)
     runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.filter.outputs.should_run }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -144,4 +150,70 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           # Each script line runs in its own shell, so cd and gradlew share one line.
-          script: cd android && ./gradlew connectedDebugAndroidTest
+          # RedactionInstrumentedTest (#18) leaves the redacted copies and their boxes in
+          # Download/, which outlives the test APK; the leak-test job below judges them.
+          script: |
+            cd android && ./gradlew connectedDebugAndroidTest
+            adb pull /sdcard/Download/sg-redaction-export android/redaction-export
+
+      - name: Upload redacted copies from the emulator
+        if: steps.filter.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-redactions
+          path: android/redaction-export/
+          if-no-files-found: error
+
+  device-leak-test:
+    name: Leak Test on Device Redactions
+    needs: emulator-test
+    if: needs.emulator-test.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng fonts-dejavu-core fonts-liberation \
+            libgl1 libglib2.0-0
+
+      - name: Cache PaddleOCR models (leak-test judge)
+        uses: actions/cache@v4
+        with:
+          path: ~/.paddlex/official_models
+          key: paddlex-${{ hashFiles('validation/leaktest/ocr.py') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,leaktest]"
+
+      - name: Download redacted copies
+        uses: actions/download-artifact@v4
+        with:
+          name: device-redactions
+          path: device-redactions
+
+      # D11 (pixels, opacity) and D13 (EXIF thumbnail, metadata) on the app's real output,
+      # judged against the fixtures' ground-truth labels.
+      - name: Run the leak test
+        run: |
+          ls device-redactions
+          python -m validation.leaktest device-redactions \
+            --labels android/app/src/androidTest/assets/redaction --out leak-results --fail-on-leak
+
+      - name: Upload leak-test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-leak-results
+          path: leak-results/
+          if-no-files-found: warn

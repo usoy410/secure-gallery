@@ -62,6 +62,18 @@ class MediaStoreImageSource(
 
     override fun loadForOcr(mediaStoreId: Long, maxSide: Int): OcrImage? = decode(mediaStoreId, maxSide)
 
+    override fun loadFullResolution(mediaStoreId: Long): Bitmap? {
+        val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
+        return try {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, _, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                decoder.isMutableRequired = true
+            }
+        } catch (_: java.io.IOException) {
+            null
+        }
+    }
+
     private fun decode(mediaStoreId: Long, maxSide: Int): OcrImage? {
         val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
         var originalWidth = 0

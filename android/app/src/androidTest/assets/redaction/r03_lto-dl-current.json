@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-current",
+ "card_corners": [
+  [
+   433,
+   354
+  ],
+  [
+   1252,
+   482
+  ],
+  [
+   1171,
+   999
+  ],
+  [
+   353,
+   870
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     463,
+     375
+    ],
+    [
+     1218,
+     493
+    ],
+    [
+     1205,
+     570
+    ],
+    [
+     451,
+     452
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     927,
+     738
+    ],
+    [
+     1025,
+     753
+    ],
+    [
+     1018,
+     800
+    ],
+    [
+     920,
+     784
+    ]
+   ],
+   "value": "F"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     1042,
+     756
+    ],
+    [
+     1164,
+     775
+    ],
+    [
+     1157,
+     821
+    ],
+    [
+     1035,
+     802
+    ]
+   ],
+   "value": "1.62 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     1033,
+     813
+    ],
+    [
+     1155,
+     832
+    ],
+    [
+     1148,
+     879
+    ],
+    [
+     1026,
+     860
+    ]
+   ],
+   "value": "66 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     457,
+     474
+    ],
+    [
+     662,
+     506
+    ],
+    [
+     620,
+     775
+    ],
+    [
+     415,
+     743
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     413,
+     753
+    ],
+    [
+     618,
+     785
+    ],
+    [
+     603,
+     878
+    ],
+    [
+     399,
+     846
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     703,
+     507
+    ],
+    [
+     1194,
+     584
+    ],
+    [
+     1186,
+     636
+    ],
+    [
+     695,
+     559
+    ]
+   ],
+   "value": "G71-95-947922"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     693,
+     570
+    ],
+    [
+     1184,
+     647
+    ],
+    [
+     1174,
+     713
+    ],
+    [
+     683,
+     636
+    ]
+   ],
+   "value": "PALMER, BRENDAN HERNANDEZ"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     673,
+     698
+    ],
+    [
+     903,
+     734
+    ],
+    [
+     896,
+     780
+    ],
+    [
+     666,
+     745
+    ]
+   ],
+   "value": "1968/09/09"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     655,
+     812
+    ],
+    [
+     1146,
+     889
+    ],
+    [
+     1135,
+     961
+    ],
+    [
+     644,
+     885
+    ]
+   ],
+   "value": "162 DIAMOND DRIVE\nMELISSA VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92003,
+ "stored_rotated": false
+}

@@ -30,7 +30,7 @@ from typing import Any
 
 from PIL import Image, ImageChops, ImageDraw
 
-from validation.leaktest.core import PICTURE_FIELDS, RISK_CHANNELS, judge_image
+from validation.leaktest.core import PICTURE_FIELDS, RISK_CHANNELS, TEXT_EXCLUDED, judge_image
 from validation.localize.core import (
     OCR_PAD,
     STRATEGIES,
@@ -49,10 +49,6 @@ DEFAULT_DATA = REPO_ROOT / "data" / "benchmark"
 DEFAULT_OUT = REPO_ROOT / "reports" / "rq4"
 PAD_GRID = (2, 4, 8, 12)
 FILE_CHANNELS = frozenset({"metadata"})  # judged per file, not per field
-# Text fields are judged on whether their text can be recovered; whole-field opacity
-# only says the cover is not one uniform fill over the field, which tight boxes over
-# the text alone always fail.
-TEXT_EXCLUDED = RISK_CHANNELS | {"opacity"}
 
 Reader = Callable[[Image.Image], str]
 

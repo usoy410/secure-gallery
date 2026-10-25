@@ -1,5 +1,6 @@
 package com.sudo.securegallery.scan
 
+import android.graphics.Bitmap
 import com.sudo.securegallery.detect.DetectorImage
 import com.sudo.securegallery.localize.OcrImage
 import java.io.InputStream
@@ -27,4 +28,10 @@ interface ImageSource {
 
     /** The image decoded with its long side at most [maxSide] pixels, for OCR (§8.2). Null if it cannot be decoded. */
     fun loadForOcr(mediaStoreId: Long, maxSide: Int): OcrImage? = null
+
+    /**
+     * The image decoded at full resolution into a mutable bitmap, with its EXIF rotation applied,
+     * for drawing the redaction (§8.2 step 3). Null if it cannot be decoded.
+     */
+    fun loadFullResolution(mediaStoreId: Long): Bitmap? = null
 }

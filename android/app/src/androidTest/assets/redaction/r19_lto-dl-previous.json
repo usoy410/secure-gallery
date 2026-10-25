@@ -1,0 +1,272 @@
+{
+ "class": "lto",
+ "document_class": "lto",
+ "variant": "lto-dl-previous",
+ "card_corners": [
+  [
+   196,
+   206
+  ],
+  [
+   973,
+   64
+  ],
+  [
+   1063,
+   554
+  ],
+  [
+   285,
+   696
+  ]
+ ],
+ "image_size": [
+  1600,
+  1200
+ ],
+ "fields": [
+  {
+   "name": "Headings and Republic Header",
+   "type": "headings",
+   "sensitive": false,
+   "polygon": [
+    [
+     229,
+     215
+    ],
+    [
+     945,
+     84
+    ],
+    [
+     959,
+     158
+    ],
+    [
+     243,
+     289
+    ]
+   ],
+   "value": "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF TRANSPORTATION\nLAND TRANSPORTATION OFFICE"
+  },
+  {
+   "name": "Sex",
+   "type": "sex",
+   "sensitive": false,
+   "polygon": [
+    [
+     761,
+     396
+    ],
+    [
+     854,
+     379
+    ],
+    [
+     862,
+     423
+    ],
+    [
+     769,
+     440
+    ]
+   ],
+   "value": "M"
+  },
+  {
+   "name": "Height",
+   "type": "height",
+   "sensitive": false,
+   "polygon": [
+    [
+     870,
+     376
+    ],
+    [
+     986,
+     355
+    ],
+    [
+     994,
+     399
+    ],
+    [
+     878,
+     420
+    ]
+   ],
+   "value": "1.54 m"
+  },
+  {
+   "name": "Weight",
+   "type": "weight",
+   "sensitive": false,
+   "polygon": [
+    [
+     880,
+     430
+    ],
+    [
+     996,
+     409
+    ],
+    [
+     1004,
+     454
+    ],
+    [
+     888,
+     475
+    ]
+   ],
+   "value": "75 kg"
+  },
+  {
+   "name": "Driver Face Photo",
+   "type": "face_photo",
+   "sensitive": true,
+   "polygon": [
+    [
+     255,
+     306
+    ],
+    [
+     449,
+     271
+    ],
+    [
+     496,
+     526
+    ],
+    [
+     301,
+     562
+    ]
+   ],
+   "value": "[SYNTHETIC_AVATAR]"
+  },
+  {
+   "name": "Cardholder Signature",
+   "type": "signature",
+   "sensitive": true,
+   "polygon": [
+    [
+     303,
+     572
+    ],
+    [
+     497,
+     536
+    ],
+    [
+     514,
+     624
+    ],
+    [
+     319,
+     660
+    ]
+   ],
+   "value": "[SPECIMEN_SIGNATURE]"
+  },
+  {
+   "name": "Driver's License Number",
+   "type": "license_number",
+   "sensitive": true,
+   "polygon": [
+    [
+     487,
+     259
+    ],
+    [
+     953,
+     174
+    ],
+    [
+     962,
+     223
+    ],
+    [
+     496,
+     308
+    ]
+   ],
+   "value": "C14-46-486365"
+  },
+  {
+   "name": "Cardholder Name",
+   "type": "name",
+   "sensitive": true,
+   "polygon": [
+    [
+     497,
+     318
+    ],
+    [
+     964,
+     233
+    ],
+    [
+     975,
+     296
+    ],
+    [
+     509,
+     381
+    ]
+   ],
+   "value": "KIDD, ALICIA RYAN"
+  },
+  {
+   "name": "Date of Birth",
+   "type": "date_of_birth",
+   "sensitive": true,
+   "polygon": [
+    [
+     520,
+     441
+    ],
+    [
+     738,
+     401
+    ],
+    [
+     746,
+     444
+    ],
+    [
+     528,
+     484
+    ]
+   ],
+   "value": "1998/12/26"
+  },
+  {
+   "name": "Residential Address",
+   "type": "address",
+   "sensitive": true,
+   "polygon": [
+    [
+     539,
+     548
+    ],
+    [
+     1006,
+     463
+    ],
+    [
+     1018,
+     532
+    ],
+    [
+     552,
+     617
+    ]
+   ],
+   "value": "562 6TH STREET, WILLIE VILLE"
+  }
+ ],
+ "layout_jitter": false,
+ "seed": 92019,
+ "stored_rotated": false
+}

@@ -60,6 +60,10 @@ THUMB_MIN_TEXT_PX = 48  # thumbnail field crops are enlarged to this height befo
 # Mosaic or blur over text is a recorded risk, not a recovered leak, so the "any" summary
 # row leaves it out; it is still reported on its own row.
 RISK_CHANNELS = frozenset({"mosaic_blur"})
+# Text fields are judged on whether their text can be recovered; whole-field opacity
+# only says the cover is not one uniform fill over the field, which tight boxes over
+# the text alone always fail. Shared with validation.report.rq4.
+TEXT_EXCLUDED = RISK_CHANNELS | {"opacity"}
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
 
 Reader = Callable[[Image.Image], str]
@@ -446,6 +450,24 @@ def summarize(results: list[FieldResult]) -> list[dict[str, Any]]:
             "leak_pct": round(100 * leaked / judged, 2) if judged else 0.0,
         })  # fmt: skip
     return summary
+
+
+def has_leak(results: list[FieldResult]) -> bool:
+    """True if anything leaked by the agreed rule (the one RQ4 reports as leak_rate).
+
+    - Text field: its text came back through a recovery channel. Whole-field opacity
+      alone does not count (that is the strict reading, see TEXT_EXCLUDED).
+    - Picture field: it failed any judged channel, opacity included.
+    - File: it kept an EXIF thumbnail of a field or identifying metadata.
+    Mosaic or blur is a risk flag and never counts.
+    """
+    for r in results:
+        if not (r.judged and r.leaked) or r.channel in RISK_CHANNELS:
+            continue
+        if r.field_type not in PICTURE_FIELDS and r.channel in TEXT_EXCLUDED:
+            continue
+        return True
+    return False
 
 
 def write_leaks_wide(results: list[FieldResult], path: Path) -> None:
