@@ -12,6 +12,7 @@ import com.sudo.securegallery.data.ItemDao
 import com.sudo.securegallery.redact.BoxEdits
 import com.sudo.securegallery.secure.CorrectRedaction
 import com.sudo.securegallery.secure.DeletePhoto
+import com.sudo.securegallery.secure.RestoreOriginal
 import com.sudo.securegallery.vault.VaultSession
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,7 @@ data class ViewerState(
     val loading: Boolean = false,
 )
 
-enum class InboxMessage { VAULT_LOCKED, NOT_AVAILABLE, SAVED, SAVED_NEEDS_CHECK, SAVE_FAILED, DELETED, DELETE_KEPT }
+enum class InboxMessage { VAULT_LOCKED, NOT_AVAILABLE, SAVED, SAVED_NEEDS_CHECK, SAVE_FAILED, DELETED, DELETE_KEPT, RESTORED, RESTORE_FAILED }
 
 /**
  * The review inbox (§8.4, #24): the list of processed items, NEEDS_CHECK first, the viewer
@@ -61,6 +62,7 @@ class InboxViewModel(
     private val corrector: CorrectRedaction?,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val deleter: DeletePhoto? = null,
+    private val restorer: RestoreOriginal? = null,
 ) : ViewModel() {
     val items: StateFlow<List<Item>> = dao.inbox().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -71,6 +73,13 @@ class InboxViewModel(
     private val _deleteWarning = MutableStateFlow(false)
     val deleteWarning: StateFlow<Boolean> = _deleteWarning.asStateFlow()
     private var pendingDelete: Item? = null
+
+    /** True while the viewer's "not sensitive" confirmation is open (#25). */
+    private val _restoreConfirm = MutableStateFlow(false)
+    val restoreConfirm: StateFlow<Boolean> = _restoreConfirm.asStateFlow()
+
+    /** What to do once the vault unlocks, for a step that asked for it. */
+    private var afterUnlock: (() -> Unit)? = null
 
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
@@ -95,7 +104,8 @@ class InboxViewModel(
                         _viewer.update { it?.copy(original = null, showOriginal = false, loading = false) }
                     } else if (_unlockRequested.value) {
                         _unlockRequested.value = false
-                        toggleOriginal()
+                        afterUnlock?.invoke()
+                        afterUnlock = null
                     }
                 }
             }
@@ -122,7 +132,7 @@ class InboxViewModel(
             _viewer.value = state.copy(showOriginal = false)
             return
         }
-        val key = session?.key() ?: run { _unlockRequested.value = true; return }
+        val key = session?.key() ?: return askUnlock(::toggleOriginal)
         if (state.original != null) {
             _viewer.value = state.copy(showOriginal = true)
             return
@@ -174,14 +184,47 @@ class InboxViewModel(
         }
     }
 
+    fun requestRestore() {
+        if (_viewer.value != null) _restoreConfirm.value = true
+    }
+
+    fun cancelRestore() {
+        _restoreConfirm.value = false
+    }
+
+    /**
+     * "Not sensitive" (#25): the original goes back to its album, and the copy and the vault
+     * file go. Needs the unlocked vault; while locked it asks for an unlock first.
+     */
+    fun confirmRestore() {
+        _restoreConfirm.value = false
+        val item = _viewer.value?.item ?: return
+        val restorer = restorer ?: return
+        val key = session?.key() ?: return askUnlock(::confirmRestore)
+        viewModelScope.launch {
+            val result = withContext(io) { runCatching { restorer.restore(key, item) }.getOrNull() }
+            val restored = result is RestoreOriginal.Result.Restored
+            _message.value = if (restored) InboxMessage.RESTORED else InboxMessage.RESTORE_FAILED
+            if (restored) closeViewer()
+        }
+    }
+
+    private fun askUnlock(then: () -> Unit) {
+        afterUnlock = then
+        _unlockRequested.value = true
+    }
+
     fun cancelUnlock() {
+        afterUnlock = null
         _unlockRequested.value = false
     }
 
     fun closeViewer() {
         _viewer.value = null
         _unlockRequested.value = false
+        afterUnlock = null
         _deleteWarning.value = false
+        _restoreConfirm.value = false
     }
 
     /** Opens the box editor on [item]; needs the unlocked vault. */
@@ -268,6 +311,7 @@ class InboxViewModel(
                     container.vaultSession,
                     container.correctRedaction,
                     deleter = container.deletePhoto,
+                    restorer = container.restoreOriginal,
                 )
             }
         }

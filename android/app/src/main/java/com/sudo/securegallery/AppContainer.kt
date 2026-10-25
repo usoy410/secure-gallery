@@ -21,6 +21,7 @@ import com.sudo.securegallery.scan.ScanPrefs
 import com.sudo.securegallery.secure.CorrectRedaction
 import com.sudo.securegallery.secure.DeletePhoto
 import com.sudo.securegallery.secure.MediaStoreGallery
+import com.sudo.securegallery.secure.RestoreOriginal
 import com.sudo.securegallery.secure.SecureOriginals
 import com.sudo.securegallery.setup.SetupProgressStore
 import com.sudo.securegallery.vault.KeystoreBiometricKey
@@ -80,6 +81,9 @@ interface AppContainer {
 
     /** Deletes a photo from the viewer (#77). */
     val deletePhoto: DeletePhoto
+
+    /** "Not sensitive": puts an original back in the gallery (#25). */
+    val restoreOriginal: RestoreOriginal
 }
 
 /**
@@ -127,6 +131,10 @@ class DefaultAppContainer(
 
     // Without a recheck no copy is marked as passed, so no original can be deleted (#22).
     private val recheck: Recheck? by lazy { orNull("recheck") { Recheck(FieldRules.load(context.assets), MlKitOcrEngine()) } }
+
+    override val restoreOriginal: RestoreOriginal by lazy {
+        RestoreOriginal(database.itemDao(), vault, MediaStoreGallery(context.contentResolver)) { SecureOriginals.idFor(it) }
+    }
 
     override val deletePhoto: DeletePhoto by lazy {
         DeletePhoto(database.itemDao(), vault, MediaStoreGallery(context.contentResolver)) { SecureOriginals.idFor(it) }

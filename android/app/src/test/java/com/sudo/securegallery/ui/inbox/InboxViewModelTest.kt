@@ -17,6 +17,7 @@ import com.sudo.securegallery.redact.RedactedCopyStore
 import com.sudo.securegallery.scan.GalleryImage
 import com.sudo.securegallery.scan.ImageSource
 import com.sudo.securegallery.secure.CorrectRedaction
+import com.sudo.securegallery.secure.RestoreOriginal
 import com.sudo.securegallery.vault.Vault
 import com.sudo.securegallery.vault.VaultSession
 import com.sudo.securegallery.vault.testVault
@@ -33,6 +34,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -102,7 +104,22 @@ class InboxViewModelTest {
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inMutable = true })
             CorrectRedaction.Decoded(bitmap, bitmap.width, bitmap.height)
         }
-        return InboxViewModel(dao, session, corrector, dispatcher)
+        val restorer = RestoreOriginal(dao, vault, gallery) { "item-${it.id}" }
+        return InboxViewModel(dao, session, corrector, dispatcher, restorer = restorer)
+    }
+
+    /** The public gallery for "not sensitive": id to (album, name, bytes). */
+    private val gallery = object : RestoreOriginal.Gallery {
+        val files = mutableMapOf<Long, Triple<String?, String, ByteArray>>()
+        private var next = 2000L
+        override fun locate(id: Long) = files[id]?.let { it.first to it.second }
+        override fun exists(id: Long) = id in files
+        override fun insert(relativePath: String?, displayName: String, mimeType: String, bytes: ByteArray): Long =
+            next++.also { files[it] = Triple(relativePath, displayName, bytes) }
+        override fun read(id: Long) = files[id]?.third
+        override fun delete(id: Long) {
+            files.remove(id)
+        }
     }
 
     private fun insert(mediaStoreId: Long, state: ItemState) = runBlocking {
@@ -196,5 +213,28 @@ class InboxViewModelTest {
         session.lock()
         assertNull(vm.viewer.value!!.original)
         assertEquals(false, vm.viewer.value!!.showOriginal)
+    }
+
+    @Test
+    fun notSensitiveAsksForAnUnlockThenPutsTheOriginalBack() {
+        val item = insert(1, ItemState.VAULTED)
+        vault.store((vault.unlock("123456".toCharArray()) as Vault.Unlock.Success).key, "item-${item.id}", original.inputStream())
+        gallery.files[901] = Triple("DCIM/Camera/", "IMG_1.sg-redacted.jpg", copy!!)
+        val vm = viewModel()
+        vm.open(item)
+        vm.requestRestore()
+        assertEquals(true, vm.restoreConfirm.value)
+        vm.confirmRestore()
+        assertEquals(false, vm.restoreConfirm.value)
+        assertEquals(true, vm.unlockRequested.value)
+        assertTrue(901L in gallery.files) // nothing happened while locked
+
+        unlock()
+        assertEquals(InboxMessage.RESTORED, runBlocking { withTimeout(5_000) { vm.message.first { it != null } } })
+        assertNull(vm.viewer.value)
+        val back = gallery.files.values.single()
+        assertEquals("IMG_1.png", back.second)
+        assertFalse(vault.contains("item-${item.id}"))
+        assertEquals(ItemState.RESTORED, runBlocking { dao.byId(item.id)!!.state })
     }
 }
