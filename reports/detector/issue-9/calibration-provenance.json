@@ -1,0 +1,43 @@
+{
+  "purpose": "calibration only, not evaluation",
+  "count": 300,
+  "seeds": [
+    600000,
+    600299
+  ],
+  "conditions": [
+    null,
+    "blur",
+    "glare",
+    "rotation",
+    "low_resolution",
+    "perspective",
+    "jpeg_compression",
+    "occlusion"
+  ],
+  "fixture_commit": "3eb72eb0b1bd81aea77cce8f986bfc8142b4637f",
+  "generator_commit": "2ca77eb1fd96e6703677bef3e60184f114a834dd",
+  "template_order": [
+    "lto-dl-current",
+    "lto-dl-previous",
+    "payment-card-back",
+    "payment-card-front",
+    "philsys-card",
+    "philsys-ephilid"
+  ],
+  "composite": true,
+  "jitter": true,
+  "jpeg_quality": 95,
+  "generation_recipe": {
+    "index_range": [
+      0,
+      299
+    ],
+    "seed": "600000 + index",
+    "template": "template_order[index % 6]",
+    "condition": "conditions[(index // 6) % 8]; null means clean composite",
+    "severity": "1 + (index // 48) % 3"
+  },
+  "image_counts_by_template": 50,
+  "negative_images": 0
+}

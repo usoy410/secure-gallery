@@ -10,6 +10,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+import numpy as np
 from PIL import Image, ImageDraw
 
 from ml.avatar import generate_avatar, generate_qr_code, generate_signature
@@ -133,37 +134,67 @@ def _draw_card_background(
             draw.line([chip_x0, chip_mid_y, chip_x1, chip_mid_y], fill=(160, 135, 50), width=1)
 
 
-def _draw_watermark(img: Image.Image, width: int, height: int) -> None:
+# Watermark inks: red on light cards, light grey on dark ones, so it shows on every card (#34).
+WATERMARK_RED = (215, 35, 35, 45)
+WATERMARK_LIGHT = (245, 245, 245, 70)
+# Cards whose mean luminance under the watermark is below this get the light ink.
+WATERMARK_DARK_LUMINANCE = 110
+# Smallest mean change (0-255, largest channel) the watermark must make on its own pixels.
+MIN_WATERMARK_CONTRAST = 20.0
+
+
+def _draw_watermark(img: Image.Image, width: int, height: int) -> float:
     """Render the mandatory visible diagonal 'SPECIMEN – NOT VALID' watermark.
 
     Why: CLAUDE.md and Issue #5 require every synthetic image to bear this watermark
     to prevent misuse, while remaining transparent enough for OCR character verification.
+    The ink depends on the card: faint red disappears on a dark card (#34).
+
+    Returns:
+        The watermark's contrast: the mean change it made on its own pixels, largest channel.
     """
-    wm_overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     wm_font = get_font(size=52, bold=True)
     wm_text = "SPECIMEN – NOT VALID"
 
     # Measure text bounding box
-    dummy_draw = ImageDraw.Draw(wm_overlay)
+    dummy_draw = ImageDraw.Draw(Image.new("RGBA", (width, height), (0, 0, 0, 0)))
     bbox = dummy_draw.textbbox((0, 0), wm_text, font=wm_font)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
-
-    # Render into a separate canvas and rotate
     pad = 40
-    txt_img = Image.new("RGBA", (text_w + pad * 2, text_h + pad * 2), (0, 0, 0, 0))
-    txt_draw = ImageDraw.Draw(txt_img)
-    txt_draw.text((pad, pad), wm_text, fill=(215, 35, 35, 45), font=wm_font)
 
-    # Rotate 24 degrees diagonally
-    rotated = txt_img.rotate(24, expand=True, resample=Image.Resampling.BICUBIC)
-    pos_x = (width - rotated.width) // 2
-    pos_y = (height - rotated.height) // 2
-    wm_overlay.paste(rotated, (pos_x, pos_y), rotated)
+    def rotated_text(fill: tuple[int, int, int, int]) -> Image.Image:
+        # Render into a separate canvas and rotate 24 degrees diagonally
+        txt_img = Image.new("RGBA", (text_w + pad * 2, text_h + pad * 2), (0, 0, 0, 0))
+        ImageDraw.Draw(txt_img).text((pad, pad), wm_text, fill=fill, font=wm_font)
+        return txt_img.rotate(24, expand=True, resample=Image.Resampling.BICUBIC)
+
+    # Where the glyphs land, to pick an ink that shows on this card
+    shape = rotated_text((255, 255, 255, 255))
+    pos_x = (width - shape.width) // 2
+    pos_y = (height - shape.height) // 2
+    mask = Image.new("L", (width, height), 0)
+    mask.paste(shape.getchannel("A"), (pos_x, pos_y))
+    glyph = np.asarray(mask) > 127
+    before = np.asarray(img.convert("RGB"), dtype=np.float32)
+    luminance = before @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    dark = glyph.any() and float(luminance[glyph].mean()) < WATERMARK_DARK_LUMINANCE
+    ink = WATERMARK_LIGHT if dark else WATERMARK_RED
+
+    rotated = rotated_text(ink)
+    wm_overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    # A plain paste keeps the ink's own alpha. Pasting with the image as its own mask, as
+    # before #34, applied the alpha twice (45 became about 8) and left the mark faint.
+    wm_overlay.paste(rotated, (pos_x, pos_y))
 
     # Alpha composite onto base image
     composite = Image.alpha_composite(img.convert("RGBA"), wm_overlay)
     img.paste(composite)
+
+    after = np.asarray(img.convert("RGB"), dtype=np.float32)
+    if not glyph.any():
+        return 0.0
+    return float(np.abs(after - before).max(axis=2)[glyph].mean())
 
 
 def render_card(
@@ -303,5 +334,8 @@ def render_card(
             "value": value,
         })
 
-    _draw_watermark(img, card_width, card_height)
-    return img.convert("RGB"), field_ground_truth
+    contrast = _draw_watermark(img, card_width, card_height)
+    rgb = img.convert("RGB")
+    # Read by generate_single_sample into the label, for the release check (#34).
+    rgb.info["watermark_contrast"] = round(contrast, 2)
+    return rgb, field_ground_truth

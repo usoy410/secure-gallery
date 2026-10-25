@@ -1,0 +1,24 @@
+{
+  "model_sha256": "f1d5637d50deedeb9194bfd4490e68175bd1b3b8215b9f5bc3d50bd9837fb7b4",
+  "apk_contains_verified_candidate": true,
+  "model_stored_uncompressed": true,
+  "merged_manifest_has_internet_permission": false,
+  "android_command": "./gradlew assembleDebug testDebugUnitTest lint -Proborazzi.test.record=true --max-workers=2 --no-daemon",
+  "android_build": "passed",
+  "android_jvm_tests": {
+    "passed": 151,
+    "failed": 0,
+    "skipped": 0
+  },
+  "android_lint": "passed with warnings",
+  "python_ml_tests": {
+    "passed": 125,
+    "failed": 0,
+    "skipped": 1
+  },
+  "ruff": "passed",
+  "device_emulator_tests": "not run: no attached device or emulator",
+  "end_to_end_redaction_leak_test": "not run",
+  "selected_model_full_benchmark": "not run",
+  "status": "candidate for review; issue #9 remains open"
+}
