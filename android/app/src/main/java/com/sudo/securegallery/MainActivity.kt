@@ -22,6 +22,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sudo.securegallery.ui.inbox.InboxRoute
@@ -68,7 +72,23 @@ class MainActivity : FragmentActivity() {
                 Column(Modifier.fillMaxSize()) {
                     when (tab) {
                         0 -> ScanRoute(viewModel(factory = ScanViewModel.factory(container)), Modifier.weight(1f))
-                        1 -> InboxRoute(viewModel(factory = InboxViewModel.factory(container)), Modifier.weight(1f))
+                        1 -> {
+                            val unlocked by container.vaultSession.unlocked.collectAsStateWithLifecycle()
+                            InboxRoute(
+                                viewModel(factory = InboxViewModel.factory(container)),
+                                Modifier.weight(1f),
+                                unlocked = unlocked,
+                                // The eye toggle's unlock prompt is the vault's own lock screen (#23).
+                                unlockPrompt = { onDismiss ->
+                                    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, securePolicy = SecureFlagPolicy.SecureOn)) {
+                                        VaultRoute(
+                                            viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
+                                            Modifier.fillMaxSize(),
+                                        )
+                                    }
+                                },
+                            )
+                        }
                         else -> VaultRoute(
                             viewModel(factory = VaultViewModel.factory(container, hasStrongBiometric(this@MainActivity))),
                             Modifier.weight(1f),
