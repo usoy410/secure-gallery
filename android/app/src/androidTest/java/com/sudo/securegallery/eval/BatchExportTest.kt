@@ -11,6 +11,8 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sudo.securegallery.data.AppDatabase
+import com.sudo.securegallery.data.CardCorners
+import com.sudo.securegallery.data.FieldType
 import com.sudo.securegallery.data.RedactionBox
 import com.sudo.securegallery.detect.DocumentDetector
 import com.sudo.securegallery.detect.LiteRtDetector
@@ -137,6 +139,130 @@ class BatchExportTest {
         resolver.openOutputStream(uri)!!.use { out -> file.inputStream().use { it.copyTo(out) } }
         resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
         return ContentUris.parseId(uri)
+    }
+
+    /**
+     * Verification-only on-device D7 export path (issue #30, §8.5, §9.1, RQ6).
+     *
+     * Directly runs [Recheck] on supplied redacted images in `eval-d7-input/` or `d7-input/`
+     * without running the detector or redactor (so failed redactions are scored as-is, not repaired).
+     * Evaluates pixel solidness on applied boxes and OCR rules / number windows on the card region.
+     * Exports `d7_results.json` and `results.json` with explicit direct outcomes:
+     * "clean", "failed", or "skipped".
+     */
+    @Test
+    fun exportD7VerificationResults() = runBlocking {
+        val input = File(app.getExternalFilesDir(null), "eval-d7-input").takeIf { it.exists() && it.listFiles()?.isNotEmpty() == true }
+            ?: File(app.getExternalFilesDir(null), "d7-input")
+        val images = input.listFiles { f -> f.extension.lowercase() in setOf("jpg", "jpeg", "png") }.orEmpty().sortedBy { it.name }
+        assumeTrue("no images in $input", images.isNotEmpty())
+        val output = File(app.getExternalFilesDir(null), "eval-d7-output").apply { deleteRecursively(); mkdirs() }
+
+        val rules = FieldRules.load(app.assets)
+        val ocr = MlKitOcrEngine()
+        val timer = StageTimer()
+        val recheck = TimedRecheck(rules, ocr, timer)
+        val results = JSONArray()
+
+        try {
+            for (file in images) {
+                val id = file.nameWithoutExtension
+                val bytes = file.readBytes()
+                val boxes = parseBoxes(File(input, "$id.boxes.json").takeIf { it.exists() } ?: File(input, "$id.json").takeIf { it.exists() })
+                val region = parseRegion(File(input, "$id.json").takeIf { it.exists() })
+                timer.reset()
+                val started = System.nanoTime()
+                val passed = recheck.passes(bytes, boxes, region, emptySet())
+                val totalMs = (System.nanoTime() - started) / 1e6
+                val outcome = if (passed) "clean" else "failed"
+
+                results.put(
+                    JSONObject()
+                        .put("id", id)
+                        .put("recheck_outcome", outcome)
+                        .put("recheck_passed", passed)
+                        .put("recheck_decision", outcome)
+                        .put("verification_outcome", outcome)
+                        .put("boxes", boxesJson(boxes))
+                        .put("timings_ms", JSONObject(mapOf("recheck" to Math.round(totalMs), "total" to Math.round(totalMs))))
+                        .put("peak_memory_mb", Math.round(timer.peakBytes / 1e6)),
+                )
+                Log.i(TAG, "D7 verification $id: $outcome in ${Math.round(totalMs)} ms")
+            }
+
+            val d7Payload = JSONObject()
+                .put("device", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (API ${android.os.Build.VERSION.SDK_INT})")
+                .put("images", results)
+                .toString(1)
+
+            File(output, "d7_results.json").writeText(d7Payload)
+            File(output, "results.json").writeText(d7Payload)
+            File(app.getExternalFilesDir(null), "eval-output").let { evalOut ->
+                if (evalOut.exists()) {
+                    File(evalOut, "d7_results.json").writeText(d7Payload)
+                }
+            }
+        } finally {
+            ocr.close()
+        }
+    }
+
+    private fun parseBoxes(file: File?): List<RedactionBox> {
+        if (file == null || !file.exists()) return emptyList()
+        val boxes = mutableListOf<RedactionBox>()
+        try {
+            val root = JSONObject(file.readText())
+            if (root.has("boxes")) {
+                val arr = root.getJSONArray("boxes")
+                for (i in 0 until arr.length()) {
+                    val b = arr.getJSONObject(i)
+                    val fieldType = try {
+                        FieldType.fromId(b.getString("field_type"))
+                    } catch (e: Exception) {
+                        FieldType.USER_BOX
+                    }
+                    val poly = b.getJSONArray("polygon")
+                    val corners = (0 until 4).flatMap { idx ->
+                        val pt = poly.getJSONArray(idx)
+                        listOf(pt.getDouble(0).toFloat(), pt.getDouble(1).toFloat())
+                    }
+                    boxes += RedactionBox(fieldType, corners, 1.0f)
+                }
+            } else if (root.has("redaction")) {
+                val redaction = root.getJSONObject("redaction")
+                val boxesArr = redaction.optJSONArray("redaction_boxes")
+                if (boxesArr != null) {
+                    for (i in 0 until boxesArr.length()) {
+                        val poly = boxesArr.getJSONArray(i)
+                        val corners = (0 until 4).flatMap { idx ->
+                            val pt = poly.getJSONArray(idx)
+                            listOf(pt.getDouble(0).toFloat(), pt.getDouble(1).toFloat())
+                        }
+                        boxes += RedactionBox(FieldType.USER_BOX, corners, 1.0f)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse boxes from ${file.name}", e)
+        }
+        return boxes
+    }
+
+    private fun parseRegion(file: File?): RectF? {
+        if (file == null || !file.exists()) return null
+        return try {
+            val root = JSONObject(file.readText())
+            val corners = root.optJSONArray("card_corners")
+            if (corners != null && corners.length() == 4) {
+                val xy = (0 until 4).flatMap { idx ->
+                    val pt = corners.getJSONArray(idx)
+                    listOf(pt.getDouble(0).toFloat(), pt.getDouble(1).toFloat())
+                }
+                Recheck.region(CardCorners(xy))
+            } else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun boxesJson(boxes: List<RedactionBox>) = JSONArray(
