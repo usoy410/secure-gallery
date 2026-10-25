@@ -48,11 +48,13 @@ class RestoreInstrumentedTest {
 
     @Test
     fun notSensitiveRestoresTheOriginal() = runBlocking {
-        // The test writes and reads MediaStore directly; grant the instrumentation
-        // process media access so Android 14 does not reject the synthetic URI.
-        instrumentation.uiAutomation.adoptShellPermissionIdentity(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        // The test reads MediaStore through the target app UID; grant its runtime
+        // media permissions so Android 14 does not reject the synthetic URI.
+        instrumentation.uiAutomation.grantRuntimePermission(
+            app.packageName, Manifest.permission.READ_MEDIA_IMAGES,
+        )
+        instrumentation.uiAutomation.grantRuntimePermission(
+            app.packageName, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
         )
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
@@ -88,7 +90,12 @@ class RestoreInstrumentedTest {
             restoredId?.let(gallery::delete)
             db.close()
             dir.deleteRecursively()
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            instrumentation.uiAutomation.revokeRuntimePermission(
+                app.packageName, Manifest.permission.READ_MEDIA_IMAGES,
+            )
+            instrumentation.uiAutomation.revokeRuntimePermission(
+                app.packageName, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            )
         }
     }
 }
