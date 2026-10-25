@@ -65,6 +65,24 @@
         <item quantity="one">%1$d of %2$d photo checked</item>
         <item quantity="other">%1$d of %2$d photos checked</item>
     </plurals>
+    <string name="scan_detect_title">Looking for IDs and cards</string>
+    <plurals name="scan_detect_body">
+        <item quantity="one">%1$d of %2$d photo</item>
+        <item quantity="other">%1$d of %2$d photos</item>
+    </plurals>
+    <string name="scan_fields_title">Finding the sensitive fields</string>
+    <plurals name="scan_fields_body">
+        <item quantity="one">%1$d card left</item>
+        <item quantity="other">%1$d cards left</item>
+    </plurals>
+    <string name="scan_redact_title">Saving redacted copies</string>
+    <plurals name="scan_redact_body">
+        <item quantity="one">%1$d copy left</item>
+        <item quantity="other">%1$d copies left</item>
+    </plurals>
+    <string name="scan_finishing_title">Finishing up</string>
+    <string name="scan_channel">Gallery scan</string>
+    <string name="scan_notification_title">Checking your photos for IDs</string>
     <string name="scan_done_title">Scan complete</string>
     <plurals name="scan_done_body">
         <item quantity="one">%1$d photo found, %2$d checked</item>

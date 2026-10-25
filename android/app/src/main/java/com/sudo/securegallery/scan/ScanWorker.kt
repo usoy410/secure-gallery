@@ -26,6 +26,14 @@ class ScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     override suspend fun doWork(): Result {
         val container = (applicationContext as SecureGalleryApplication).container
+        try {
+            // Long scans must run in the foreground, or Android stops them after 10 minutes.
+            setForeground(ScanNotification.foregroundInfo(applicationContext))
+        } catch (e: IllegalStateException) {
+            // Android 12+ refuses a foreground start from the background (a gallery trigger with
+            // the app closed). Such a run has only a few new photos, so it goes on without one.
+            Log.w(TAG, "scan without foreground: ${e.javaClass.simpleName}")
+        }
         return try {
             // A triggered scan and "Scan now" can start together; only one walks the gallery.
             oneScanAtATime.withLock { container.galleryScanner.scan() }

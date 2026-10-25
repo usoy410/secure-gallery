@@ -223,13 +223,35 @@ private fun NoAccess(onRequestAccess: () -> Unit) = Message(
 @Composable
 private fun Scanning(progress: ScanProgress) = Message(
     icon = { BigIcon(Icons.Outlined.PhotoLibrary) },
-    title = stringResource(R.string.scan_running_title),
-    body = pluralStringResource(R.plurals.scan_running_body, progress.found, progress.processed, progress.found),
+    title = stringResource(
+        when (progress.stage) {
+            ScanStage.FINGERPRINT -> R.string.scan_running_title
+            ScanStage.DETECT -> R.string.scan_detect_title
+            ScanStage.FIELDS -> R.string.scan_fields_title
+            ScanStage.REDACT -> R.string.scan_redact_title
+            ScanStage.FINISHING -> R.string.scan_finishing_title
+        },
+    ),
+    body = when (progress.stage) {
+        ScanStage.FINGERPRINT -> pluralStringResource(R.plurals.scan_running_body, progress.found, progress.processed, progress.found)
+        ScanStage.DETECT -> pluralStringResource(R.plurals.scan_detect_body, progress.processed, progress.stageDone, progress.processed)
+        ScanStage.FIELDS -> pluralStringResource(R.plurals.scan_fields_body, progress.stageLeft, progress.stageLeft)
+        ScanStage.REDACT -> pluralStringResource(R.plurals.scan_redact_body, progress.stageLeft, progress.stageLeft)
+        ScanStage.FINISHING -> ""
+    },
     action = {
-        LinearProgressIndicator(
-            progress = { if (progress.found == 0) 0f else progress.processed.toFloat() / progress.found },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        when (progress.stage) {
+            ScanStage.FINGERPRINT -> LinearProgressIndicator(
+                progress = { if (progress.found == 0) 0f else progress.processed.toFloat() / progress.found },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ScanStage.DETECT -> LinearProgressIndicator(
+                progress = { if (progress.processed == 0) 0f else progress.stageDone.toFloat() / progress.processed },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // No total is known for these steps up front: an indeterminate bar.
+            else -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
     },
 )
 

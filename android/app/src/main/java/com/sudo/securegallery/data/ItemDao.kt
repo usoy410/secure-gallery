@@ -77,6 +77,16 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE id = :id")
     suspend fun byId(id: Long): Item?
 
+    /** How many items wait for each scan step, for the scan screen's progress (same filters as above). */
+    @Query("SELECT COUNT(*) FROM items WHERE state = 'PENDING' AND content_hash IS NOT NULL AND document_class IS NULL")
+    fun countAwaitingDetection(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM items WHERE state = 'PENDING' AND document_class IS NOT NULL")
+    fun countAwaitingLocalization(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM items WHERE state IN ('REDACTED', 'NEEDS_CHECK') AND redacted_media_store_id IS NULL")
+    fun countAwaitingRedaction(): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 

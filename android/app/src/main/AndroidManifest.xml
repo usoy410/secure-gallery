@@ -18,6 +18,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- "N photos ready to secure" (#22). Optional: the scan screen shows the same count. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A long first scan runs as a foreground job with a notification (§8.2). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".SecureGalleryApplication"
@@ -37,6 +40,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- WorkManager's foreground service, declared with the type the scan uses. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 
 </manifest>

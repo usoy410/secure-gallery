@@ -47,6 +47,10 @@ class ScanScreenshotTest {
         capture("scan_scanning_dark", PhotoAccess.FULL, ScanProgress(found = 1240, processed = 310, running = true), dark = true)
 
     @Test
+    fun scanScreen_detecting() =
+        capture("scan_detecting", PhotoAccess.FULL, ScanProgress.of(1681, 1681, 1341, 0, 0, running = true, failed = false))
+
+    @Test
     fun scanScreen_done() = capture("scan_done", PhotoAccess.FULL, ScanProgress(found = 1240, processed = 1240))
 
     @Test
