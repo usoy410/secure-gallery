@@ -51,6 +51,20 @@ interface ItemDao {
     )
     fun countReadyToSecure(): Flow<Int>
 
+    /**
+     * The review inbox (§8.4, #24): every item with a redacted copy, those that need a check
+     * first, then the newest.
+     */
+    @Query(
+        "SELECT * FROM items WHERE redacted_media_store_id IS NOT NULL " +
+            "AND state IN ('REDACTED', 'NEEDS_CHECK', 'VAULTED', 'ORIGINAL_STILL_PUBLIC') " +
+            "ORDER BY CASE state WHEN 'NEEDS_CHECK' THEN 0 ELSE 1 END, id DESC",
+    )
+    fun inbox(): Flow<List<Item>>
+
+    @Query("SELECT * FROM items WHERE id = :id")
+    suspend fun byId(id: Long): Item?
+
     @Query("SELECT COUNT(*) FROM items")
     fun countAll(): Flow<Int>
 

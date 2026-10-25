@@ -22,6 +22,8 @@ import androidx.room.PrimaryKey
  *   Only such items may have their original deleted (#22).
  * @property corrections how often the user corrected this item (a box changed, or "not
  *   sensitive"), for the correction-rate metric (§8.4). A count only, no content.
+ * @property correctedMoves how many of those corrections moved a box (#24); likewise
+ *   [correctedResizes], [correctedAdds] and [correctedDeletes]. Counts only.
  * @property retryCount failed attempts while no copy exists; once a copy is saved, the number
  *   of recheck retries with larger boxes (0 to 2, 3 when it ended in a whole-image fill).
  */
@@ -41,6 +43,10 @@ data class Item(
     @ColumnInfo(name = "redacted_media_store_id") val redactedMediaStoreId: Long? = null,
     @ColumnInfo(name = "recheck_passed", defaultValue = "0") val recheckPassed: Boolean = false,
     @ColumnInfo(name = "corrections", defaultValue = "0") val corrections: Int = 0,
+    @ColumnInfo(name = "corrected_moves", defaultValue = "0") val correctedMoves: Int = 0,
+    @ColumnInfo(name = "corrected_resizes", defaultValue = "0") val correctedResizes: Int = 0,
+    @ColumnInfo(name = "corrected_adds", defaultValue = "0") val correctedAdds: Int = 0,
+    @ColumnInfo(name = "corrected_deletes", defaultValue = "0") val correctedDeletes: Int = 0,
 ) {
     /** Move to [next], or throw if §8.4 does not allow that step. */
     fun moveTo(next: ItemState): Item {

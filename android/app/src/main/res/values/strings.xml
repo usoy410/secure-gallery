@@ -4,6 +4,30 @@
     <string name="inbox_title">Review inbox</string>
     <string name="inbox_empty_title">No items to review</string>
     <string name="inbox_empty_description">Your gallery has no pending redactions or items requiring review.</string>
+    <string name="inbox_class_philsys">PhilSys ID</string>
+    <string name="inbox_class_lto">Driver\'s license</string>
+    <string name="inbox_class_payment_card">Payment card</string>
+    <string name="inbox_class_unknown">Document</string>
+    <string name="inbox_state_redacted">Redacted</string>
+    <string name="inbox_state_needs_check">Needs check</string>
+    <string name="inbox_state_vaulted">In vault</string>
+    <string name="inbox_state_still_public">Original still public</string>
+    <plurals name="inbox_item_summary">
+        <item quantity="one">%1$d box</item>
+        <item quantity="other">%1$d boxes</item>
+    </plurals>
+    <string name="inbox_unlock_first">Unlock the vault to correct boxes.</string>
+    <string name="inbox_not_available">The original could not be read.</string>
+    <string name="inbox_saved">Saved. The new copy passed the check.</string>
+    <string name="inbox_saved_needs_check">Saved, but the new copy did not pass the check. Its original stays in the gallery.</string>
+    <string name="inbox_save_failed">Could not save. Nothing was changed.</string>
+    <string name="editor_title">Correct boxes</string>
+    <string name="editor_hint">Tap a box to select it. Drag it to move, or drag a corner to resize.</string>
+    <string name="editor_add">Add box</string>
+    <string name="editor_delete">Delete box</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_cancel">Cancel</string>
+    <string name="editor_image">Original image with redaction boxes</string>
 
     <string name="nav_scan">Scan</string>
     <string name="nav_inbox">Inbox</string>
