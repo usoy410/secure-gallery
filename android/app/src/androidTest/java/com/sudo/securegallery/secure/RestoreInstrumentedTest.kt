@@ -31,7 +31,7 @@ class RestoreInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
     private val testAssets = instrumentation.context.assets
-    private val resolver = app.contentResolver
+    private val resolver = instrumentation.context.contentResolver
     private val album = "Pictures/SG restore test/"
 
     private fun insert(name: String, bytes: ByteArray): Long {
@@ -48,13 +48,11 @@ class RestoreInstrumentedTest {
 
     @Test
     fun notSensitiveRestoresTheOriginal() = runBlocking {
-        // The test reads MediaStore through the target app UID; grant its runtime
-        // media permissions so Android 14 does not reject the synthetic URI.
-        instrumentation.uiAutomation.grantRuntimePermission(
-            app.packageName, Manifest.permission.READ_MEDIA_IMAGES,
-        )
-        instrumentation.uiAutomation.grantRuntimePermission(
-            app.packageName, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        // The test accesses MediaStore directly; use the instrumentation UID with
+        // shell media permissions so Android 14 does not reject the synthetic URI.
+        instrumentation.uiAutomation.adoptShellPermissionIdentity(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
         )
         val original = testAssets.open("redaction/r01_philsys-card.jpg").use { it.readBytes() }
         val dir = File(app.cacheDir, "restore-test-vault").apply { deleteRecursively() }
@@ -90,12 +88,7 @@ class RestoreInstrumentedTest {
             restoredId?.let(gallery::delete)
             db.close()
             dir.deleteRecursively()
-            instrumentation.uiAutomation.revokeRuntimePermission(
-                app.packageName, Manifest.permission.READ_MEDIA_IMAGES,
-            )
-            instrumentation.uiAutomation.revokeRuntimePermission(
-                app.packageName, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
-            )
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
         }
     }
 }
