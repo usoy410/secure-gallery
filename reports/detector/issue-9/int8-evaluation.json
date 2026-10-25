@@ -1,0 +1,118 @@
+{
+  "name": "verified-int8",
+  "sha256": "957b304e4e175085c7195dcc6aac36d61ab428f59c13dd51989da326cfadbc7e",
+  "size_bytes": 3159967,
+  "conf": 0.25,
+  "iou": 0.7,
+  "imgsz": 640,
+  "rect": false,
+  "fixture_commit": "3eb72eb0b1bd81aea77cce8f986bfc8142b4637f",
+  "photos": 20,
+  "missed": 0,
+  "count": 20,
+  "median_pct": 3.39,
+  "p95_pct": 5.79,
+  "max_pct": 6.11,
+  "per_photo": [
+    {
+      "photo": "r01_philsys-card.jpg",
+      "corner_error_pct": 3.249070189748756,
+      "passed": false
+    },
+    {
+      "photo": "r02_philsys-ephilid.jpg",
+      "corner_error_pct": 2.294948714213067,
+      "passed": true
+    },
+    {
+      "photo": "r03_lto-dl-current.jpg",
+      "corner_error_pct": 2.1496306897503534,
+      "passed": true
+    },
+    {
+      "photo": "r04_lto-dl-previous.jpg",
+      "corner_error_pct": 5.788537094194989,
+      "passed": false
+    },
+    {
+      "photo": "r05_payment-card-front.jpg",
+      "corner_error_pct": 2.5199205947414085,
+      "passed": true
+    },
+    {
+      "photo": "r06_philsys-card.jpg",
+      "corner_error_pct": 2.732697534681618,
+      "passed": true
+    },
+    {
+      "photo": "r07_philsys-ephilid.jpg",
+      "corner_error_pct": 2.946368849576044,
+      "passed": true
+    },
+    {
+      "photo": "r08_lto-dl-current.jpg",
+      "corner_error_pct": 3.4673518888428854,
+      "passed": false
+    },
+    {
+      "photo": "r09_lto-dl-previous.jpg",
+      "corner_error_pct": 6.114822948411645,
+      "passed": false
+    },
+    {
+      "photo": "r10_payment-card-front.jpg",
+      "corner_error_pct": 2.8859267105877913,
+      "passed": true
+    },
+    {
+      "photo": "r11_philsys-card.jpg",
+      "corner_error_pct": 3.13338044231308,
+      "passed": false
+    },
+    {
+      "photo": "r12_philsys-ephilid.jpg",
+      "corner_error_pct": 3.5642281891800023,
+      "passed": false
+    },
+    {
+      "photo": "r13_lto-dl-current.jpg",
+      "corner_error_pct": 4.376943509214435,
+      "passed": false
+    },
+    {
+      "photo": "r14_lto-dl-previous.jpg",
+      "corner_error_pct": 4.968077774136493,
+      "passed": false
+    },
+    {
+      "photo": "r15_payment-card-front.jpg",
+      "corner_error_pct": 5.270562806960628,
+      "passed": false
+    },
+    {
+      "photo": "r16_philsys-card.jpg",
+      "corner_error_pct": 3.388116167169676,
+      "passed": false
+    },
+    {
+      "photo": "r17_philsys-ephilid.jpg",
+      "corner_error_pct": 2.860171495328128,
+      "passed": true
+    },
+    {
+      "photo": "r18_lto-dl-current.jpg",
+      "corner_error_pct": 3.8086339541087315,
+      "passed": false
+    },
+    {
+      "photo": "r19_lto-dl-previous.jpg",
+      "corner_error_pct": 3.4137685857898057,
+      "passed": false
+    },
+    {
+      "photo": "r20_payment-card-front.jpg",
+      "corner_error_pct": 4.481119629236423,
+      "passed": false
+    }
+  ]
+}
