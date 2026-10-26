@@ -46,17 +46,24 @@ class ScanWorkerInstrumentedTest {
         val name = "sg-background-${UUID.randomUUID()}.jpg"
         // Shell ownership represents another app (e.g. the camera). App-owned images
         // are deliberately filtered out by ImageQuery and would not exercise scanning.
-        val inserted = shell(
+        shell(
             "content insert --uri content://media/external_primary/images/media " +
                 "--bind _display_name:s:$name --bind mime_type:s:image/jpeg " +
                 "--bind relative_path:s:Pictures/SGBackgroundTest/ --bind is_pending:i:1",
         )
-        val uri = android.net.Uri.parse(
-            checkNotNull(Regex("content://[^\\s]+").find(inserted)?.value) {
-                "Could not insert the synthetic MediaStore fixture"
-            },
+        // Android 14's content insert command does not print the returned URI.
+        // Query our unique synthetic name instead of assuming an output format.
+        val rows = shell(
+            "content query --uri content://media/external_primary/images/media " +
+                "--projection _id:_display_name",
         )
-        val id = ContentUris.parseId(uri)
+        val row = checkNotNull(rows.lineSequence().firstOrNull { it.contains(name) }) {
+            "Could not find the inserted synthetic MediaStore fixture"
+        }
+        val id = checkNotNull(Regex("_id=(\\d+)").find(row)?.groupValues?.get(1)).toLong()
+        val uri = ContentUris.withAppendedId(
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), id,
+        )
         try {
             val pipes = instrumentation.uiAutomation.executeShellCommandRw("content write --uri $uri")
             try {
