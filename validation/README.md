@@ -35,3 +35,28 @@ also runs nightly in CI on 50 test images (artifact `batch-export`).
 
 The export is not part of the app: it lives in the test APK, and `EvalNotInAppTest` fails if
 it ever moves into the app's own code.
+
+## Pipeline report and D7 verification (#30)
+
+Score the test-split batch export with:
+
+```bash
+python -m validation.report pipeline data/batch_output --labels data/batch_input/labels --out reports/pipeline
+```
+
+For recheck sensitivity, prepare a separate folder of synthetic D7 already-redacted images
+and their same-stem benchmark JSON labels (including `card_corners`, `redaction.redaction_boxes`,
+`is_failed_redaction`, `redaction_type`, and `split`). Optional `<id>.boxes.json` sidecars override
+the applied boxes from the benchmark label. Push those labels too: verification needs the applied
+boxes and document region. Use distinct IDs for ordinary and D7 images.
+
+```bash
+scripts/batch_export.sh data/d7_input data/d7_output d7
+python -m validation.report pipeline data/d7_output --labels data/d7_input --out reports/d7 --no-leak
+```
+
+The D7 mode runs the on-device recheck directly, without detecting or repairing the redactions.
+Its `recheck.csv` scores those outcomes; D7 cases are excluded from detector, field, pipeline,
+and exported-copy leak tables because those stages did not run. A D7-only report therefore
+has no ordinary pipeline observations. To report both cohorts together, copy `d7_results.json`
+alongside an ordinary export's `results.json` and supply a labels folder containing both cohorts.
