@@ -661,18 +661,22 @@ def run_pipeline(
     pairs = load(export_dir, labels_dir)
     if not pairs:
         raise ValueError(f"No test-split images in {export_dir}")
+    # D7 exports run only Recheck on already-redacted images, without the detector
+    # or redactor. Counting them as ordinary pipeline cases invents missed
+    # detections and uncovered fields, changing unrelated benchmark scores.
+    pipeline_pairs = [(r, lb) for r, lb in pairs if not is_d7_cohort_item(lb)]
     out.mkdir(parents=True, exist_ok=True)
-    detection, confusion = detection_rows(pairs)
+    detection, confusion = detection_rows(pipeline_pairs)
     tables = {
         "detection": detection,
         "confusion": confusion,
-        "corners": corner_rows(pairs),
-        "fields": field_rows(pairs),
-        "pipeline": pipeline_rows(pairs),
+        "corners": corner_rows(pipeline_pairs),
+        "fields": field_rows(pipeline_pairs),
+        "pipeline": pipeline_rows(pipeline_pairs),
         "recheck": recheck_rows(pairs),
     }
     if leaks:
-        tables["leaks"] = leak_rows(pairs, export_dir, labels_dir, reader)
+        tables["leaks"] = leak_rows(pipeline_pairs, export_dir, labels_dir, reader)
     written = {}
     for name, rows in tables.items():
         written[name] = out / f"{name}.csv"

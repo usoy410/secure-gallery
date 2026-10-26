@@ -147,6 +147,23 @@ def test_fields_and_pipeline_rates(export: tuple[Path, Path], tmp_path: Path) ->
     assert _find(corners, **{"class": "philsys"})["max_pct"] == "0.0"
 
 
+def test_d7_verification_does_not_change_pipeline_scores(export, tmp_path: Path) -> None:
+    out, labels = export
+    baseline = run_pipeline(out, labels, tmp_path / "baseline", leaks=False)
+    label = {**_label("philsys"), "is_failed_redaction": True, "redaction_type": "partial"}
+    (labels / "d7_partial.json").write_text(json.dumps(label), encoding="utf-8")
+    (out / "d7_results.json").write_text(json.dumps({"images": [
+        {"id": "d7_partial", "recheck_outcome": "failed"},
+    ]}), encoding="utf-8")
+
+    mixed = run_pipeline(out, labels, tmp_path / "mixed", leaks=False)
+    for table in ("detection", "confusion", "corners", "fields", "pipeline"):
+        assert _rows(mixed[table]) == _rows(baseline[table]), table
+    sensitivity = _find(_rows(mixed["recheck"]), metric="recheck_sensitivity",
+                        **{"class": "ALL", "condition": "ALL"})
+    assert (sensitivity["count"], sensitivity["of"]) == ("1", "1")
+
+
 def test_average_precision() -> None:
     assert average_precision([(0.9, True), (0.8, True)], 2) == 1.0
     assert average_precision([(0.9, False), (0.8, True)], 1) == pytest.approx(0.5)
