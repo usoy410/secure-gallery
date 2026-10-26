@@ -38,6 +38,7 @@ class ScanWorkerInstrumentedTest {
             val error = ParcelFileDescriptor.AutoCloseInputStream(pipes[2])
                 .bufferedReader().use { it.readText() }
             check(error.isBlank()) { "Synthetic fixture shell operation failed: $error" }
+            check(!output.contains("[ERROR]")) { "Synthetic fixture command was invalid: $output" }
             return output
         } finally {
             pipes.forEach { it.close() }
@@ -67,7 +68,7 @@ class ScanWorkerInstrumentedTest {
         val rows = shell(
             "content query --uri content://media/external_primary/images/media " +
                 "--projection _id:_display_name " +
-                "--extra android:query-arg-match-pending:i:1",
+                "--extra android\\:query-arg-match-pending:i:1",
         )
         val row = checkNotNull(rows.lineSequence().firstOrNull { it.contains(name) }) {
             "Could not find the inserted synthetic MediaStore fixture"
