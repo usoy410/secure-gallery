@@ -8,6 +8,7 @@ says what each proves.
 | `localize/` | Desktop reference localization: OCR-first, layout-only, hybrid (#10). |
 | `leaktest/` | Leak test: can a field be read back from a redacted image (#11–#13)? |
 | `report/` | RQ4 report and charts (#14). |
+| `performance.py` | Stage timing summaries from device batch exports (#32); [phone protocol](../reports/performance/README.md). |
 
 ## On-device batch export (#29)
 
