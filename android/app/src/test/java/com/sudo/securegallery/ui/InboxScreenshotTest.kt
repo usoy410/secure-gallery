@@ -2,6 +2,8 @@ package com.sudo.securegallery.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.assertCountEquals
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -94,6 +96,34 @@ class InboxScreenshotTest {
             }
         }
         composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/inbox_mixed_dark.png")
+    }
+
+    @Test
+    fun inboxShowsRedactedPreviewsWithoutOpeningItems() {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                InboxScreen(items = mixed, thumbnail = { card(redacted = true) })
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithContentDescription("Redacted photo", useUnmergedTree = true)
+            .assertCountEquals(mixed.size)
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/inbox_previews.png")
+    }
+
+    @Test
+    fun missingPreviewsShowAnExplicitPlaceholder() {
+        composeTestRule.setContent {
+            SecureGalleryTheme(darkTheme = false) {
+                InboxScreen(items = mixed, thumbnail = { null })
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithContentDescription(
+            "Redacted preview unavailable", useUnmergedTree = true,
+        ).assertCountEquals(mixed.size)
+        composeTestRule.onAllNodesWithContentDescription("Redacted photo", useUnmergedTree = true)
+            .assertCountEquals(0)
     }
 
     @Test

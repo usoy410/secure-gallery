@@ -2,6 +2,7 @@ package com.sudo.securegallery.ui.inbox
 
 import android.app.Activity
 import android.content.ContentUris
+import android.graphics.Bitmap
 import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -118,13 +119,14 @@ fun InboxRoute(
         )
         if (unlockRequested && !unlocked) unlockPrompt(viewModel::cancelUnlock)
     } else {
-        InboxScreen(modifier, items, viewModel::open, message, viewModel::dismissMessage)
+        InboxScreen(modifier, items, viewModel::open, message, viewModel::dismissMessage,
+            thumbnail = { redactedThumbnail(resolver, it) })
     }
 }
 
 /**
  * The review inbox (§8.4): every processed item with its state, NEEDS_CHECK first. A row shows
- * the document class, the state and the number of boxes, never a field value or the image.
+ * the redacted preview, document class, state and number of boxes, never the original image.
  * With no items it shows a quiet empty state.
  */
 @Composable
@@ -134,6 +136,7 @@ fun InboxScreen(
     onOpen: (Item) -> Unit = {},
     message: InboxMessage? = null,
     onDismissMessage: () -> Unit = {},
+    thumbnail: suspend (Item) -> Bitmap? = { null },
 ) {
     val snackbar = remember { SnackbarHostState() }
     val text = message?.let { stringResource(it.text) }
@@ -159,16 +162,19 @@ fun InboxScreen(
             )
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(innerPadding)) {
-                items(items, key = { it.id }) { item -> InboxRow(item, onClick = { onOpen(item) }) }
+                items(items, key = { it.id }) { item ->
+                    InboxRow(item, onClick = { onOpen(item) }, thumbnail = thumbnail)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun InboxRow(item: Item, onClick: () -> Unit) {
+private fun InboxRow(item: Item, onClick: () -> Unit, thumbnail: suspend (Item) -> Bitmap?) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick).heightIn(min = 72.dp),
+        leadingContent = { RedactedPreview(item, thumbnail, Modifier.size(72.dp)) },
         headlineContent = { Text(stringResource(item.documentClass.label)) },
         supportingContent = {
             Text(pluralStringResource(R.plurals.inbox_item_summary, item.boxes.size, item.boxes.size))

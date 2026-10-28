@@ -179,4 +179,5 @@
     <string name="vault_import_pin_label">Your PIN</string>
     <string name="vault_import_confirm">Import</string>
     <string name="vault_import_cancel">Cancel</string>
+    <string name="gallery_preview_unavailable">Redacted preview unavailable</string>
 </resources>
