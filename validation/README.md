@@ -33,6 +33,12 @@ python -m validation.leaktest data/batch_output --labels data/batch_input/labels
 `batch_subset` keeps the labels on the desktop; only the images go to the device. The export
 also runs nightly in CI on 50 test images (artifact `batch-export`).
 
+The helper transfers inputs and outputs through `run-as` in the debug app's private files
+directory, avoiding shell-owned external-storage files. It requires a new local output
+directory and checks that every supplied image has a unique result before copying the export.
+Explicit exports fail when no images are readable; only ordinary device tests without batch
+arguments skip the export test when there is no input.
+
 The export is not part of the app: it lives in the test APK, and `EvalNotInAppTest` fails if
 it ever moves into the app's own code.
 

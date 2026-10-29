@@ -56,12 +56,25 @@ class BatchExportTest {
     private val app = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver = app.contentResolver
 
+    // The adb helper transfers files with run-as, avoiding shell-owned external
+    // storage files. Keep the external default for existing manual invocations.
+    private fun evaluationRoot(): File =
+        if (InstrumentationRegistry.getArguments().getString("batch_private_storage") == "true") app.filesDir
+        else checkNotNull(app.getExternalFilesDir(null))
+
+    private fun requireImages(images: List<File>, input: File) {
+        if (InstrumentationRegistry.getArguments().getString("batch_required") == "true") {
+            check(images.isNotEmpty()) { "Requested batch export has no readable images in $input" }
+        }
+        assumeTrue("no images in $input", images.isNotEmpty())
+    }
+
     @Test
     fun exportPipelineResults() = runBlocking {
-        val input = File(app.getExternalFilesDir(null), "eval-input")
+        val input = File(evaluationRoot(), "eval-input")
         val images = input.listFiles { f -> f.extension.lowercase() in setOf("jpg", "jpeg", "png") }.orEmpty().sortedBy { it.name }
-        assumeTrue("no images in $input", images.isNotEmpty())
-        val output = File(app.getExternalFilesDir(null), "eval-output").apply { deleteRecursively(); mkdirs() }
+        requireImages(images.toList(), input)
+        val output = File(evaluationRoot(), "eval-output").apply { deleteRecursively(); mkdirs() }
 
         val detector = checkNotNull(LiteRtDetector.open(app.assets)) { "detector.tflite missing" }
         val rules = FieldRules.load(app.assets)
@@ -152,11 +165,11 @@ class BatchExportTest {
      */
     @Test
     fun exportD7VerificationResults() = runBlocking {
-        val input = File(app.getExternalFilesDir(null), "eval-d7-input").takeIf { it.exists() && it.listFiles()?.isNotEmpty() == true }
-            ?: File(app.getExternalFilesDir(null), "d7-input")
+        val input = File(evaluationRoot(), "eval-d7-input").takeIf { it.exists() && it.listFiles()?.isNotEmpty() == true }
+            ?: File(evaluationRoot(), "d7-input")
         val images = input.listFiles { f -> f.extension.lowercase() in setOf("jpg", "jpeg", "png") }.orEmpty().sortedBy { it.name }
-        assumeTrue("no images in $input", images.isNotEmpty())
-        val output = File(app.getExternalFilesDir(null), "eval-d7-output").apply { deleteRecursively(); mkdirs() }
+        requireImages(images.toList(), input)
+        val output = File(evaluationRoot(), "eval-d7-output").apply { deleteRecursively(); mkdirs() }
 
         val rules = FieldRules.load(app.assets)
         val ocr = MlKitOcrEngine()
@@ -197,7 +210,7 @@ class BatchExportTest {
 
             File(output, "d7_results.json").writeText(d7Payload)
             File(output, "results.json").writeText(d7Payload)
-            File(app.getExternalFilesDir(null), "eval-output").let { evalOut ->
+            File(evaluationRoot(), "eval-output").let { evalOut ->
                 if (evalOut.exists()) {
                     File(evalOut, "d7_results.json").writeText(d7Payload)
                 }
