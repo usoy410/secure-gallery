@@ -10,6 +10,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ItemDao {
+    /** Lightweight scan metadata: no boxes or other pipeline state loaded for unchanged files. */
+    data class IndexEntry(val mediaStoreId: Long, val dateModified: Long, val sizeBytes: Long)
+
+    @Query("SELECT media_store_id AS mediaStoreId, date_modified AS dateModified, size_bytes AS sizeBytes FROM items WHERE media_store_id IN (:ids)")
+    suspend fun indexEntries(ids: List<Long>): List<IndexEntry>
+
     /** Adds items not yet indexed; images already in the table are left alone. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNew(items: List<Item>): List<Long>
