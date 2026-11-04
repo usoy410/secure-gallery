@@ -108,32 +108,48 @@ class GalleryScanner(
 
     /** Adds new images; a changed file that was not flagged is indexed again. */
     private suspend fun index(images: List<GalleryImage>) {
-        dao.insertNew(
-            images.map { Item(mediaStoreId = it.mediaStoreId, dateModified = it.dateModified, sizeBytes = it.sizeBytes) },
-        )
-        for (image in images) {
-            val item = dao.byMediaStoreId(image.mediaStoreId) ?: continue
-            val changed = item.dateModified != image.dateModified || item.sizeBytes != image.sizeBytes
-            // Still PENDING (not yet past detection) or allowed back to PENDING: index again.
-            val resettable = item.state == ItemState.PENDING || item.state.canMoveTo(ItemState.PENDING)
-            if (changed && resettable) {
-                dao.update(
-                    item.copy(
-                        state = ItemState.PENDING,
-                        dateModified = image.dateModified,
-                        sizeBytes = image.sizeBytes,
-                        contentHash = null,
-                        // New content: the old detection no longer applies.
-                        documentClass = null,
-                        documentConfidence = null,
-                        cardCorners = null,
-                    ),
-                )
+        for (batch in images.chunked(INDEX_BATCH_SIZE)) {
+            val existing = dao.indexEntries(batch.map { it.mediaStoreId }).associateBy { it.mediaStoreId }
+            val newImages = batch.filter { it.mediaStoreId !in existing }
+            if (newImages.isNotEmpty()) {
+                dao.insertNew(newImages.map {
+                    Item(mediaStoreId = it.mediaStoreId, dateModified = it.dateModified, sizeBytes = it.sizeBytes)
+                })
+            }
+            for (image in batch) {
+                val indexed = existing[image.mediaStoreId] ?: continue
+                if (indexed.dateModified == image.dateModified && indexed.sizeBytes == image.sizeBytes) continue
+                resetChangedImage(image)
             }
         }
     }
 
+    private suspend fun resetChangedImage(image: GalleryImage) {
+        // Re-read changed records before editing them: do not overwrite a newer
+        // user/pipeline state with a full Item captured by an earlier batch query.
+        val item = dao.byMediaStoreId(image.mediaStoreId) ?: return
+        val changed = item.dateModified != image.dateModified || item.sizeBytes != image.sizeBytes
+        // Still PENDING (not yet past detection) or allowed back to PENDING: index again.
+        val resettable = item.state == ItemState.PENDING || item.state.canMoveTo(ItemState.PENDING)
+        if (changed && resettable) {
+            dao.update(
+                item.copy(
+                    state = ItemState.PENDING,
+                    dateModified = image.dateModified,
+                    sizeBytes = image.sizeBytes,
+                    contentHash = null,
+                    // New content: the old detection no longer applies.
+                    documentClass = null,
+                    documentConfidence = null,
+                    cardCorners = null,
+                ),
+            )
+        }
+    }
+
     companion object {
+        // Below SQLite's portable 999-bound-parameter limit. Only metadata is retained.
+        private const val INDEX_BATCH_SIZE = 500
         fun sha256(input: InputStream): String {
             val digest = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(64 * 1024)

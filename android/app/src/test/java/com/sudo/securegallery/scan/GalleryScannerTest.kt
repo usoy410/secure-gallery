@@ -10,6 +10,7 @@ import com.sudo.securegallery.data.CardCorners
 import com.sudo.securegallery.data.DocumentClass
 import com.sudo.securegallery.data.FieldType
 import com.sudo.securegallery.data.ItemDao
+import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemState
 import com.sudo.securegallery.data.RedactionBox
 import com.sudo.securegallery.detect.Corner
@@ -79,6 +80,52 @@ class GalleryScannerTest {
         val again = GalleryScanner(source, dao).scan()
         assertEquals(0, again.processed)
         assertEquals(emptyList<Long>(), source.opened)
+    }
+
+    @Test
+    fun largeUnchangedGalleryUsesBoundedMetadataQueriesAndNeverReopensPhotos() = runTest {
+        for (id in 1L..1001L) source.files[id] = byteArrayOf(1)
+        dao.insertNew((1L..1001L).map {
+            Item(mediaStoreId = it, dateModified = 1, sizeBytes = 1,
+                state = ItemState.NOT_DETECTED, contentHash = "previously hashed")
+        })
+        val batches = mutableListOf<Int>()
+        var singleLookups = 0
+        var insertCalls = 0
+        val counted = object : ItemDao by dao {
+            override suspend fun insertNew(items: List<Item>): List<Long> {
+                insertCalls++
+                return dao.insertNew(items)
+            }
+            override suspend fun indexEntries(ids: List<Long>): List<ItemDao.IndexEntry> {
+                batches += ids.size
+                return dao.indexEntries(ids)
+            }
+            override suspend fun byMediaStoreId(mediaStoreId: Long): Item? {
+                singleLookups++
+                return dao.byMediaStoreId(mediaStoreId)
+            }
+        }
+        val scanner = GalleryScanner(source, counted)
+        assertEquals(0, scanner.scan().processed)
+        assertEquals(listOf(500, 500, 1), batches)
+        assertEquals(0, singleLookups)
+        assertEquals(0, insertCalls)
+        assertTrue(source.opened.isEmpty())
+
+        // Changed files on both sides of a batch boundary are still detected,
+        // while flagged originals retain their existing pipeline state.
+        dao.update(dao.byMediaStoreId(1001)!!.moveTo(ItemState.PENDING).moveTo(ItemState.REDACTED))
+        source.files[501] = "edited normal photo".toByteArray()
+        source.files[1001] = "edited flagged original".toByteArray()
+        batches.clear()
+        assertEquals(1, scanner.scan().processed)
+        assertEquals(listOf(500, 500, 1), batches)
+        assertEquals(2, singleLookups)
+        assertEquals(0, insertCalls)
+        assertEquals(listOf(501L), source.opened)
+        assertEquals(sha256Hex("edited normal photo"), dao.byMediaStoreId(501)!!.contentHash)
+        assertEquals(ItemState.REDACTED, dao.byMediaStoreId(1001)!!.state)
     }
 
     @Test

@@ -61,6 +61,7 @@ cd android
 | `data/ItemSchemaTest` | #15 | The Room `items` table has exactly the §8.4 columns and nothing that could hold OCR text. The box column accepts only known field types and numbers. |
 | `scan/ImageQueryTest` | #15 | The real MediaStore query, run against a fake MediaStore table, keeps finished still images from other apps. It drops GIFs, the app's own redacted copies (by owner or by the `.sg-redacted.` name marker) and files still being written. |
 | `scan/GalleryScannerTest` | #15 | The scan indexes every image, hashes them one at a time, skips unchanged images on the next scan, re-indexes changed ones unless they are already flagged, and marks a file deleted mid-scan as failed. |
+| `scan/GalleryScannerTest` (large gallery) | #32 | A 1,001-photo unchanged gallery uses three bounded metadata queries, no individual item lookups or redundant inserts, and never reopens photos. Changed files across batch boundaries are rehashed while flagged originals retain their state. Query counts are structural evidence, not phone timing measurements. |
 | `scan/PhotoAccessTest` | #15 | Each Android version asks for the right photo permission, and Android 14 "selected photos" counts as partial access. |
 | `ui/ScanScreenshotTest` | #15 | Roborazzi records the scan screen: no access, scanning (light and dark), done, and done with selected photos only. |
 | `vault/VaultCryptoTest` | #20 | AES-GCM wrapping round-trips. A wrong key, changed associated data or a flipped byte is rejected (GCM tag), and a vault file renamed to another item does not decrypt. |
