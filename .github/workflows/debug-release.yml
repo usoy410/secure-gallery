@@ -28,9 +28,25 @@ jobs:
           distribution: temurin
           cache: gradle
 
+      - name: Cache Robolectric Android runtimes
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('android/gradle/libs.versions.toml', 'android/app/build.gradle.kts', 'android/app/src/test/**') }}
+
       - name: Build, unit tests and lint
         working-directory: android
         run: bash ./gradlew assembleDebug testDebugUnitTest lint -Proborazzi.test.record=true
+
+      - name: Upload JVM test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-jvm-test-reports
+          path: |
+            android/app/build/test-results/testDebugUnitTest/
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
 
       - name: Check offline manifest
         shell: bash
