@@ -48,6 +48,20 @@ class RecheckTest {
     }
 
     @Test
+    fun pixelTolerancePassesAtEightAndFailsAtNine() {
+        // §8.5: ≥ 99.5% within 8 of the fill color on every channel.
+        val passBitmap = Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(8, 8, 8)) }
+        assertTrue(Recheck.solidShare(passBitmap, box) >= Recheck.MIN_SOLID_SHARE)
+
+        val failBitmap = Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(9, 8, 8)) }
+        assertTrue(Recheck.solidShare(failBitmap, box) < Recheck.MIN_SOLID_SHARE)
+
+        val customFill = Color.rgb(50, 50, 50)
+        val customPass = Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(58, 42, 50)) }
+        assertTrue(Recheck.solidShare(customPass, box, customFill) >= Recheck.MIN_SOLID_SHARE)
+    }
+
+    @Test
     fun growAddsFifteenPercentPerSide() {
         assertEquals(listOf(28f, 35.5f, 132f, 35.5f, 132f, 74.5f, 28f, 74.5f), Recheck.grow(box).corners)
     }
@@ -56,6 +70,7 @@ class RecheckTest {
     fun digitWindowsIgnoreSpacesAndDashes() {
         assertEquals(setOf("1234", "2345"), Recheck.digitWindows("12 34-5 and 99"))
         assertEquals(emptySet<String>(), Recheck.digitWindows("no digits"))
+        assertEquals(setOf("1234", "2345", "3456"), Recheck.digitWindows("12\u00A034\t56"))
     }
 
     @Test
@@ -82,6 +97,19 @@ class RecheckTest {
     }
 
     @Test
+    fun anUndersizedBoxPassingOnSecondRetryGrowsTwice() = runTest {
+        // Probe is at (140, 55), outside 1 growth (x max 132) but inside 2 growths (x max 147.6).
+        val store = FakeStore()
+        val done = Redactor(FakeSource(), store, Recheck(rules, ProbeOcr(140, 55))).redact(item())
+        assertTrue(done.recheckPassed)
+        assertEquals(2, done.retryCount)
+        assertEquals(ItemState.REDACTED, done.state)
+        assertEquals(listOf(Recheck.grow(Recheck.grow(box))), done.boxes)
+        assertEquals(3, store.writes) // saved, overwritten retry 1, overwritten retry 2
+        assertTrue(isDark(store.bytes!!, 140, 55))
+    }
+
+    @Test
     fun afterTwoRetriesTheWholeImageIsFilledAndNeedsACheck() = runTest {
         // Far from the box: two growths do not reach it.
         val store = FakeStore()
@@ -92,6 +120,26 @@ class RecheckTest {
         assertTrue(done.recheckPassed)
         assertEquals(4, store.writes)
         assertTrue(isDark(store.bytes!!, 195, 5))
+    }
+
+    @Test
+    fun textCheckRestrictedToDocumentRegion() = runTest {
+        // Light spot at (180, 80) outside the document region RectF(0, 0, 100, 100).
+        val ocr = OcrEngine { bitmap ->
+            // If the probe point (180, 80) exists in the cropped bitmap and is white, read number.
+            if (bitmap.width > 180 && bitmap.height > 80 && bitmap.getPixel(180, 80) == Color.WHITE) {
+                listOf(line("1234-5678-9012-3456"))
+            } else {
+                emptyList()
+            }
+        }
+        val recheck = Recheck(rules, ocr)
+        val copy = encode(render(listOf(box)))
+        // Inside region RectF(0f, 0f, 100f, 100f), probe spot (180, 80) is cropped out -> passes.
+        val region = android.graphics.RectF(0f, 0f, 100f, 100f)
+        assertTrue(recheck.passes(copy, listOf(box), region, setOf("1234", "5678")))
+        // Without region crop (whole image 200x100), probe spot (180, 80) is present and read -> fails.
+        assertFalse(recheck.passes(copy, listOf(box), null, setOf("1234", "5678")))
     }
 
     @Test
