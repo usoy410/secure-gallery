@@ -43,6 +43,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
+      - name: Cache Robolectric Android runtimes
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('android/gradle/libs.versions.toml', 'android/app/build.gradle.kts', 'android/app/src/test/**') }}
+
       - name: Build, Test (JVM + Robolectric) & Lint
         run: |
           cd android
@@ -62,6 +68,16 @@ jobs:
             exit 1
           fi
           echo "Verified: Merged debug manifest does not contain android.permission.INTERNET"
+
+      - name: Upload JVM test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jvm-test-reports
+          path: |
+            android/app/build/test-results/testDebugUnitTest/
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
 
       - name: Upload Roborazzi screenshot test artifacts
         uses: actions/upload-artifact@v4

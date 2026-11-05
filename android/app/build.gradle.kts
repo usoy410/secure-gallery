@@ -89,6 +89,9 @@ android {
             isIncludeAndroidResources = true
             all { test ->
                 test.systemProperty("robolectric.logging", "stdout")
+                // Robolectric downloads SDK jars separately from Gradle's repositories.
+                test.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+                test.testLogging.exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             }
         }
     }
