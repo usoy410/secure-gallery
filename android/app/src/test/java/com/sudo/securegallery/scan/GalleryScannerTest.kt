@@ -180,7 +180,15 @@ class GalleryScannerTest {
         }
         source.decodable[1] = 1600
         source.decodable[2] = 1200
-        GalleryScanner(source, dao, detector).scan()
+        val metrics = ScanMetrics()
+        GalleryScanner(source, dao, detector).scan(metrics)
+        assertEquals(2, metrics.checked)
+        assertEquals(1, metrics.candidates)
+        assertEquals(0, metrics.detectionFailures)
+        val repeat = ScanMetrics()
+        GalleryScanner(source, dao, detector).scan(repeat)
+        assertEquals(0, repeat.checked)
+        assertEquals(0, repeat.detectionTotal)
 
         val id = dao.byMediaStoreId(1)!!
         assertEquals(ItemState.PENDING, id.state) // waits for field localization (#17)
@@ -210,7 +218,12 @@ class GalleryScannerTest {
         val detector = com.sudo.securegallery.detect.DocumentDetector { image ->
             if (image.originalWidth == 1601) throw IllegalStateException("bad image") else cardDetector.detect(image)
         }
-        GalleryScanner(source, dao, detector).scan()
+        val metrics = ScanMetrics()
+        GalleryScanner(source, dao, detector).scan(metrics)
+        assertEquals(2, metrics.detectionTotal)
+        assertEquals(1, metrics.checked)
+        assertEquals(1, metrics.candidates)
+        assertEquals(1, metrics.detectionFailures)
         val broken = dao.byMediaStoreId(1)!!
         assertEquals(sha256Hex("broken"), broken.contentHash) // the hash is kept
         assertNull(broken.documentClass) // and detection is tried again next time

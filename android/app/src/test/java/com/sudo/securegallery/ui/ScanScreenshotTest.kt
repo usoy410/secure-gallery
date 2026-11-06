@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -64,7 +65,20 @@ class ScanScreenshotTest {
     @Test
     fun scanScreen_doneShowsFoundAndChecked() {
         capture("scan_done_none_found", PhotoAccess.FULL, ScanProgress(found = 0, processed = 0))
-        composeTestRule.onNodeWithText("0 photos found, 0 checked").assertIsDisplayed()
+        composeTestRule.onNodeWithText("0 photos indexed").assertIsDisplayed()
+    }
+
+    @Test
+    fun scanScreen_separatesCheckedImagesFromCandidatesAndShowsDetails() {
+        capture("scan_diagnostics", PhotoAccess.FULL, ScanProgress(
+            found = 1800, processed = 1800, running = true,
+            stage = com.sudo.securegallery.ui.scan.ScanStage.DETECT,
+            checked = 26, candidates = 3, detectionFailures = 1, detectionTotal = 1800,
+            details = "This scan • elapsed 240.00 s",
+        ))
+        composeTestRule.onNodeWithText("This run: 26 of 1800 images checked · 3 possible cards · Retry needed: 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Scan details").performClick()
+        composeTestRule.onNodeWithText("This scan • elapsed 240.00 s").assertIsDisplayed()
     }
 
     @Test

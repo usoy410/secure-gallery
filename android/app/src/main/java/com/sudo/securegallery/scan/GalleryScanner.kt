@@ -34,14 +34,20 @@ class GalleryScanner(
 ) {
     data class Result(val found: Int, val processed: Int, val missing: Int)
 
-    suspend fun scan(): Result {
-        val images = source.listImages()
-        index(images)
+    suspend fun scan(
+        metrics: ScanMetrics = ScanMetrics(),
+        onProgress: suspend () -> Unit = {},
+    ): Result {
+        val images = metrics.measure(ScanMetrics.Stage.INDEX) {
+            source.listImages().also { index(it) }
+        }
+        onProgress()
         var processed = 0
         var missing = 0
+        metrics.phase = "HASH"
         while (true) {
             val item = dao.nextUnhashed() ?: break
-            val hash = source.open(item.mediaStoreId)?.use(::sha256)
+            val hash = metrics.measure(ScanMetrics.Stage.HASH) { source.open(item.mediaStoreId)?.use(::sha256) }
             if (hash == null) {
                 // Deleted or unreadable since the query: nothing to protect, stop retrying it.
                 dao.update(item.moveTo(ItemState.FAILED))
@@ -50,18 +56,41 @@ class GalleryScanner(
                 dao.update(item.copy(contentHash = hash))
                 processed++
             }
+            onProgress()
         }
         // Detection is a separate pass over every hashed item still waiting for it, so items
         // hashed by an earlier build (or one without a model) are picked up too.
         if (detector != null) {
-            for (item in dao.awaitingDetection()) dao.update(detect(detector, item))
+            metrics.phase = "DETECT"
+            val pending = dao.awaitingDetection()
+            metrics.detectionTotal = pending.size
+            onProgress()
+            for (item in pending) {
+                val result = detect(detector, item, metrics)
+                dao.update(result)
+                when {
+                    result.documentClass != null -> { metrics.checked++; metrics.candidates++ }
+                    result.state == ItemState.NOT_DETECTED -> metrics.checked++
+                    else -> metrics.detectionFailures++
+                }
+                onProgress()
+            }
         }
         if (localizer != null) {
-            for (item in dao.awaitingLocalization()) dao.update(localize(localizer, item))
+            metrics.phase = "OCR"
+            for (item in dao.awaitingLocalization()) {
+                dao.update(localize(localizer, item, metrics))
+                onProgress()
+            }
         }
         if (redactor != null) {
-            for (item in dao.awaitingRedaction()) dao.update(redactor.redact(item))
+            metrics.phase = "REDACT"
+            for (item in dao.awaitingRedaction()) {
+                dao.update(metrics.measure(ScanMetrics.Stage.REDACT) { redactor.redact(item, metrics) })
+                onProgress()
+            }
         }
+        metrics.phase = "FINISHED"
         return Result(found = images.size, processed = processed, missing = missing)
     }
 
@@ -69,10 +98,14 @@ class GalleryScanner(
      * Runs the detector on one item. If the image cannot be decoded or the detector fails, the
      * item is left as it was and tried again on the next scan; one bad image never blocks the rest.
      */
-    private fun detect(detector: DocumentDetector, item: Item): Item {
+    private suspend fun detect(detector: DocumentDetector, item: Item, metrics: ScanMetrics): Item {
         val found = try {
-            val image = source.loadForDetection(item.mediaStoreId, detectorConfig.inputSize) ?: return item
-            detector.detect(image)
+            val image = metrics.measure(ScanMetrics.Stage.DECODE) {
+                source.loadForDetection(item.mediaStoreId, detectorConfig.inputSize)
+            } ?: return item
+            metrics.measure(ScanMetrics.Stage.DETECT) { detector.detect(image) }
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: RuntimeException) {
             return item
         }
@@ -88,13 +121,17 @@ class GalleryScanner(
      * Finds the boxes to redact on one detected item. Like detection, a failure leaves the item
      * as it was for the next scan. The OCR bitmap and everything read from it are dropped here.
      */
-    private suspend fun localize(localizer: FieldLocalizer, item: Item): Item {
+    private suspend fun localize(localizer: FieldLocalizer, item: Item, metrics: ScanMetrics): Item {
         val documentClass = item.documentClass ?: return item
         val found = try {
-            val image = source.loadForOcr(item.mediaStoreId, HybridLocalizer.OCR_MAX_SIDE) ?: return item
+            val image = metrics.measure(ScanMetrics.Stage.DECODE) {
+                source.loadForOcr(item.mediaStoreId, HybridLocalizer.OCR_MAX_SIDE)
+            } ?: return item
             try {
                 val corners = item.cardCorners?.xy?.chunked(2)?.map { Corner(it[0], it[1]) }
-                localizer.localize(image, documentClass, item.documentConfidence ?: 0f, corners)
+                metrics.measure(ScanMetrics.Stage.OCR) {
+                    localizer.localize(image, documentClass, item.documentConfidence ?: 0f, corners)
+                }
             } finally {
                 image.bitmap.recycle()
             }

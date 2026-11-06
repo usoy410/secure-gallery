@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -148,6 +153,9 @@ fun ScanScreen(
             if (secure.ready > 0 || secure.message != null) {
                 SecureCard(secure, onSecure)
             }
+            if (access != PhotoAccess.NONE && progress.details != null) {
+                ScanDiagnostics(progress)
+            }
             val done = access != PhotoAccess.NONE && !progress.running && !progress.failed
             if (gallery != null && done) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -181,6 +189,30 @@ fun ScanScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScanDiagnostics(progress: ScanProgress) {
+    var showDetails by remember { mutableStateOf(false) }
+    Text(
+        stringResource(R.string.scan_checked_counts, progress.checked, progress.detectionTotal, progress.candidates, progress.detectionFailures),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    TextButton(onClick = { showDetails = true }) { Text(stringResource(R.string.scan_details)) }
+    if (showDetails) {
+        AlertDialog(
+            onDismissRequest = { showDetails = false },
+            title = { Text(stringResource(R.string.scan_details)) },
+            text = {
+                SelectionContainer {
+                    Text(progress.details.orEmpty(), modifier = Modifier.verticalScroll(rememberScrollState()))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDetails = false }) { Text(stringResource(android.R.string.ok)) }
+            },
+        )
     }
 }
 
@@ -234,7 +266,9 @@ private fun Scanning(progress: ScanProgress) = Message(
     ),
     body = when (progress.stage) {
         ScanStage.FINGERPRINT -> pluralStringResource(R.plurals.scan_running_body, progress.found, progress.processed, progress.found)
-        ScanStage.DETECT -> pluralStringResource(R.plurals.scan_detect_body, progress.processed, progress.stageDone, progress.processed)
+        ScanStage.DETECT -> if (progress.details != null) {
+            stringResource(R.string.scan_detection_attempts, progress.checked + progress.detectionFailures, progress.detectionTotal)
+        } else pluralStringResource(R.plurals.scan_detect_body, progress.processed, progress.stageDone, progress.processed)
         ScanStage.FIELDS -> pluralStringResource(R.plurals.scan_fields_body, progress.stageLeft, progress.stageLeft)
         ScanStage.REDACT -> pluralStringResource(R.plurals.scan_redact_body, progress.stageLeft, progress.stageLeft)
         ScanStage.FINISHING -> ""
@@ -246,7 +280,12 @@ private fun Scanning(progress: ScanProgress) = Message(
                 modifier = Modifier.fillMaxWidth(),
             )
             ScanStage.DETECT -> LinearProgressIndicator(
-                progress = { if (progress.processed == 0) 0f else progress.stageDone.toFloat() / progress.processed },
+                progress = {
+                    if (progress.details != null) {
+                        if (progress.detectionTotal == 0) 0f else
+                            (progress.checked + progress.detectionFailures).toFloat() / progress.detectionTotal
+                    } else if (progress.processed == 0) 0f else progress.stageDone.toFloat() / progress.processed
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             // No total is known for these steps up front: an indeterminate bar.

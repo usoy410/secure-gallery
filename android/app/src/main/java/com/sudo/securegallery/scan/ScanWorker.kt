@@ -26,6 +26,7 @@ class ScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     override suspend fun doWork(): Result {
         val container = (applicationContext as SecureGalleryApplication).container
+        var metrics: ScanMetrics? = null
         try {
             // Long scans must run in the foreground, or Android stops them after 10 minutes.
             setForeground(ScanNotification.foregroundInfo(applicationContext))
@@ -36,15 +37,27 @@ class ScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
         return try {
             // A triggered scan and "Scan now" can start together; only one walks the gallery.
-            oneScanAtATime.withLock { container.galleryScanner.scan() }
+            oneScanAtATime.withLock {
+                val current = ScanMetrics()
+                metrics = current
+                var lastUpdate = 0L
+                container.galleryScanner.scan(current) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    // WorkManager progress writes to disk: at most once per second.
+                    if (now - lastUpdate >= 1_000) {
+                        setProgress(current.data())
+                        lastUpdate = now
+                    }
+                }
+            }
             ReadyNotification.post(applicationContext, container.database.itemDao().countReadyToSecure().first())
-            Result.success()
+            Result.success(metrics?.data() ?: androidx.work.Data.EMPTY)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             // Class and message only: no exception here carries OCR text or field values (§8.4).
             Log.e(TAG, "scan failed: ${e.javaClass.simpleName}: ${e.message}")
-            Result.failure()
+            Result.failure(metrics?.data() ?: androidx.work.Data.EMPTY)
         } finally {
             watchNewPhotos(WorkManager.getInstance(applicationContext), container.scanPrefs.chargingOnly())
         }
