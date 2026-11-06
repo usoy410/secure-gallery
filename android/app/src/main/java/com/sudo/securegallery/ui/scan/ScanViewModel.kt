@@ -40,6 +40,11 @@ data class ScanProgress(
     val stageDone: Int = 0,
     /** Photos the current step still has to do. */
     val stageLeft: Int = 0,
+    val checked: Int = 0,
+    val candidates: Int = 0,
+    val detectionFailures: Int = 0,
+    val detectionTotal: Int = 0,
+    val details: String? = null,
 ) {
     companion object {
         /**
@@ -61,7 +66,7 @@ data class ScanProgress(
 enum class ScanStage { FINGERPRINT, DETECT, FIELDS, REDACT, FINISHING }
 
 /** Whether a scan is running, and whether the last one failed. */
-private data class WorkStatus(val running: Boolean, val failed: Boolean)
+private data class WorkStatus(val running: Boolean, val failed: Boolean, val data: androidx.work.Data)
 
 /** The "ready to secure" card (#22): how many originals can go, and what stops it. */
 data class SecureState(val ready: Int = 0, val busy: Boolean = false, val message: SecureMessage? = null)
@@ -129,7 +134,12 @@ class ScanViewModel(
         .getWorkInfosForUniqueWorkFlow(ScanWorker.UNIQUE_NAME)
         .map { infos ->
             val running = infos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
-            WorkStatus(running, failed = !running && infos.any { it.state == WorkInfo.State.FAILED })
+            val current = infos.firstOrNull { it.state == WorkInfo.State.RUNNING }
+                ?: infos.firstOrNull { it.state == WorkInfo.State.ENQUEUED }
+                ?: infos.firstOrNull()
+            val data = current?.let { if (it.state.isFinished) it.outputData else it.progress }
+                ?: androidx.work.Data.EMPTY
+            WorkStatus(running, failed = !running && infos.any { it.state == WorkInfo.State.FAILED }, data)
         }
 
     val progress: StateFlow<ScanProgress> =
@@ -138,7 +148,27 @@ class ScanViewModel(
             combine(dao.countAwaitingDetection(), dao.countAwaitingLocalization(), dao.countAwaitingRedaction(), ::Triple),
             status,
         ) { (found, processed), (detect, fields, redact), work ->
-            ScanProgress.of(found, processed, detect, fields, redact, work.running, work.failed)
+            val inferred = ScanProgress.of(found, processed, detect, fields, redact, work.running, work.failed)
+            inferred.copy(
+                stage = when (work.data.getString("scanPhase")) {
+                    "INDEX", "HASH" -> ScanStage.FINGERPRINT
+                    "DETECT" -> ScanStage.DETECT
+                    "OCR" -> ScanStage.FIELDS
+                    "REDACT" -> ScanStage.REDACT
+                    "FINISHED" -> ScanStage.FINISHING
+                    else -> inferred.stage
+                },
+                stageLeft = when (work.data.getString("scanPhase")) {
+                    "OCR" -> fields
+                    "REDACT" -> redact
+                    else -> inferred.stageLeft
+                },
+                checked = work.data.getInt("checked", 0),
+                candidates = work.data.getInt("candidates", 0),
+                detectionFailures = work.data.getInt("detectionFailures", 0),
+                detectionTotal = work.data.getInt("detectionTotal", 0),
+                details = work.data.getString("scanDetails"),
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanProgress())
 
     fun scanNow() = ScanWorker.enqueue(workManager)

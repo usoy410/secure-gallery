@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="scan_details">Scan details</string>
+    <string name="scan_detection_attempts">%1$d of %2$d detection attempts finished this run</string>
+    <string name="scan_checked_counts">This run: %1$d of %2$d images checked · %3$d possible cards · Retry needed: %4$d</string>
     <string name="app_name">Secure Gallery</string>
     <string name="inbox_title">Review inbox</string>
     <string name="inbox_empty_title">No items to review</string>
@@ -60,10 +63,10 @@
     <string name="scan_access_title">Allow photo access</string>
     <string name="scan_access_body">Secure Gallery checks your photos for IDs and payment cards. Everything stays on this phone. Nothing is uploaded.</string>
     <string name="scan_access_button">Allow access</string>
-    <string name="scan_running_title">Checking your photos</string>
+    <string name="scan_running_title">Preparing your photos</string>
     <plurals name="scan_running_body">
-        <item quantity="one">%1$d of %2$d photo checked</item>
-        <item quantity="other">%1$d of %2$d photos checked</item>
+        <item quantity="one">%1$d of %2$d photo prepared or skipped</item>
+        <item quantity="other">%1$d of %2$d photos prepared or skipped</item>
     </plurals>
     <string name="scan_detect_title">Looking for IDs and cards</string>
     <plurals name="scan_detect_body">
@@ -85,8 +88,8 @@
     <string name="scan_notification_title">Checking your photos for IDs</string>
     <string name="scan_done_title">Scan complete</string>
     <plurals name="scan_done_body">
-        <item quantity="one">%1$d photo found, %2$d checked</item>
-        <item quantity="other">%1$d photos found, %2$d checked</item>
+        <item quantity="one">%1$d photo indexed</item>
+        <item quantity="other">%1$d photos indexed</item>
     </plurals>
     <string name="scan_failed_title">Scan failed</string>
     <string name="scan_failed_body">Something went wrong while checking your photos. Try again.</string>

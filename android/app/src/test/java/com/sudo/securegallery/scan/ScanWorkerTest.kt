@@ -56,7 +56,10 @@ class ScanWorkerTest {
     @Test
     fun everyRunReArmsTheTrigger() = runTest {
         val result = TestListenableWorkerBuilder<ScanWorker>(context).build().doWork()
-        assertEquals(ListenableWorker.Result.success(), result)
+        assertTrue(result is ListenableWorker.Result.Success)
+        val data = (result as ListenableWorker.Result.Success).outputData
+        assertEquals("FINISHED", data.getString("scanPhase"))
+        assertTrue(data.getString("scanDetails")!!.contains("This scan"))
         assertEquals(WorkInfo.State.ENQUEUED, watch().state)
     }
 }

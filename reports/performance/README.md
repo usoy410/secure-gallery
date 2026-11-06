@@ -67,6 +67,30 @@ than the requested count).
 
 ## Before adding scan concurrency
 
+### In-app first-pass diagnosis
+
+The Scan screen's **Scan details** panel exposes aggregate timings for the current manual
+scan (or its completed WorkManager result). Long-press the text to copy it. Capture the panel
+before starting another scan; a new run resets these counters. WorkManager output is not a
+permanent benchmark archive. Background-triggered runs are not displayed in this panel.
+
+Record the app version, tablet/phone model, physical RAM, charging state, elapsed time,
+and whether this was a first scan or an unchanged rescan. The on-screen **images checked**
+count is successful detector evaluations in this run; **possible cards** is the subset with
+a detection, not verified ground truth. Detection failures are separate and remain eligible
+for a later scan. Indexed/fingerprinted library totals are not detector throughput.
+
+Stage totals use a monotonic clock and count failed attempts too. `index` includes the
+MediaStore listing and database indexing; `hash` measures file opening and hashing; `decode`
+covers detection/OCR image loading; `detect` covers the detector call (including its own
+preprocessing/postprocessing); `ocr` covers field localization. `redact` includes full-size
+rendering, saving and verification. `recheck` is the nested number-extraction/saved-copy-check
+time, so do not add it to `redact`. Elapsed includes other database work and progress updates.
+These aggregates provide averages, not per-image percentiles or isolated full-size decode
+times. Progress is published at most once per second, between images; an expensive image can
+leave the panel unchanged until its stage completes. No image IDs, filenames or OCR text
+are included. No scheduling, inference or accuracy settings are changed by these diagnostics.
+
 `LiteRtDetector` shares interpreter buffers and is not thread-safe. Its CPU fallback already
 uses four inference threads, and the current design holds one full-resolution bitmap at a time.
 Benchmark decoding/preprocessing overlap with a bounded queue only after capturing this baseline.

@@ -7,6 +7,7 @@ import com.sudo.securegallery.data.Item
 import com.sudo.securegallery.data.ItemState
 import com.sudo.securegallery.data.RedactionBox
 import com.sudo.securegallery.scan.ImageSource
+import com.sudo.securegallery.scan.ScanMetrics
 
 /**
  * Makes the redacted copy of one localized item (§8.2 steps 3 to 5, #18, #19): decode the
@@ -28,7 +29,7 @@ class Redactor(
     private val recheck: Recheck? = null,
 ) {
 
-    suspend fun redact(item: Item): Item {
+    suspend fun redact(item: Item, metrics: ScanMetrics = ScanMetrics()): Item {
         try {
             val exif = source.open(item.mediaStoreId)?.use(KeptExif::read) ?: return gone(item)
             // The document region in original-image pixels, from the detector's corners.
@@ -38,7 +39,9 @@ class Redactor(
                 val image = source.loadForOcr(item.mediaStoreId, Recheck.OCR_MAX_SIDE) ?: return failedAttempt(item)
                 try {
                     val s = image.bitmap.width.toFloat() / image.originalWidth
-                    r.numberWindows(image.bitmap, region?.let { RectF(it.left * s, it.top * s, it.right * s, it.bottom * s) })
+                    metrics.measure(ScanMetrics.Stage.RECHECK) {
+                        r.numberWindows(image.bitmap, region?.let { RectF(it.left * s, it.top * s, it.right * s, it.bottom * s) })
+                    }
                 } finally {
                     image.bitmap.recycle()
                 }
@@ -51,7 +54,7 @@ class Redactor(
             var retries = 0
             while (true) {
                 val saved = store.read(copyId) ?: return failedAttempt(item)
-                val passed = recheck.passes(saved, boxes, region, windows)
+                val passed = metrics.measure(ScanMetrics.Stage.RECHECK) { recheck.passes(saved, boxes, region, windows) }
                 val done = item.copy(redactedMediaStoreId = copyId, boxes = boxes, retryCount = retries, recheckPassed = passed)
                 if (passed) return if (retries > MAX_RECHECK_RETRIES) done.moveToCheck() else done
                 if (retries > MAX_RECHECK_RETRIES) return done.moveToCheck() // whole image filled and still failing
