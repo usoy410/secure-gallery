@@ -41,7 +41,12 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
      * True if the saved [jpeg] passes both checks. [region] is the document area in
      * original-image pixels (the whole image if null); [windows] comes from [numberWindows].
      */
-    open suspend fun passes(jpeg: ByteArray, boxes: List<RedactionBox>, region: RectF?, windows: Set<String>): Boolean {
+    open suspend fun passes(
+        jpeg: ByteArray,
+        boxes: List<RedactionBox>,
+        region: RectF?,
+        windows: Set<String>,
+    ): Boolean {
         val full = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size) ?: return false
         val (width, height) = full.width to full.height
         val solid = try {
@@ -61,7 +66,7 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
         try {
             val lines = ocr.recognize(area)
             if (rules.match(lines).isNotEmpty()) return false
-            val seen = lines.flatMap { line -> digitWindows(line.words.joinToString(" ") { it.text }) }
+            val seen = FieldRules.orderLines(lines).flatMap { line -> digitWindows(line.words.joinToString(" ") { it.text }) }
             return seen.none { it in windows }
         } finally {
             if (area !== small) area.recycle()
@@ -76,6 +81,7 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
         const val OCR_MAX_SIDE = 2048
         const val GROW_PER_SIDE = 0.15f
         private val DIGIT_RUN = Regex("[0-9]{4,}")
+        private val WHITESPACE_OR_DASH = Regex("[\\s\\u00A0-]+")
 
         /** The bounding rectangle of the detected card, in original-image pixels. */
         fun region(corners: CardCorners?): RectF? = corners?.xy?.let { xy ->
@@ -94,11 +100,14 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
             return Bitmap.createBitmap(image, left, top, right - left, bottom - top)
         }
 
-        /** Share of the box's pixels (minus the rim) within [TOLERANCE] of black. */
-        fun solidShare(image: Bitmap, box: RedactionBox): Double {
+        /** Share of the box's pixels (minus the rim) within [TOLERANCE] of [fillColor] on every channel (§8.5). */
+        fun solidShare(image: Bitmap, box: RedactionBox, fillColor: Int = RedactedJpeg.FILL): Double {
             val c = box.corners
             val xs = (0 until 4).map { c[2 * it] }
             val ys = (0 until 4).map { c[2 * it + 1] }
+            val tr = Color.red(fillColor)
+            val tg = Color.green(fillColor)
+            val tb = Color.blue(fillColor)
             var inside = 0
             var solid = 0
             val left = xs.min().toInt().coerceAtLeast(0)
@@ -109,7 +118,10 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
                 if (!insideBy(xs, ys, x + 0.5f, y + 0.5f, EDGE_PX)) continue
                 inside++
                 val p = image.getPixel(x, y)
-                if (abs(Color.red(p)) <= TOLERANCE && abs(Color.green(p)) <= TOLERANCE && abs(Color.blue(p)) <= TOLERANCE) solid++
+                if (abs(Color.red(p) - tr) <= TOLERANCE &&
+                    abs(Color.green(p) - tg) <= TOLERANCE &&
+                    abs(Color.blue(p) - tb) <= TOLERANCE
+                ) solid++
             }
             // A box too thin to have pixels past the rim cannot hide anything readable.
             return if (inside == 0) 1.0 else solid.toDouble() / inside
@@ -140,9 +152,9 @@ open class Recheck(private val rules: FieldRules, private val ocr: OcrEngine) {
             return box.copy(corners = c.mapIndexed { i, v -> if (i % 2 == 0) cx + (v - cx) * factor else cy + (v - cy) * factor })
         }
 
-        /** Every 4-digit window of every run of 4 or more digits, with spaces and dashes removed. */
+        /** Every 4-digit window of every run of 4 or more digits, with whitespace and dashes removed. */
         fun digitWindows(text: String): Set<String> =
-            DIGIT_RUN.findAll(text.replace(" ", "").replace("-", "")).flatMap { m ->
+            DIGIT_RUN.findAll(text.replace(WHITESPACE_OR_DASH, "")).flatMap { m ->
                 (0..m.value.length - 4).map { m.value.substring(it, it + 4) }
             }.toSet()
     }
